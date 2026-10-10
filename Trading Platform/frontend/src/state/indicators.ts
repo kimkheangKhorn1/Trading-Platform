@@ -24,6 +24,9 @@ export interface IndicatorInstance {
   shapeStyles: Record<string, ShapeStyle>
   groupVisible: Record<string, boolean>
   timeframes: TimeframeCode[]
+  /** earlier defaults already moved to the current default, as "inputId=value": done once, so a value the user
+   *  picks later is never reset */
+  upgradedDefaults?: string[]
 }
 
 export interface OutputState {
@@ -56,7 +59,12 @@ export function defaultsFor(meta: ScriptMeta): Omit<IndicatorInstance, 'uid'> {
     shapeStyles: Object.fromEntries(meta.shapes.map((s) => [s.id, { visible: s.visible, color: s.color }])),
     groupVisible: Object.fromEntries(meta.drawing_groups.map((g) => [g.id, g.visible])),
     timeframes: [...ALL_TFS],
+    upgradedDefaults: replacedDefaultKeys(meta), // a new instance starts at the current defaults
   }
+}
+
+function replacedDefaultKeys(meta: ScriptMeta): string[] {
+  return meta.inputs.flatMap((i) => (i.replaced_defaults ?? []).map((v) => `${i.id}=${JSON.stringify(v)}`))
 }
 
 export const useIndicators = create<IndicatorsState>((set, get) => ({
@@ -87,7 +95,8 @@ export const useIndicators = create<IndicatorsState>((set, get) => ({
     const prev = get().outputs[uid] ?? { data: null, loading: false, error: null }
     set({ outputs: { ...get().outputs, [uid]: { ...prev, ...out } } })
   },
-  /** Drop instances of scripts that no longer exist and fill in inputs/styles added since they were saved. */
+  /** Drop instances of scripts that no longer exist, fill in inputs/styles added since they were saved and move
+   *  settings still at an earlier default to the current default. */
   syncWithMeta: (scripts) => {
     const byId = new Map(scripts.map((s) => [s.id, s]))
     const next = get()
@@ -95,8 +104,13 @@ export const useIndicators = create<IndicatorsState>((set, get) => ({
       .map((i) => {
         const meta = byId.get(i.scriptId)!
         const d = defaultsFor(meta)
+        // drop inputs the script no longer has; a value still at an earlier default takes the new default, once
+        const done = new Set(i.upgradedDefaults ?? [])
         const validInputs = Object.fromEntries(
-          Object.entries(i.inputs).filter(([k]) => meta.inputs.some((s) => s.id === k)),
+          Object.entries(i.inputs).filter(([k, v]) => {
+            const spec = meta.inputs.find((s) => s.id === k)
+            return spec && !(spec.replaced_defaults?.includes(v) && !done.has(`${k}=${JSON.stringify(v)}`))
+          }),
         )
         return {
           ...i,
@@ -104,6 +118,7 @@ export const useIndicators = create<IndicatorsState>((set, get) => ({
           plotStyles: { ...d.plotStyles, ...i.plotStyles },
           shapeStyles: { ...d.shapeStyles, ...i.shapeStyles },
           groupVisible: { ...d.groupVisible, ...i.groupVisible },
+          upgradedDefaults: [...new Set([...done, ...replacedDefaultKeys(meta)])],
         }
       })
     set({ instances: next })

@@ -75,6 +75,8 @@ export interface InputSpec {
   /** plain-language explanation and a worked example, shown in the settings help card */
   help?: string | null
   example?: string | null
+  /** earlier defaults: a saved setting still holding one is moved to the current default */
+  replaced_defaults?: InputValue[] | null
 }
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted'

@@ -20,7 +20,9 @@ TUNED_DEFAULTS={
 INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is not None else None,
                      'title':HELP.get(s['id'],{}).get('label',s['title']),
                      'help':HELP.get(s['id'],{}).get('about'), 'example':HELP.get(s['id'],{}).get('example')})
-        for s in ({**s,'default':TUNED_DEFAULTS.get(s['id'],s['default'])} for s in json.loads(Path(__file__).with_name('inputs.json').read_text()))]
+        for s in ({**s,'default':TUNED_DEFAULTS.get(s['id'],s['default']),
+                   'replaced_defaults':(s['default'],) if s['id'] in TUNED_DEFAULTS else None}
+                  for s in json.loads(Path(__file__).with_name('inputs.json').read_text()))]
 SHAPES=[
     ('breakout','Pivot breakout','arrowup','belowbar','upCol'),
     ('breakdown','Pivot breakdown','arrowdown','abovebar','dnCol'),
