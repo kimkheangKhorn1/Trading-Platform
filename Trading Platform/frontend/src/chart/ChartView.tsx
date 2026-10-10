@@ -5,6 +5,7 @@ import { Icon, Spinner } from '../components/common/Icon'
 import { useApp } from '../state/app'
 import { useIndicators } from '../state/indicators'
 import { useReplay } from '../state/replay'
+import { useScale } from '../state/scale'
 import { useTester } from '../state/tester'
 import { ChartController } from './controller'
 import { Legend } from './Legend'
@@ -41,6 +42,9 @@ export function ChartView() {
   const showTrades = useTester((s) => s.showTradesOnChart)
   const replayMode = useReplay((s) => s.mode)
   const cursorTime = useReplay((s) => s.cursorTime)
+  const scaleAuto = useScale((s) => s.auto)
+  const scaleKind = useScale((s) => s.kind)
+  const resetSeq = useScale((s) => s.resetSeq)
 
   // ------------------------------------------------------------- chart + live socket
   useEffect(() => {
@@ -174,6 +178,40 @@ export function ChartView() {
   useEffect(() => {
     if (ctrl && focus) void ctrl.focusRange(focus.from, focus.to)
   }, [ctrl, focus])
+
+  // ------------------------------------------------------------- price scale (auto / log / %)
+  useEffect(() => {
+    ctrl?.setPriceScale(scaleAuto, scaleKind)
+  }, [ctrl, scaleAuto, scaleKind])
+  useEffect(() => {
+    if (ctrl && resetSeq) ctrl.resetScale()
+  }, [ctrl, resetSeq])
+  useEffect(() => {
+    if (!ctrl) return
+    const el = host.current!
+    // dragging/stretching the price axis switches auto-scale off inside the chart: mirror it on the button
+    const sync = () => requestAnimationFrame(() => {
+      const auto = ctrl.isAutoScale()
+      if (auto !== useScale.getState().auto) useScale.getState().set({ auto })
+    })
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (e.altKey && e.code === 'KeyR' && !t.closest('input, textarea, [role=dialog]')) {
+        e.preventDefault()
+        useScale.getState().reset()
+      }
+    }
+    el.addEventListener('pointerup', sync)
+    el.addEventListener('dblclick', sync)
+    el.addEventListener('wheel', sync, { passive: true })
+    window.addEventListener('keydown', key)
+    return () => {
+      el.removeEventListener('pointerup', sync)
+      el.removeEventListener('dblclick', sync)
+      el.removeEventListener('wheel', sync)
+      window.removeEventListener('keydown', key)
+    }
+  }, [ctrl])
 
   const loadingAny = Object.values(outputs).some((o) => o.loading)
   const picking = replayMode === 'picking'

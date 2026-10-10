@@ -553,3 +553,14 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
 .help-example { border-radius: 0 6px 6px 0; }
 .select-menu { border-radius: 8px; }
 .select-option { border-radius: 6px; }
+
+/* TradingView-style price scale buttons in the chart footer */
+.scale-btns { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1px solid var(--border); }
+.scale-btn {
+  height: 24px; min-width: 28px; padding: 0 7px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.scale-btn:hover { background: var(--hover); color: var(--text-strong); }
+.scale-btn.on { color: var(--accent); }
+.scale-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

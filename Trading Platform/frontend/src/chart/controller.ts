@@ -2,6 +2,7 @@ import {
   CandlestickSeries,
   createChart,
   CrosshairMode,
+  PriceScaleMode,
   LineSeries,
   LineStyle as LwLineStyle,
   type IChartApi,
@@ -396,6 +397,24 @@ export class ChartController {
   stopReplay(): void {
     this.replayIndex = null
     this.render()
+    this.chart.timeScale().scrollToRealTime()
+  }
+
+  /** Price scale like TradingView's auto / log / % buttons. */
+  setPriceScale(auto: boolean, kind: 'normal' | 'log' | 'percent'): void {
+    const mode = kind === 'log' ? PriceScaleMode.Logarithmic : kind === 'percent' ? PriceScaleMode.Percentage : PriceScaleMode.Normal
+    this.chart.priceScale('right').applyOptions({ autoScale: auto, mode })
+  }
+
+  /** False once the user has stretched or dragged the price axis (the chart turns auto-scale off itself). */
+  isAutoScale(): boolean {
+    return this.chart.priceScale('right').options().autoScale
+  }
+
+  /** Alt+R: auto-scale prices, default bar spacing, back to the latest bar. */
+  resetScale(): void {
+    this.chart.priceScale('right').applyOptions({ autoScale: true })
+    this.chart.timeScale().resetTimeScale()
     this.chart.timeScale().scrollToRealTime()
   }
 }

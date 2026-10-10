@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { fmtDateTime, TIMEZONES, type TimezoneId } from '../lib/format'
 import { currentFeed, useApp } from '../state/app'
+import { useScale, type PriceScaleKind } from '../state/scale'
+import { Icon } from './common/Icon'
 import { Select } from './common/Fields'
 
 export function ChartFooter() {
@@ -8,6 +10,8 @@ export function ChartFooter() {
   const setTz = useApp((s) => s.setTimezone)
   useApp((s) => s.feeds)
   const feed = currentFeed()
+  const scale = useScale()
+  const toggleKind = (k: PriceScaleKind) => scale.set({ kind: scale.kind === k ? 'normal' : k })
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
   useEffect(() => {
     const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
@@ -22,6 +26,17 @@ export function ChartFooter() {
       <span className="mono clock">{fmtDateTime(now, tz).slice(11)}:{String(now % 60).padStart(2, '0')}</span>
       <Select<TimezoneId> className="compact" value={tz} onChange={setTz} ariaLabel="Display timezone" width={160}
         options={TIMEZONES.map((z) => ({ value: z.id, label: z.id === 'UTC' ? 'UTC' : z.label }))} />
+      <div className="scale-btns" role="group" aria-label="Price scale">
+        <button className={`scale-btn ${scale.kind === 'percent' ? 'on' : ''}`} aria-pressed={scale.kind === 'percent'}
+          title="Percent scale: prices as % change from the first visible bar" onClick={() => toggleKind('percent')}>%</button>
+        <button className={`scale-btn ${scale.kind === 'log' ? 'on' : ''}`} aria-pressed={scale.kind === 'log'}
+          title="Logarithmic scale" onClick={() => toggleKind('log')}>log</button>
+        <button className={`scale-btn ${scale.auto ? 'on' : ''}`} aria-pressed={scale.auto}
+          title="Auto-scale: fit prices to the visible bars. Turns off when you drag the price axis" onClick={() => scale.set({ auto: !scale.auto })}>auto</button>
+        <button className="scale-btn icon" title="Reset chart (Alt+R)" aria-label="Reset chart" onClick={scale.reset}>
+          <Icon name="replay" size={13} />
+        </button>
+      </div>
     </div>
   )
 }
