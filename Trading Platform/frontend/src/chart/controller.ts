@@ -8,6 +8,7 @@ import {
   type IChartApi,
   type ISeriesApi,
   type LineData,
+  type PriceFormat,
   type Time,
   type UTCTimestamp,
   type WhitespaceData,
@@ -47,6 +48,9 @@ export class ChartController {
   feedId: string | null = null
   tf: TimeframeCode = 'M15'
   precision = 3
+  /** % mode is drawn on a normal scale with %-labels, so candles, plots and drawings keep one shared base (TradingView). */
+  private scaleKind: 'normal' | 'log' | 'percent' = 'normal'
+  private pctBase: number | null = null
   hasMore = false
   version = 0
   replayIndex: number | null = null
@@ -103,6 +107,7 @@ export class ChartController {
     })
     this.chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
       if (r && r.from < 30 && this.hasMore && !this.loadingMore) void this.loadMore()
+      if (this.scaleKind === 'percent') this.updatePctBase()
     })
   }
 
@@ -156,7 +161,7 @@ export class ChartController {
       this.bars = res.bars
       this.hasMore = res.has_more
       this.precision = res.precision
-      this.candles.applyOptions({ priceFormat: { type: 'price', precision: res.precision, minMove: 10 ** -res.precision } })
+      this.applyPriceFormat()
       this.render()
       const n = this.bars.length
       this.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 160), to: n + 8 })
@@ -402,8 +407,42 @@ export class ChartController {
 
   /** Price scale like TradingView's auto / log / % buttons. */
   setPriceScale(auto: boolean, kind: 'normal' | 'log' | 'percent'): void {
-    const mode = kind === 'log' ? PriceScaleMode.Logarithmic : kind === 'percent' ? PriceScaleMode.Percentage : PriceScaleMode.Normal
-    this.chart.priceScale('right').applyOptions({ autoScale: auto, mode })
+    this.scaleKind = kind
+    this.chart.priceScale('right').applyOptions({ autoScale: auto, mode: kind === 'log' ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal })
+    this.pctBase = null
+    if (kind === 'percent') this.updatePctBase()
+    this.applyPriceFormat()
+  }
+
+  /** % mode: changes are measured from the close of the first visible bar, as on TradingView. */
+  private updatePctBase(): void {
+    const r = this.chart.timeScale().getVisibleLogicalRange()
+    const bars = this.shownBars
+    if (!r || !bars.length) return
+    const base = bars[Math.min(bars.length - 1, Math.max(0, Math.ceil(r.from)))][4]
+    if (base !== this.pctBase) {
+      this.pctBase = base
+      this.applyPriceFormat()
+    }
+  }
+
+  private priceFormat(): PriceFormat {
+    const minMove = 10 ** -this.precision
+    const base = this.pctBase
+    if (this.scaleKind === 'percent' && base) {
+      return { type: 'custom', minMove, formatter: (p: number) => {
+        const v = (p / base - 1) * 100
+        return `${v > 0 ? '+' : ''}${v.toFixed(2)}%`
+      } }
+    }
+    return { type: 'price', precision: this.precision, minMove }
+  }
+
+  /** The main pane's labels come from its series' price format; keep candles and pane-0 plots in sync. */
+  private applyPriceFormat(): void {
+    const priceFormat = this.priceFormat()
+    this.candles.applyOptions({ priceFormat })
+    for (const [key, series] of this.plotSeries) if ((this.paneOf.get(key) ?? 0) === 0) series.applyOptions({ priceFormat })
   }
 
   /** False once the user has stretched or dragged the price axis (the chart turns auto-scale off itself). */

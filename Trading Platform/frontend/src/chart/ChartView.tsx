@@ -181,6 +181,10 @@ export function ChartView() {
 
   // ------------------------------------------------------------- price scale (auto / log / %)
   useEffect(() => {
+    // a new symbol or timeframe starts auto-scaled, so its candles are never left off-screen
+    useScale.getState().set({ auto: true })
+  }, [feedId, tf])
+  useEffect(() => {
     ctrl?.setPriceScale(scaleAuto, scaleKind)
   }, [ctrl, scaleAuto, scaleKind])
   useEffect(() => {
