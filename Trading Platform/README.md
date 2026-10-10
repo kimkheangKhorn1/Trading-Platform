@@ -45,6 +45,15 @@ The original Pine file at the repository root is kept unchanged as the reference
   the new role's color (close below support: blue, then yellow; close above resistance: yellow, then
   blue). History therefore shows what the zone was at the time. Wick-only penetrations and
   still-forming candles do not change its role. Break/reclaim markers keep their existing rules.
+- **Tested on real XAUUSD (Dukascopy, 1H/4H, Jan 2025 – Sep 2026):** each detection was scored by what
+  price did next, against the same zone or break moved to an arbitrary nearby price. Settings were chosen
+  on 2025 and only kept if they also held on 2026. Order blocks beat random levels in every period and
+  timeframe. Two defaults changed (see `TUNED_DEFAULTS` in `metadata.py`): pivot S/R zones are 1 ATR
+  wide (was 0.5) and demand/supply zones need a 1.5 ATR departure (was 2.0); both roughly doubled how much
+  better than random the zones held. Internal structure, swing length, pivot lookbacks and BULB showed
+  no consistent improvement in either direction, so they keep the Pine defaults. BULB defaults to
+  Fixed (non-repainting) mode. Event history, plots and markers before any bar are identical with or
+  without later data (no repainting or lookahead).
 - **Not verified:** no TradingView-exported comparison data exists yet, so bar-by-bar parity with the
   Pine original (structure, zones, patterns, dashboard values) is unconfirmed. Weekly/monthly candles
   are built from the feed's daily candles (week opens Sunday 17:00 New York), which can differ from

@@ -10,6 +10,12 @@ TUNED_DEFAULTS={
     # 'Moving' relocates the BULB label to later bars while RSI stays extreme: history then shows the exact turn,
     # which was not knowable at the time (repainting). 'Fixed' prints once, on the confirmed RSI threshold exit.
     'bulbMode':'Fixed (confirmed)',
+    # Measured on Dukascopy XAUUSD 1H/4H: first return to a zone, then 1 ATR bounce before a close through it, versus
+    # the same zone moved to arbitrary nearby prices. Chosen on 2025, confirmed on Jan-Sep 2026 (both timeframes):
+    # pivot S/R zones 1 ATR wide (was 0.5): edge over random levels +5/+11 -> +19/+21 pts (2025), +10/+15 -> +19/+25 (2026).
+    'mult':1.0,
+    # demand/supply: 1.5 ATR departure (was 2.0): edge +5/+5 -> +12/+10 (2025), +2/+5 -> +11/+11 (2026), ~1.8x the zones.
+    'ds_min_atr':1.5,
 }
 INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is not None else None,
                      'title':HELP.get(s['id'],{}).get('label',s['title']),
