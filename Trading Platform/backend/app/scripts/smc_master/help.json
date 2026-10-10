@@ -652,7 +652,7 @@
   "example": "20 → in a flat market with ADX 15 the row says 'wait' instead of buy or sell."
  },
  "mfiOn": {
-  "about": "Shows the Money Flow Index row (an RSI that also uses volume). Above 50 = buy, below 50 = sell; OB above 80, OS below 20.",
+  "about": "Shows the Money Flow Index row: an RSI that weights each bar's typical price (H+L+C)/3 by its volume. Above 50 = buy, below 50 = sell; OB above 80, OS below 20.",
   "example": "MFI 62 → 'MFI buy'. With no volume data the row says 'no volume'."
  },
  "mfiOrder": {
@@ -680,8 +680,8 @@
   "example": "RSI(13) drops below 30 → a 'buy' label under that candle."
  },
  "bulbMode": {
-  "about": "Moving (original): the label can move to a newer, more extreme bar while RSI stays extreme. Fixed (confirmed): the label stays where it was first printed.",
-  "example": "Backtesting or reviewing history → Fixed, so labels never move after the fact."
+  "about": "Fixed (confirmed), the default: the label prints once, on the bar where RSI closes back out of overbought/oversold, and never moves. Moving (original): the label keeps jumping to newer, more extreme bars while RSI stays extreme, so history shows the exact top or bottom, which was not knowable at the time (it repaints).",
+  "example": "RSI goes above 65 at 10:00 and peaks at 10:45. Fixed: 'sell' appears when RSI drops back below 65 and stays there. Moving: 'sell' first appears at 10:00, then slides to the 10:45 high."
  },
  "rsiLength1": {
   "about": "RSI length used by BULB.",

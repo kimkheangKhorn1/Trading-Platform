@@ -156,3 +156,64 @@ def test_smc_master_is_also_a_strategy(bars):
     traded = run_backtest(bars, script_cls=WithEntries, **kw)
     assert traded["summary"]["signals"] > 0 and len(traded["trades"]) > 0
     assert {t["strategy"] for t in traded["trades"]} == {STRATEGY_ID}
+
+
+class _Events(SmcMaster):
+    swing_length = None  # a short swing length keeps hand-built scenarios small (the input's minimum is 10)
+
+    def setup(self, ctx):
+        if self.swing_length: self.p = {**self.p, "length": self.swing_length}
+        super().setup(ctx); self.all_events = []
+
+    def emit(self, ctx, title, group, **extra):
+        if ctx.is_confirmed: self.all_events.append((ctx.bar_index, title))
+        super().emit(ctx, title, group, **extra)
+
+
+def test_swing_low_is_the_leg_extreme_after_a_wick_sweep():
+    """A wick below a confirmed swing low (close back above) is not a new pivot while the detector waits for a
+    swing high. When that high confirms, the swing low becomes the leg's real low, so a close below the old low
+    but above the sweep is not a break of structure; the close below the sweep low is."""
+    from tests.helpers import bars_from_ohlc
+    b = bars_from_ohlc([
+        (105, 106, 104, 105), (105, 105.5, 103, 103.5), (103.5, 104, 101, 101.5), (101.5, 102, 100, 100.5),  # swing low 100
+        (100.5, 102, 100.5, 101.5), (101.5, 102.5, 101, 102), (102, 103, 101.5, 102.5),
+        (102.5, 102.8, 99, 101.5),  # wick sweep to 99, close back above 100
+        (101.5, 103.5, 101, 103), (103, 105, 102.5, 104.5),  # swing high 105
+        (104.5, 104.8, 103, 103.5), (103.5, 104, 101.5, 102), (102, 102.5, 100.5, 101),
+        (101, 101.5, 99.5, 99.7),  # closes below 100 but above the 99 sweep
+        (99.7, 100, 98, 98.5),  # closes below 99
+    ], step=900)
+    cls = type("Len3", (_Events,), {"swing_length": 3})
+    r = ScriptRunner(cls, {"show_pdhl": False, "show_pwhl": False, "show_pmhl": False}, timeframe="M15")
+    r.process(b)
+    swing = [(i, t) for i, t in r.script.all_events if ("BOS" in t or "CHoCH" in t) and "Internal" not in t]
+    assert [i for i, t in swing if t.startswith("Bearish")] == [14]
+    assert r.script.struct[1]["bottom"] == 99 and r.script.struct[1]["bx"] == 7
+
+
+def test_mfi_row_is_the_standard_money_flow_index(bars):
+    """Dashboard MFI = 100 - 100 / (1 + positive/negative money flow) on the typical price (H+L+C)/3."""
+    b = bars.slice(0, 300)
+    r = ScriptRunner(SmcMaster, {"show_pdhl": False, "show_pwhl": False, "show_pmhl": False}, timeframe="M15")
+    r.process(b)
+    n = r.script.p["mfiLength"]
+    tp = (b.high + b.low + b.close) / 3
+    flow = tp * b.volume
+    up = sum(flow[i] for i in range(len(b) - n, len(b)) if tp[i] > tp[i - 1])
+    dn = sum(flow[i] for i in range(len(b) - n, len(b)) if tp[i] < tp[i - 1])
+    [row] = [x for x in r.script.tables[0]["rows"] if x["id"] == "mfi"]
+    assert row["value"] == pytest.approx(100 - 100 / (1 + up / dn))
+
+
+def test_every_drawing_is_anchored_on_a_bar_time(bars):
+    """The chart can only place drawings at candle times (or at future candle times right of the last bar).
+    A midpoint computed by averaging two timestamps falls between candles and was drawn at the far left."""
+    out = _run(bars).output()
+    t0, step = int(bars.time[0]), 900
+    off_grid = []
+    for d in out["drawings"]:
+        for key in ("x", "x1", "x2", "left", "right"):
+            if d.get(key) is not None and (int(d[key]) - t0) % step:
+                off_grid.append((d["group"], d["kind"], key, d.get("text", "")))
+    assert off_grid == []

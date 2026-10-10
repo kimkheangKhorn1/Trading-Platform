@@ -2,6 +2,7 @@
 # Port of the user's SMC & ICT & Indicators + Scalping Master. Pine source remains authoritative.
 from __future__ import annotations
 import math
+from bisect import bisect_left
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 import numpy as np
@@ -90,6 +91,7 @@ class SmcMaster(Script):
             s['os']=0 if candidate[2]>upper else 1 if candidate[3]<lower else s['os']
             for high,changed in [(True,s['os']==0 and prev_os!=0),(False,s['os']==1 and prev_os!=1)]:
                 if not changed or not ctx.is_confirmed: continue
+                self.leg_extreme(ctx,a,s,not high,n-length,internal)
                 key='top' if high else 'bottom'; xkey='tx' if high else 'bx'; y=candidate[2 if high else 3]; old=s[key]
                 if not internal:
                     text=('H' if high else 'L') if not math.isfinite(old) else ('HH' if y>old else 'LH') if high else ('LL' if y<old else 'HL')
@@ -124,8 +126,28 @@ class SmcMaster(Script):
             s[key+'_cross']=False; s['trend']=1 if bull else -1
         self.prev_levels[a]=(s['top'],s['bottom'])
 
+    def leg_extreme(self,ctx,a,s,high,loc,internal):
+        """Before a new swing pivot at ``loc`` is stored, make the opposite level the true extreme of its leg.
+        Swings alternate high/low, so when price breaks a swing high and keeps rising to a higher high before the next
+        swing low confirms, that higher high was never stored: the next break above it printed no BOS, and a wick above
+        the old high left the old, lower level as the bullish break line. The leg extreme is known only now (when the
+        opposite pivot confirms), so the corrected level is drawn now and a break that already closed beyond it is not
+        printed after the fact."""
+        key='top' if high else 'bottom'; xkey='tx' if high else 'bx'; old=s[key]; start=s[xkey]
+        if not math.isfinite(old) or start>=loc-1: return
+        rows=self.rows; best=None
+        for j in range(start+1,loc):
+            v=rows[j][2 if high else 3]
+            if (v>=best[0] if high else v<=best[0]) if best else (v>old if high else v<old): best=(v,j)
+        if not best: return
+        y,j=best; s[key]=y; s[xkey]=j
+        s[key+'_cross']=not any((r[4]>y if high else r[4]<y) for r in rows[j+1:])
+        if not internal:
+            if self.p['show_swings']: self.label(ctx,rows[j][0],y,'HH' if high else 'LL',self.color(not high),'swing_points',not high,latest=key+'_swing')
+
     def order_block(self,ctx,a,loc,bull):
-        p=self.p; n=ctx.bar_index; end=max(min(n-loc-1,499),1); end=min(end,n); found=None
+        # The whole leg is searched (Pine stopped at 499 bars back, TradingView's history-reference limit).
+        p=self.p; n=ctx.bar_index; end=max(n-loc-1,1); end=min(end,n); found=None
         if p['ob_candle']=='Opposite Candle (ICT)':
             displacement=False; close_ext=None
             for off in range(end+1):
@@ -149,15 +171,16 @@ class SmcMaster(Script):
         for a,high in enumerate((True,False)):
             value=pivot([r[2 if high else 3] for r in self.rows[-2*length-1:]],length,length,high)
             if value is None: continue
-            old=self.eq_prev[a]; x=ctx.time_at(n-length)
+            old=self.eq_prev[a]; x=ctx.time_at(n-length)  # eq_prev = (time, price, bar index) of the previous pivot
             if old and math.isfinite(atr) and abs(value-old[1])<=max(atr*p['eq_threshold'],ctx.mintick*.5):
                 text='EQH' if high else 'EQL'; col=self.color(not high)
                 if p['mode']=='Present':
                     for o in self.latest.get(text,[]): ctx.delete(o)
                 line=ctx.line(x1=old[0],y1=old[1],x2=x,y2=value,color=col,style='dotted',group='liquidity')
-                lab=self.label(ctx,(x+old[0])//2,value,text,col,'liquidity',not high,'tiny')
+                # midpoint as a bar position: an averaged timestamp can fall between candles and not be placeable
+                lab=self.label(ctx,ctx.time_at((old[2]+n-length)//2),value,text,col,'liquidity',not high,'tiny')
                 self.latest[text]=[line,lab]; self.emit(ctx,text,'liquidity',price=value)
-            self.eq_prev[a]=(x,value)
+            self.eq_prev[a]=(x,value,n-length)
 
     def gaps(self,ctx):
         p=self.p
@@ -356,13 +379,15 @@ class SmcMaster(Script):
             for j in range(n-p['vortexLength']+1,n+1):
                 r=rows[j]; prev=rows[j-1]; vmp+=abs(r[2]-prev[3]); vmm+=abs(r[3]-prev[2]); tr+=max(r[2]-r[3],abs(r[2]-prev[4]),abs(r[3]-prev[4]))
         vip=div(vmp,tr) if vortex_ready else NAN; vim=div(vmm,tr) if vortex_ready else NAN
+        # Standard Money Flow Index on the typical price (H+L+C)/3 (the Pine source used ta.mfi(close)).
         mfip=mfim=0.; mfi_ready=n>=p['mfiLength']-1
         vol=sum(r[5] for r in rows[-p['mfiLength']:])
+        tp=lambda r:(r[2]+r[3]+r[4])/3
         for j in range(max(0,n-p['mfiLength']+1),n+1):
-            r=rows[j]; change=r[4]-rows[j-1][4] if j else NAN
+            r=rows[j]; change=tp(r)-tp(rows[j-1]) if j else NAN
             if not math.isfinite(r[5]): mfi_ready=False
-            if change>0: mfip+=r[4]*r[5]
-            elif change<0: mfim+=r[4]*r[5]
+            if change>0: mfip+=tp(r)*r[5]
+            elif change<0: mfim+=tp(r)*r[5]
         mfi=(100 if mfim==0 and mfip>0 else 100-100/(1+div(mfip,mfim))) if mfi_ready and vol>0 else NAN
         mids=[(r[2]+r[3])/2 for r in rows[-p['fisherLength']:]]; hi=max(mids); lo=min(mids); fisher_ready=hi>lo
         if fisher_ready:
@@ -435,10 +460,11 @@ class SmcMaster(Script):
                 line(x1=ctx.time_at(x),y1=y,x2=future(20),y2=y,color=col,group='strong_weak')
                 label(x=future(20),y=y,text=text,color=TRANSPARENT,text_color=col,style='label_down' if high else 'label_up',size='tiny',group='strong_weak')
         if p['show_sd']:
-            upper,lower=self.trail_high,self.trail_low; left=ctx.time_at(max(self.struct[1]['tx'],self.struct[1]['bx']))
+            upper,lower=self.trail_high,self.trail_low; left_i=max(self.struct[1]['tx'],self.struct[1]['bx']); left=ctx.time_at(left_i)
+            mid=ctx.time_at((left_i+ctx.bar_index)//2)  # a bar time: an averaged timestamp can fall between candles
             for title,top,bottom,col in [('Premium',upper,.95*upper+.05*lower,p['premium_css']),('Equilibrium',.525*upper+.475*lower,.525*lower+.475*upper,p['eq_css']),('Discount',.95*lower+.05*upper,lower,p['discount_css'])]:
                 box(left=left,right=ctx.time,top=top,bottom=bottom,border_color=TRANSPARENT,bg_color=new_color(col,80),group='premium_discount')
-                label(x=ctx.time if title=='Equilibrium' else (left+ctx.time)//2,y=(upper+lower)/2 if title=='Equilibrium' else upper if title=='Premium' else lower,text=title,color=TRANSPARENT,text_color=col,style='label_left' if title=='Equilibrium' else 'label_down' if title=='Premium' else 'label_up',size='small',group='premium_discount')
+                label(x=ctx.time if title=='Equilibrium' else mid,y=(upper+lower)/2 if title=='Equilibrium' else upper if title=='Premium' else lower,text=title,color=TRANSPARENT,text_color=col,style='label_left' if title=='Equilibrium' else 'label_down' if title=='Premium' else 'label_up',size='small',group='premium_discount')
         for z in self.fvgs:
             if not visible(z.top,z.bottom): continue
             col=p['bull_fvg_css' if z.side==1 else 'bear_fvg_css']; right=future(p['fvg_extend']) if p['fvg_extend_active'] else z.born+p['fvg_extend']*ctx.timeframe.seconds; mid=(z.top+z.bottom)/2
@@ -451,11 +477,12 @@ class SmcMaster(Script):
             color=p[prefix+'_css']; style={'⎯⎯⎯':'solid','----':'dashed','····':'dotted'}[p[prefix+'_style']]; ext=future({'D':12,'W':24,'M':36}[tf])
             for ishigh,y in [(True,high),(False,low)]:
                 if not visible(y,y): continue
-                # Exact wick anchors from loaded chart history; retain HTF price if no match.
+                # Exact wick anchor: the last chart bar of the previous period that printed the level (the whole period
+                # is searched; Pine looked back 1000 bars). Keep the period start if the history does not reach it.
                 period_end=int(bucket_start(ctx.time,get_timeframe(tf,reference=True),ctx._r.alignment)); anchor=int(x)
-                for r in reversed(rows[-1000:]):
-                    if r[0]<x: break
-                    if r[0]<period_end and abs(r[2 if ishigh else 3]-y)<=ctx.mintick*.5: anchor=r[0]; break
+                first=bisect_left(rows,x,key=lambda r:r[0]); last=bisect_left(rows,period_end,key=lambda r:r[0])
+                for j in range(last-1,first-1,-1):
+                    if abs(rows[j][2 if ishigh else 3]-y)<=ctx.mintick*.5: anchor=rows[j][0]; break
                 text='P'+tf+('H' if ishigh else 'L'); tip=f'Previous {tf} '+('High' if ishigh else 'Low')+f': {y:.{ctx.precision}f}'
                 line(x1=anchor,y1=y,x2=ext,y2=y,color=color,style=style,group='mtf',tooltip=tip)
                 label(x=ext,y=y,text=text,color=color,text_color='#FFFFFFFF',style='label_left',size='small',group='mtf',tooltip=tip)
