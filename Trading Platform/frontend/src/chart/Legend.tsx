@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Icon, Spinner } from '../components/common/Icon'
-import { cssColor } from '../lib/colors'
 import { fmtPrice } from '../lib/format'
 import { currentFeed, TF_LABELS, useApp } from '../state/app'
 import { useIndicators } from '../state/indicators'
@@ -33,7 +32,6 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
   const change = bar && prev ? bar[4] - prev[4] : null
   const up = bar ? bar[4] >= bar[1] : true
   const cls = up ? 'up' : 'down'
-  const time = bar ? bar[0] : null
 
   return (
     <div className="legend">
@@ -73,7 +71,6 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
                 if (!meta) return null
                 const out = outputs[inst.uid]
                 const data = out?.data
-                const k = data && time !== null ? data.times.indexOf(time) : -1
                 const args = meta.inputs.filter((i) => i.type === 'int' || i.type === 'source').slice(0, 3).map((i) => String(inst.inputs[i.id]))
                 const hiddenTf = !inst.timeframes.includes(tf)
                 return (
@@ -92,15 +89,6 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
                         <Icon name="close" size={13} />
                       </button>
                     </span>
-                    {inst.visible && data && k >= 0
-                      ? meta.plots
-                          .filter((pl) => inst.plotStyles[pl.id]?.visible && data.plots[pl.id]?.[k] !== null && data.plots[pl.id]?.[k] !== undefined)
-                          .map((pl) => (
-                            <b key={pl.id} style={{ color: cssColor(inst.plotStyles[pl.id].color) }} title={pl.title}>
-                              {fmtPrice(data.plots[pl.id][k], p)}
-                            </b>
-                          ))
-                      : null}
                     {hiddenTf ? <span className="muted">hidden on {TF_LABELS[tf]}</span> : null}
                     {out?.loading ? <Spinner size={11} /> : null}
                     {inst.visible && !hiddenTf && data?.warnings?.length ? (

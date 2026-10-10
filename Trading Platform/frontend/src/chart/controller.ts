@@ -7,6 +7,7 @@ import {
   LineStyle as LwLineStyle,
   type IChartApi,
   type ISeriesApi,
+  type AutoscaleInfo,
   type LineData,
   type PriceFormat,
   type Time,
@@ -59,6 +60,7 @@ export class ChartController {
   /** Lower-timeframe candles for replay movement, covering [from, to). */
   private sub: { feedId: string; tf: TimeframeCode; chartTf: TimeframeCode; from: number; to: number; rows: BarRow[] } | null = null
   private subLoading: Promise<void> | null = null
+  private lastIndicatorKey: unknown[] | null = null
   private loadingMore: Promise<void> | null = null
   private loadSeq = 0
   private tz: TimezoneId = 'UTC'
@@ -95,6 +97,22 @@ export class ChartController {
       wickUpColor: THEME.up,
       wickDownColor: THEME.down,
       priceLineColor: THEME.muted,
+      // While a replay candle forms, fit prices to the completed bars only: re-fitting on every new tick
+      // high/low moved all labels a pixel or two and made them hop between layout slots (flicker).
+      // The scale catches up once when the candle completes; it can use the scale margins until then.
+      autoscaleInfoProvider: (original: () => AutoscaleInfo | null) => {
+        const info = original()
+        const range = this.forming ? this.chart.timeScale().getVisibleLogicalRange() : null
+        if (!info || !range) return info
+        const done = this.completedBars
+        let lo = Infinity
+        let hi = -Infinity
+        for (let i = Math.max(0, Math.floor(range.from)); i <= Math.min(done.length - 1, Math.ceil(range.to)); i++) {
+          lo = Math.min(lo, done[i][3])
+          hi = Math.max(hi, done[i][2])
+        }
+        return Number.isFinite(lo) ? { ...info, priceRange: { minValue: lo, maxValue: hi } } : info
+      },
     })
     this.candles.attachPrimitive(this.overlay)
     this.applyFormatters()
@@ -150,6 +168,11 @@ export class ChartController {
 
   get times(): number[] {
     return this.shownBars.map((b) => b[0])
+  }
+
+  /** Shown bars without a replay candle that is still forming: what indicators and drawings are laid out on. */
+  private get completedBars(): BarRow[] {
+    return this.replayIndex === null ? this.bars : this.bars.slice(0, this.replayIndex + 1)
   }
 
   async load(feedId: string, tf: TimeframeCode): Promise<void> {
@@ -251,7 +274,7 @@ export class ChartController {
   }
 
   private syncOverlayBars(): void {
-    const bars = this.shownBars
+    const bars = this.completedBars
     this.overlay.times = bars.map((b) => b[0])
     this.overlay.highs = bars.map((b) => b[2])
     this.overlay.lows = bars.map((b) => b[3])
@@ -262,9 +285,15 @@ export class ChartController {
 
   // --------------------------------------------------------------- indicators
   setIndicators(instances: IndicatorInstance[], outputs: Record<string, IndicatorOutput | null>, scripts: ScriptMeta[]): void {
+    // Called on every data tick. While a replay candle forms only that candle changes, so rebuilding plots and
+    // re-laying out labels each tick would only make drawings jump: skip when nothing they depend on changed.
+    const bars = this.completedBars
+    const key = [instances, outputs, scripts, this.feedId, this.tf, bars.length, bars[0]?.[0], bars[bars.length - 1]?.[0], bars[bars.length - 1]?.[4]]
+    if (this.lastIndicatorKey && key.every((v, i) => v === this.lastIndicatorKey![i])) return
+    this.lastIndicatorKey = key
     const wanted = new Set<string>()
     const layers: OverlayLayer[] = []
-    const shown = new Set(this.times)
+    const shown = new Set(bars.map((b) => b[0]))
     const candleSources: IndicatorOutput[] = []
     let nextPane = 1
     for (const inst of instances) {
@@ -398,6 +427,7 @@ export class ChartController {
 
   stepReplay(): boolean {
     if (this.replayIndex === null || this.replayIndex >= this.bars.length - 1) return false
+    if (!this.forming) this.followNewBar()
     this.forming = null // the full bar replaces any partly formed one (same time)
     this.replayIndex++
     const row = this.bars[this.replayIndex]
@@ -421,10 +451,23 @@ export class ChartController {
   }
 
   stopReplay(): void {
+    this.chart.timeScale().applyOptions({ shiftVisibleRangeOnNewBar: true })
     this.forming = null
     this.replayIndex = null
     this.render()
     this.chart.timeScale().scrollToRealTime()
+  }
+
+  /**
+   * Like TradingView replay: while there is free space on the right, a new bar fills it and the chart stays
+   * still (scrolling every bar shifted all drawings, and labels anchored to the last bar jumped back once the
+   * indicator caught up, which looked like blinking). Near the right edge the chart follows bar by bar.
+   */
+  private followNewBar(): void {
+    const ts = this.chart.timeScale()
+    const last = this.shownBars[this.shownBars.length - 1]
+    const x = last ? ts.timeToCoordinate(last[0] as UTCTimestamp) : null
+    ts.applyOptions({ shiftVisibleRangeOnNewBar: x === null || x > ts.width() - 10 * ts.options().barSpacing })
   }
 
   /** Open time of the last completed replay bar: indicators are computed up to here, never the forming one. */
@@ -447,6 +490,7 @@ export class ChartController {
     if (maxTicks <= 1 && !this.forming) return this.stepReplay() ? 'bar' : 'end'
     if (!this.forming) {
       const next = this.replayIndex + 1
+      this.followNewBar()
       this.forming = { ticks: this.buildTicks(next, maxTicks), k: -1 }
       if (!this.subCovers(next + 20)) void this.prefetchSub(next + 1)
     }
