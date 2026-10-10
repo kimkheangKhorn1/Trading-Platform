@@ -259,7 +259,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       if (d.border_width > 0) {
         // Hairline borders: half the width in device pixels (1 physical px for width 1 on Retina),
         // snapped to the pixel grid so the edge is not blurred across neighbouring pixels.
-        const px = ctx.getTransform().a || 1
+        const px = ctx.getTransform?.()?.a || 1 // device pixels per CSS pixel; 1 if the context cannot tell
         const devWidth = Math.max(1, Math.round((d.border_width * px) / 2))
         const snap = (v: number) => (Math.round(v * px) + (devWidth % 2) / 2) / px
         const sx0 = snap(x0)
