@@ -1,0 +1,214 @@
+- generic [ref=f7e3]:
+  - banner [ref=f7e4]:
+    - generic "Local XAUUSD trading platform" [ref=f7e5]
+    - button "XAUUSD CSV" [ref=f7e111] [cursor=pointer]:
+      - generic [ref=f7e12]: XAUUSD
+      - generic [ref=f7e112]: CSV
+    - group "Timeframe" [ref=f7e16]:
+      - button "1m" [ref=f7e17] [cursor=pointer]
+      - button "5m" [ref=f7e18] [cursor=pointer]
+      - button "15m" [ref=f7e19] [cursor=pointer]
+      - button "30m" [ref=f7e20] [cursor=pointer]
+      - button "1H" [ref=f7e21] [cursor=pointer]
+      - button "4H" [ref=f7e22] [cursor=pointer]
+      - button "1D" [ref=f7e23] [cursor=pointer]
+    - button "ƒx Indicators" [ref=f7e25] [cursor=pointer]:
+      - generic [ref=f7e26]: ƒx
+      - text: Indicators
+    - button "Replay" [ref=f7e27] [cursor=pointer]
+    - button "Go to date" [ref=f7e30] [cursor=pointer]
+    - button "Data" [ref=f7e33] [cursor=pointer]
+    - generic "Imported data - no live updates" [ref=f7e113]: Historical data
+  - main [ref=f7e36]:
+    - generic [ref=f7e37]:
+      - generic [ref=f7e38]:
+        - table [ref=f7e41]:
+          - row [ref=f7e42]:
+            - cell
+            - cell [ref=f7e43]:
+              - link "Charting by TradingView" [ref=f7e47] [cursor=pointer]:
+                - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=127.0.0.1/
+            - cell [ref=f7e52]
+          - row [ref=f7e56]:
+            - cell
+            - cell [ref=f7e57]
+            - cell [ref=f7e61]
+        - generic:
+          - generic:
+            - generic: XAUUSD
+            - generic: ·
+            - generic: 5m
+            - generic: ·
+            - generic: CSV dukascopy
+            - generic:
+              - generic: O4193.805
+              - generic: H4194.885
+              - generic: L4189.805
+              - generic: C4190.145
+              - generic: "-3.640 (-0.09%)"
+              - generic: Vol0.03
+          - generic [ref=f7e115]:
+            - generic [ref=f7e116]: EMA Cross (example) 9 21 close
+            - generic "Fast EMA" [ref=f7e117]: "4194.076"
+            - generic "Slow EMA" [ref=f7e118]: "4194.914"
+        - button "Scroll to the most recent bar" [ref=f7e67] [cursor=pointer]
+      - generic [ref=f7e70]:
+        - generic [ref=f7e119]: XAUUSD · CSV dukascopy (bid) · bid prices · sessions 17:00 New York
+        - generic [ref=f7e71]: 06:21:01
+        - combobox "Display timezone" [ref=f7e72] [cursor=pointer]:
+          - option "UTC" [selected]
+          - option "New York"
+          - option "London"
+          - option "Local"
+    - generic [ref=f7e74]:
+      - generic [ref=f7e75]:
+        - button "Strategy Tester" [ref=f7e76] [cursor=pointer]
+        - generic [ref=f7e120]: EMA Cross (example)
+        - button "Strategy inputs" [ref=f7e121] [cursor=pointer]
+        - generic [ref=f7e124]:
+          - generic "Market order at the next bar's open after a confirmed EMA cross." [ref=f7e125] [cursor=pointer]:
+            - checkbox "EMA Cross · Market" [checked]
+            - generic [ref=f7e127]: EMA Cross · Market
+          - generic "Limit order offset from the signal close; cancelled if not filled within the expiry." [ref=f7e128] [cursor=pointer]:
+            - checkbox "EMA Pullback · Limit" [checked]
+            - generic [ref=f7e130]: EMA Pullback · Limit
+        - generic [ref=f7e84]:
+          - textbox "Start date (UTC)" [ref=f7e85]: 2026-07-10
+          - generic [ref=f7e86]: →
+          - textbox "End date (UTC)" [ref=f7e87]: 2026-10-09
+          - generic [ref=f7e88]: UTC
+          - generic [ref=f7e89]:
+            - button "1W" [ref=f7e90] [cursor=pointer]
+            - button "1M" [ref=f7e91] [cursor=pointer]
+            - button "3M" [ref=f7e92] [cursor=pointer]
+            - button "6M" [ref=f7e93] [cursor=pointer]
+            - button "1Y" [ref=f7e94] [cursor=pointer]
+            - button "All" [ref=f7e95] [cursor=pointer]
+        - combobox "Backtest timeframe" [ref=f7e96] [cursor=pointer]:
+          - option "Chart (5m)" [selected]
+          - option "1m"
+          - option "5m"
+          - option "15m"
+          - option "30m"
+          - option "1H"
+          - option "4H"
+          - option "1D"
+        - button "Rerun" [ref=f7e131] [cursor=pointer]
+      - generic [ref=f7e100]:
+        - tablist [ref=f7e101]:
+          - tab "Overview" [ref=f7e102] [cursor=pointer]
+          - tab "Performance Summary" [ref=f7e103] [cursor=pointer]
+          - tab "List of Trades (364)" [ref=f7e132] [cursor=pointer]
+          - tab "Cancelled orders (186)" [ref=f7e133] [cursor=pointer]
+          - tab "Properties" [active] [selected] [ref=f7e106] [cursor=pointer]
+        - combobox "Results view" [ref=f7e134] [cursor=pointer]:
+          - option "All strategies (combined)" [selected]
+          - option "EMA Cross · Market"
+          - option "EMA Pullback · Limit"
+        - generic [ref=f7e135] [cursor=pointer]:
+          - checkbox "Trades on chart" [checked]
+          - generic [ref=f7e137]: Trades on chart
+      - generic [ref=f7e138]:
+        - generic [ref=f7e139]:
+          - heading "Strategy" [level=4] [ref=f7e140]
+          - generic [ref=f7e141]:
+            - generic [ref=f7e142]:
+              - text: Script
+              - generic [ref=f7e143]: The tester runs the strategies of this chart indicator with its current inputs.
+            - generic [ref=f7e144]:
+              - generic [ref=f7e145]: "Example: EMA Cross + ATR Brackets"
+              - button "Edit inputs…" [ref=f7e146] [cursor=pointer]
+          - generic [ref=f7e147]:
+            - generic [ref=f7e148]:
+              - text: Warm-up bars
+              - generic [ref=f7e149]: Bars before the start date fed to the indicator only (never traded). Empty = script default.
+            - spinbutton "100" [ref=f7e152]
+          - heading "Capital & sizing" [level=4] [ref=f7e153]
+          - generic [ref=f7e154]:
+            - generic [ref=f7e155]: Initial capital (USD)
+            - spinbutton [ref=f7e158]: "10000"
+          - generic [ref=f7e159]:
+            - generic [ref=f7e160]:
+              - text: Position sizing
+              - generic [ref=f7e161]: Evaluated when the entry fills, from the strategy's realised equity.
+            - generic [ref=f7e162]:
+              - combobox [ref=f7e163] [cursor=pointer]:
+                - option "Risk % of equity" [selected]
+                - option "Fixed cash risk"
+                - option "Fixed units (oz)"
+                - option "Fixed lots"
+              - spinbutton [ref=f7e165]: "1"
+              - generic [ref=f7e166]: "% of equity"
+          - generic [ref=f7e167]:
+            - generic [ref=f7e168]:
+              - text: Contract size
+              - generic [ref=f7e169]: Units per lot (100 oz for XAUUSD).
+            - spinbutton [ref=f7e172]: "100"
+          - generic [ref=f7e173]:
+            - generic [ref=f7e174]:
+              - text: Unit step / minimum
+              - generic [ref=f7e175]: Sizes are rounded down; orders below the minimum are cancelled, never rounded up.
+            - generic [ref=f7e176]:
+              - spinbutton [ref=f7e178]: "1"
+              - spinbutton [ref=f7e180]: "1"
+          - generic [ref=f7e181]:
+            - generic [ref=f7e182]: Max units (optional)
+            - spinbutton "no cap" [ref=f7e185]
+          - generic [ref=f7e186]:
+            - generic [ref=f7e187]: Max open trades / strategy
+            - spinbutton [ref=f7e190]: "1"
+        - generic [ref=f7e191]:
+          - heading "Costs" [level=4] [ref=f7e192]
+          - generic [ref=f7e193]:
+            - generic [ref=f7e194]:
+              - text: Candle prices are
+              - generic [ref=f7e195]: OANDA feed = mid. Most CSV exports are bid prices.
+            - combobox [ref=f7e197] [cursor=pointer]:
+              - option "Mid" [selected]
+              - option "Bid"
+              - option "Ask"
+          - generic [ref=f7e198]:
+            - generic [ref=f7e199]:
+              - text: Spread (USD)
+              - generic [ref=f7e200]: Buys fill at the ask, sells at the bid; triggers use the executing side.
+            - spinbutton [ref=f7e203]: "0.3"
+          - generic [ref=f7e204]:
+            - generic [ref=f7e205]:
+              - text: Slippage (USD)
+              - generic [ref=f7e206]: Adverse, on market and stop fills (stop-losses included).
+            - spinbutton [ref=f7e209]: "0.05"
+          - generic [ref=f7e210]:
+            - generic [ref=f7e211]: Commission per lot, per side (USD)
+            - spinbutton [ref=f7e214]: "0"
+          - heading "Execution" [level=4] [ref=f7e215]
+          - generic [ref=f7e216]:
+            - generic [ref=f7e217]:
+              - text: Intrabar price path
+              - generic [ref=f7e218]: Simulates O-H-L-C and O-L-H-C for every bar and keeps the worse outcome (stop before target when both are reachable).
+            - combobox [ref=f7e220] [cursor=pointer]:
+              - option "Conservative (worst case)" [selected]
+              - option "TradingView heuristic"
+          - generic [ref=f7e221]:
+            - generic [ref=f7e222]: Order handling
+            - generic [ref=f7e224]:
+              - generic [ref=f7e225] [cursor=pointer]:
+                - checkbox "New signal replaces the strategy's pending orders" [checked]
+                - generic [ref=f7e227]: New signal replaces the strategy's pending orders
+              - generic [ref=f7e228] [cursor=pointer]:
+                - checkbox "Opposite signal closes open trades at next open"
+                - generic [ref=f7e230]: Opposite signal closes open trades at next open
+              - generic [ref=f7e231] [cursor=pointer]:
+                - checkbox "Close open trades at the end of the window" [checked]
+                - generic [ref=f7e233]: Close open trades at the end of the window
+          - button "Reset to defaults" [ref=f7e235] [cursor=pointer]
+        - generic [ref=f7e236]:
+          - heading "Execution rules (always applied)" [level=4] [ref=f7e237]
+          - list [ref=f7e238]:
+            - listitem [ref=f7e239]: Signals are evaluated on the close of confirmed bars only; orders become active on the next bar. Nothing fills on the signal bar.
+            - listitem [ref=f7e240]: Market orders fill at the next bar's open (ask for buys, bid for sells) plus slippage.
+            - listitem [ref=f7e241]: Limit orders fill at their price; only a gap open through the price fills at the better open.
+            - listitem [ref=f7e242]: Stops gapped through fill at the open (worse than the stop), plus slippage.
+            - listitem [ref=f7e243]: Inside a bar, orders trigger in the order the modelled price path reaches them, so TP1 → stop to breakeven → breakeven hit can all happen in one bar.
+            - listitem [ref=f7e244]: Warm-up bars before the start date feed the indicator but never create trades; only signals inside the window are traded.
+            - listitem [ref=f7e245]: Each strategy is an independent book with its own equity; "Combined" sums their P&L.
+      - generic [ref=f7e246]: XAUUSD · CSV dukascopy (bid) · 15m · 2026-07-10 00:00 → 2026-10-09 20:45 · 6,054 bars + 100 warm-up · 550 signals · spread 0.3 · slippage 0.05 · commission 0/lot · conservative intrabar path (46 ambiguous bars) · 311 ms

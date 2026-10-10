@@ -1,0 +1,259 @@
+- generic [ref=f6e3]:
+  - banner [ref=f6e4]:
+    - generic "Local XAUUSD trading platform" [ref=f6e5]
+    - button "XAUUSD CSV" [ref=f6e111] [cursor=pointer]:
+      - generic [ref=f6e12]: XAUUSD
+      - generic [ref=f6e112]: CSV
+    - group "Timeframe" [ref=f6e16]:
+      - button "1m" [ref=f6e17] [cursor=pointer]
+      - button "5m" [ref=f6e18] [cursor=pointer]
+      - button "15m" [ref=f6e19] [cursor=pointer]
+      - button "30m" [ref=f6e20] [cursor=pointer]
+      - button "1H" [ref=f6e21] [cursor=pointer]
+      - button "4H" [ref=f6e22] [cursor=pointer]
+      - button "1D" [ref=f6e23] [cursor=pointer]
+    - button "ƒx Indicators" [ref=f6e25] [cursor=pointer]:
+      - generic [ref=f6e26]: ƒx
+      - text: Indicators
+    - button "Replay" [ref=f6e27] [cursor=pointer]
+    - button "Go to date" [ref=f6e30] [cursor=pointer]
+    - button "Data" [ref=f6e33] [cursor=pointer]
+    - generic "Imported data - no live updates" [ref=f6e113]: Historical data
+  - main [ref=f6e36]:
+    - generic [ref=f6e37]:
+      - generic [ref=f6e38]:
+        - table [ref=f6e41]:
+          - row [ref=f6e42]:
+            - cell
+            - cell [ref=f6e43]:
+              - link "Charting by TradingView" [ref=f6e47] [cursor=pointer]:
+                - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=127.0.0.1/
+            - cell [ref=f6e52]
+          - row [ref=f6e56]:
+            - cell
+            - cell [ref=f6e57]
+            - cell [ref=f6e61]
+        - generic:
+          - generic:
+            - generic: XAUUSD
+            - generic: ·
+            - generic: 15m
+            - generic: ·
+            - generic: CSV dukascopy
+            - generic:
+              - generic: O4195.255
+              - generic: H4195.285
+              - generic: L4189.805
+              - generic: C4190.145
+              - generic: "-5.120 (-0.12%)"
+              - generic: Vol0.08
+          - generic [ref=f6e115]:
+            - generic [ref=f6e116]: EMA Cross (example) 9 21 close
+            - generic "Fast EMA" [ref=f6e261]: "4194.317"
+            - generic "Slow EMA" [ref=f6e262]: "4193.163"
+        - button "Scroll to the most recent bar" [ref=f6e263] [cursor=pointer]
+      - generic [ref=f6e70]:
+        - generic [ref=f6e120]: XAUUSD · CSV dukascopy (bid) · bid prices · sessions 17:00 New York
+        - generic [ref=f6e71]: 06:20:46
+        - combobox "Display timezone" [ref=f6e72] [cursor=pointer]:
+          - option "UTC" [selected]
+          - option "New York"
+          - option "London"
+          - option "Local"
+    - generic [ref=f6e74]:
+      - generic [ref=f6e75]:
+        - button "Strategy Tester" [ref=f6e76] [cursor=pointer]
+        - generic [ref=f6e121]: EMA Cross (example)
+        - button "Strategy inputs" [ref=f6e122] [cursor=pointer]
+        - generic [ref=f6e125]:
+          - generic "Market order at the next bar's open after a confirmed EMA cross." [ref=f6e126] [cursor=pointer]:
+            - checkbox "EMA Cross · Market" [checked]
+            - generic [ref=f6e128]: EMA Cross · Market
+          - generic "Limit order offset from the signal close; cancelled if not filled within the expiry." [ref=f6e129] [cursor=pointer]:
+            - checkbox "EMA Pullback · Limit" [checked]
+            - generic [ref=f6e131]: EMA Pullback · Limit
+        - generic [ref=f6e84]:
+          - textbox "Start date (UTC)" [ref=f6e85]: 2026-07-10
+          - generic [ref=f6e86]: →
+          - textbox "End date (UTC)" [ref=f6e87]: 2026-10-09
+          - generic [ref=f6e88]: UTC
+          - generic [ref=f6e89]:
+            - button "1W" [ref=f6e90] [cursor=pointer]
+            - button "1M" [ref=f6e91] [cursor=pointer]
+            - button "3M" [ref=f6e92] [cursor=pointer]
+            - button "6M" [ref=f6e93] [cursor=pointer]
+            - button "1Y" [ref=f6e94] [cursor=pointer]
+            - button "All" [ref=f6e95] [cursor=pointer]
+        - combobox "Backtest timeframe" [ref=f6e96] [cursor=pointer]:
+          - option "Chart (15m)" [selected]
+          - option "1m"
+          - option "5m"
+          - option "15m"
+          - option "30m"
+          - option "1H"
+          - option "4H"
+          - option "1D"
+        - button "Rerun" [ref=f6e132] [cursor=pointer]
+      - generic [ref=f6e100]:
+        - tablist [ref=f6e101]:
+          - tab "Overview" [ref=f6e102] [cursor=pointer]
+          - tab "Performance Summary" [active] [selected] [ref=f6e103] [cursor=pointer]
+          - tab "List of Trades (364)" [ref=f6e133] [cursor=pointer]
+          - tab "Cancelled orders (186)" [ref=f6e134] [cursor=pointer]
+          - tab "Properties" [ref=f6e106] [cursor=pointer]
+        - combobox "Results view" [ref=f6e135] [cursor=pointer]:
+          - option "All strategies (combined)" [selected]
+          - option "EMA Cross · Market"
+          - option "EMA Pullback · Limit"
+        - generic [ref=f6e136] [cursor=pointer]:
+          - checkbox "Trades on chart" [checked]
+          - generic [ref=f6e138]: Trades on chart
+      - table [ref=f6e267]:
+        - rowgroup [ref=f6e268]:
+          - row [ref=f6e269]:
+            - columnheader [ref=f6e270]
+            - columnheader "All" [ref=f6e271]
+            - columnheader "Long" [ref=f6e272]
+            - columnheader "Short" [ref=f6e273]
+        - rowgroup [ref=f6e274]:
+          - row [ref=f6e275]:
+            - rowheader "Net profit" [ref=f6e276]
+            - cell "−979.41" [ref=f6e277]
+            - cell "−72.49" [ref=f6e278]
+            - cell "−906.92" [ref=f6e279]
+          - row [ref=f6e280]:
+            - rowheader "Net profit %" [ref=f6e281]
+            - cell "-9.79%" [ref=f6e282]
+            - cell "-0.72%" [ref=f6e283]
+            - cell "-9.07%" [ref=f6e284]
+          - row [ref=f6e285]:
+            - rowheader "Gross profit" [ref=f6e286]
+            - cell "14,413.21" [ref=f6e287]
+            - cell "7,757.71" [ref=f6e288]
+            - cell "6,655.49" [ref=f6e289]
+          - row [ref=f6e290]:
+            - rowheader "Gross loss" [ref=f6e291]
+            - cell "−15,392.62" [ref=f6e292]
+            - cell "−7,830.20" [ref=f6e293]
+            - cell "−7,562.42" [ref=f6e294]
+          - row [ref=f6e295]:
+            - rowheader "Max drawdown" [ref=f6e296]
+            - cell "1,878.52 (18.79%)" [ref=f6e297]
+            - cell [ref=f6e298]
+            - cell [ref=f6e299]
+          - row [ref=f6e300]:
+            - rowheader "Max run-up" [ref=f6e301]
+            - cell "1,539.27" [ref=f6e302]
+            - cell [ref=f6e303]
+            - cell [ref=f6e304]
+          - row [ref=f6e305]:
+            - rowheader "Return / max drawdown" [ref=f6e306]
+            - cell "-0.52" [ref=f6e307]
+            - cell [ref=f6e308]
+            - cell [ref=f6e309]
+          - row [ref=f6e310]:
+            - rowheader "Profit factor" [ref=f6e311]
+            - cell "0.936" [ref=f6e312]
+            - cell "0.991" [ref=f6e313]
+            - cell "0.880" [ref=f6e314]
+          - row [ref=f6e315]:
+            - rowheader "Commission paid" [ref=f6e316]
+            - cell "0.00" [ref=f6e317]
+            - cell "0.00" [ref=f6e318]
+            - cell "0.00" [ref=f6e319]
+          - row [ref=f6e320]:
+            - rowheader "Total closed trades" [ref=f6e321]
+            - cell "364" [ref=f6e322]
+            - cell "190" [ref=f6e323]
+            - cell "174" [ref=f6e324]
+          - row [ref=f6e325]:
+            - rowheader "Open trades" [ref=f6e326]
+            - cell "0" [ref=f6e327]
+            - cell "0" [ref=f6e328]
+            - cell "0" [ref=f6e329]
+          - row [ref=f6e330]:
+            - rowheader "Winning trades" [ref=f6e331]
+            - cell "194" [ref=f6e332]
+            - cell "102" [ref=f6e333]
+            - cell "92" [ref=f6e334]
+          - row [ref=f6e335]:
+            - rowheader "Losing trades" [ref=f6e336]
+            - cell "170" [ref=f6e337]
+            - cell "88" [ref=f6e338]
+            - cell "82" [ref=f6e339]
+          - row [ref=f6e340]:
+            - rowheader "Breakeven trades" [ref=f6e341]
+            - cell "0" [ref=f6e342]
+            - cell "0" [ref=f6e343]
+            - cell "0" [ref=f6e344]
+          - row [ref=f6e345]:
+            - rowheader "Percent profitable" [ref=f6e346]
+            - cell "53.30%" [ref=f6e347]
+            - cell "53.68%" [ref=f6e348]
+            - cell "52.87%" [ref=f6e349]
+          - row [ref=f6e350]:
+            - rowheader "Avg trade" [ref=f6e351]
+            - cell "−2.69" [ref=f6e352]
+            - cell "−0.38" [ref=f6e353]
+            - cell "−5.21" [ref=f6e354]
+          - row [ref=f6e355]:
+            - rowheader "Avg winning trade" [ref=f6e356]
+            - cell "74.29" [ref=f6e357]
+            - cell "76.06" [ref=f6e358]
+            - cell "72.34" [ref=f6e359]
+          - row [ref=f6e360]:
+            - rowheader "Avg losing trade" [ref=f6e361]
+            - cell "−90.54" [ref=f6e362]
+            - cell "−88.98" [ref=f6e363]
+            - cell "−92.22" [ref=f6e364]
+          - row [ref=f6e365]:
+            - rowheader "Ratio avg win / avg loss" [ref=f6e366]
+            - cell "0.821" [ref=f6e367]
+            - cell "0.855" [ref=f6e368]
+            - cell "0.784" [ref=f6e369]
+          - row [ref=f6e370]:
+            - rowheader "Largest winning trade" [ref=f6e371]
+            - cell "158.34" [ref=f6e372]
+            - cell "150.62" [ref=f6e373]
+            - cell "158.34" [ref=f6e374]
+          - row [ref=f6e375]:
+            - rowheader "Largest losing trade" [ref=f6e376]
+            - cell "−304.83" [ref=f6e377]
+            - cell "−114.24" [ref=f6e378]
+            - cell "−304.83" [ref=f6e379]
+          - row [ref=f6e380]:
+            - rowheader "Avg R-multiple" [ref=f6e381]
+            - cell "−0.03R" [ref=f6e382]
+            - cell "+0.00R" [ref=f6e383]
+            - cell "−0.06R" [ref=f6e384]
+          - row [ref=f6e385]:
+            - rowheader "Total R" [ref=f6e386]
+            - cell "−9.52R" [ref=f6e387]
+            - cell "+0.10R" [ref=f6e388]
+            - cell "−9.62R" [ref=f6e389]
+          - row [ref=f6e390]:
+            - 'rowheader "Avg planned reward : risk" [ref=f6e391]'
+            - 'cell "1 : 1.50" [ref=f6e392]'
+            - 'cell "1 : 1.50" [ref=f6e393]'
+            - 'cell "1 : 1.50" [ref=f6e394]'
+          - row [ref=f6e395]:
+            - rowheader "Max consecutive wins" [ref=f6e396]
+            - cell "9" [ref=f6e397]
+            - cell "8" [ref=f6e398]
+            - cell "10" [ref=f6e399]
+          - row [ref=f6e400]:
+            - rowheader "Max consecutive losses" [ref=f6e401]
+            - cell "10" [ref=f6e402]
+            - cell "9" [ref=f6e403]
+            - cell "6" [ref=f6e404]
+          - row [ref=f6e405]:
+            - 'rowheader "Avg # bars in trades" [ref=f6e406]'
+            - cell "8.9" [ref=f6e407]
+            - cell "9.8" [ref=f6e408]
+            - cell "8.1" [ref=f6e409]
+          - row [ref=f6e410]:
+            - rowheader "Trades decided by intrabar assumption" [ref=f6e411]
+            - cell "46" [ref=f6e412]
+            - cell "22" [ref=f6e413]
+            - cell "24" [ref=f6e414]
+      - generic [ref=f6e238]: XAUUSD · CSV dukascopy (bid) · 15m · 2026-07-10 00:00 → 2026-10-09 20:45 · 6,054 bars + 100 warm-up · 550 signals · spread 0.3 · slippage 0.05 · commission 0/lot · conservative intrabar path (46 ambiguous bars) · 311 ms

@@ -1,0 +1,2 @@
+[     178ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:15804
+[     319ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:5173/ws/live' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:5173/src/api/live.ts:58

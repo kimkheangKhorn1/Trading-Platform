@@ -1,0 +1,36 @@
+[    1061ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:15804
+[    1261ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:5173/ws/live' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:5173/src/api/live.ts:58
+[   99083ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:5173/ws/live' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:5173/src/api/live.ts:58
+[  127736ms] Error: Value is undefined
+    at ensureDefined (http://127.0.0.1:5173/node_modules/.vite/deps/lightweight-charts.js?v=feecf1e1:471:30)
+    at ChartApi.removeSeries (http://127.0.0.1:5173/node_modules/.vite/deps/lightweight-charts.js?v=feecf1e1:11005:18)
+    at http://127.0.0.1:5173/src/components/tester/EquityChart.tsx:117:35
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:14182:5)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:944:66)
+    at commitHookEffectListUnmount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:6926:149)
+    at commitHookPassiveUnmountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:6939:55)
+    at disconnectPassiveEffect (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:8552:6)
+    at recursivelyTraverseDisconnectPassiveEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:8544:65)
+    at disconnectPassiveEffect (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:8559:14)
+[  127735ms] [WARNING] %s
+
+%s
+ An error occurred in the <EquityChart> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:356
+[  127738ms] Error: Value is undefined
+    at ensureDefined (http://127.0.0.1:5173/node_modules/.vite/deps/lightweight-charts.js?v=feecf1e1:471:30)
+    at ChartApi.removeSeries (http://127.0.0.1:5173/node_modules/.vite/deps/lightweight-charts.js?v=feecf1e1:11005:18)
+    at http://127.0.0.1:5173/src/components/tester/EquityChart.tsx:117:35
+    at Object.react_stack_bottom_frame (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:14182:5)
+    at runWithFiberInDEV (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:944:66)
+    at commitHookEffectListUnmount (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:6926:149)
+    at commitHookPassiveUnmountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:6939:55)
+    at commitPassiveUnmountEffectsInsideOfDeletedTree_begin (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:8574:7)
+    at recursivelyTraversePassiveUnmountEffects (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:8493:6)
+    at commitPassiveUnmountOnFiber (http://127.0.0.1:5173/node_modules/.vite/deps/react-dom_client.js?v=feecf1e1:8512:6)
+[  127737ms] [WARNING] %s
+
+%s
+ An error occurred in the <EquityChart> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://127.0.0.1:5173/@vite/client:356
+[  205865ms] [WARNING] WebSocket connection to 'ws://127.0.0.1:5173/ws/live' failed: WebSocket is closed before the connection is established. @ http://127.0.0.1:5173/src/api/live.ts:58

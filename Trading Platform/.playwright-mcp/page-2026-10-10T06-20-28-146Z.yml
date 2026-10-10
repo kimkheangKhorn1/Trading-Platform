@@ -1,0 +1,82 @@
+- generic [ref=f6e3]:
+  - banner [ref=f6e4]:
+    - generic "Local XAUUSD trading platform" [ref=f6e5]
+    - button "No data" [ref=f6e9] [cursor=pointer]
+    - group "Timeframe" [ref=f6e16]:
+      - button "1m" [ref=f6e17] [cursor=pointer]
+      - button "5m" [ref=f6e18] [cursor=pointer]
+      - button "15m" [ref=f6e19] [cursor=pointer]
+      - button "30m" [ref=f6e20] [cursor=pointer]
+      - button "1H" [ref=f6e21] [cursor=pointer]
+      - button "4H" [ref=f6e22] [cursor=pointer]
+      - button "1D" [ref=f6e23] [cursor=pointer]
+    - button "ƒx Indicators" [ref=f6e25] [cursor=pointer]:
+      - generic [ref=f6e26]: ƒx
+      - text: Indicators
+    - button "Replay" [ref=f6e27] [cursor=pointer]
+    - button "Go to date" [ref=f6e30] [cursor=pointer]
+    - button "Data" [ref=f6e33] [cursor=pointer]
+  - main [ref=f6e36]:
+    - generic [ref=f6e37]:
+      - generic [ref=f6e38]:
+        - table [ref=f6e41]:
+          - row [ref=f6e42]:
+            - cell
+            - cell [ref=f6e43]:
+              - link "Charting by TradingView" [ref=f6e47] [cursor=pointer]:
+                - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=127.0.0.1/
+            - cell [ref=f6e52]
+          - row [ref=f6e56]:
+            - cell
+            - cell [ref=f6e57]
+            - cell [ref=f6e61]
+        - generic:
+          - generic:
+            - generic: —
+            - generic: ·
+            - generic: 15m
+            - generic: ·
+        - generic [ref=f6e64]: Loading candles…
+        - button "Scroll to the most recent bar" [ref=f6e67] [cursor=pointer]
+      - generic [ref=f6e70]:
+        - generic [ref=f6e71]: 06:20:28
+        - combobox "Display timezone" [ref=f6e72] [cursor=pointer]:
+          - option "UTC" [selected]
+          - option "New York"
+          - option "London"
+          - option "Local"
+    - generic [ref=f6e74]:
+      - generic [ref=f6e75]:
+        - button "Strategy Tester" [ref=f6e76] [cursor=pointer]
+        - button "Add example strategy to chart" [ref=f6e81] [cursor=pointer]
+        - generic [ref=f6e84]:
+          - textbox "Start date (UTC)" [ref=f6e85]: 2026-07-10
+          - generic [ref=f6e86]: →
+          - textbox "End date (UTC)" [ref=f6e87]: 2026-10-09
+          - generic [ref=f6e88]: UTC
+          - generic [ref=f6e89]:
+            - button "1W" [disabled] [ref=f6e90]
+            - button "1M" [disabled] [ref=f6e91]
+            - button "3M" [disabled] [ref=f6e92]
+            - button "6M" [disabled] [ref=f6e93]
+            - button "1Y" [disabled] [ref=f6e94]
+            - button "All" [disabled] [ref=f6e95]
+        - combobox "Backtest timeframe" [ref=f6e96] [cursor=pointer]:
+          - option "Chart (15m)" [selected]
+          - option "1m"
+          - option "5m"
+          - option "15m"
+          - option "30m"
+          - option "1H"
+          - option "4H"
+          - option "1D"
+        - button "Run backtest" [disabled] [ref=f6e97]
+      - tablist [ref=f6e101]:
+        - tab "Overview" [selected] [ref=f6e102] [cursor=pointer]
+        - tab "Performance Summary" [ref=f6e103] [cursor=pointer]
+        - tab "List of Trades" [ref=f6e104] [cursor=pointer]
+        - tab "Cancelled orders" [ref=f6e105] [cursor=pointer]
+        - tab "Properties" [ref=f6e106] [cursor=pointer]
+      - generic [ref=f6e108]:
+        - paragraph [ref=f6e109]: Choose a date range and press Run backtest.
+        - paragraph [ref=f6e110]: Execution assumptions are on the Properties tab. Results include only trades whose signals fall inside the range; earlier bars are used as indicator warm-up.

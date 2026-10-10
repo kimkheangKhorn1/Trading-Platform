@@ -1,0 +1,291 @@
+- generic [ref=f5e3]:
+  - banner [ref=f5e4]:
+    - generic "Local XAUUSD trading platform" [ref=f5e5]
+    - button "XAUUSD CSV" [ref=f5e111] [cursor=pointer]:
+      - generic [ref=f5e12]: XAUUSD
+      - generic [ref=f5e112]: CSV
+    - group "Timeframe" [ref=f5e16]:
+      - button "1m" [ref=f5e17] [cursor=pointer]
+      - button "5m" [ref=f5e18] [cursor=pointer]
+      - button "15m" [ref=f5e19] [cursor=pointer]
+      - button "30m" [ref=f5e20] [cursor=pointer]
+      - button "1H" [ref=f5e21] [cursor=pointer]
+      - button "4H" [ref=f5e22] [cursor=pointer]
+      - button "1D" [ref=f5e23] [cursor=pointer]
+    - button "ƒx Indicators" [ref=f5e25] [cursor=pointer]:
+      - generic [ref=f5e26]: ƒx
+      - text: Indicators
+    - button "Replay" [ref=f5e27] [cursor=pointer]
+    - button "Go to date" [ref=f5e30] [cursor=pointer]
+    - button "Data" [ref=f5e33] [cursor=pointer]
+    - generic "Imported data - no live updates" [ref=f5e113]: Historical data
+  - main [ref=f5e36]:
+    - generic [ref=f5e37]:
+      - generic [ref=f5e38]:
+        - table [ref=f5e41]:
+          - row [ref=f5e42]:
+            - cell
+            - cell [ref=f5e43]:
+              - link "Charting by TradingView" [ref=f5e47] [cursor=pointer]:
+                - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=127.0.0.1/
+            - cell [ref=f5e52]
+          - row [ref=f5e56]:
+            - cell
+            - cell [ref=f5e57]
+            - cell [ref=f5e61]
+        - generic:
+          - generic:
+            - generic: XAUUSD
+            - generic: ·
+            - generic: 15m
+            - generic: ·
+            - generic: CSV dukascopy
+            - generic:
+              - generic: O4195.255
+              - generic: H4195.285
+              - generic: L4189.805
+              - generic: C4190.145
+              - generic: "-5.120 (-0.12%)"
+              - generic: Vol0.08
+          - generic [ref=f5e118]:
+            - generic [ref=f5e119]: EMA Cross (example) 12 21 close
+            - generic "Fast EMA" [ref=f5e130]: "4194.234"
+            - generic "Slow EMA" [ref=f5e131]: "4193.163"
+            - generic "HTF EMA" [ref=f5e373]: "4161.604"
+        - button "Scroll to the most recent bar" [ref=f5e67] [cursor=pointer]
+      - generic [ref=f5e70]:
+        - generic [ref=f5e132]: XAUUSD · CSV dukascopy (bid) · bid prices · sessions 17:00 New York
+        - generic [ref=f5e71]: 06:18:08
+        - combobox "Display timezone" [ref=f5e72] [cursor=pointer]:
+          - option "UTC" [selected]
+          - option "New York"
+          - option "London"
+          - option "Local"
+    - generic [ref=f5e74]:
+      - generic [ref=f5e75]:
+        - button "Strategy Tester" [ref=f5e76] [cursor=pointer]
+        - generic [ref=f5e133]: EMA Cross (example)
+        - button "Strategy inputs" [ref=f5e134] [cursor=pointer]
+        - generic [ref=f5e137]:
+          - generic "Market order at the next bar's open after a confirmed EMA cross." [ref=f5e138] [cursor=pointer]:
+            - checkbox "EMA Cross · Market" [checked]
+            - generic [ref=f5e140]: EMA Cross · Market
+          - generic "Limit order offset from the signal close; cancelled if not filled within the expiry." [ref=f5e141] [cursor=pointer]:
+            - checkbox "EMA Pullback · Limit" [checked]
+            - generic [ref=f5e143]: EMA Pullback · Limit
+        - generic [ref=f5e84]:
+          - textbox "Start date (UTC)" [ref=f5e85]: 2026-07-10
+          - generic [ref=f5e86]: →
+          - textbox "End date (UTC)" [ref=f5e87]: 2026-10-09
+          - generic [ref=f5e88]: UTC
+          - generic [ref=f5e89]:
+            - button "1W" [ref=f5e90] [cursor=pointer]
+            - button "1M" [ref=f5e91] [cursor=pointer]
+            - button "3M" [ref=f5e92] [cursor=pointer]
+            - button "6M" [ref=f5e93] [cursor=pointer]
+            - button "1Y" [ref=f5e94] [cursor=pointer]
+            - button "All" [ref=f5e95] [cursor=pointer]
+        - combobox "Backtest timeframe" [ref=f5e96] [cursor=pointer]:
+          - option "Chart (15m)" [selected]
+          - option "1m"
+          - option "5m"
+          - option "15m"
+          - option "30m"
+          - option "1H"
+          - option "4H"
+          - option "1D"
+        - button "Rerun" [ref=f5e144] [cursor=pointer]
+      - generic [ref=f5e100]:
+        - tablist [ref=f5e101]:
+          - tab "Overview" [selected] [ref=f5e102] [cursor=pointer]
+          - tab "Performance Summary" [ref=f5e103] [cursor=pointer]
+          - tab "List of Trades (364)" [ref=f5e145] [cursor=pointer]
+          - tab "Cancelled orders (186)" [ref=f5e146] [cursor=pointer]
+          - tab "Properties" [ref=f5e106] [cursor=pointer]
+        - combobox "Results view" [ref=f5e147] [cursor=pointer]:
+          - option "All strategies (combined)" [selected]
+          - option "EMA Cross · Market"
+          - option "EMA Pullback · Limit"
+        - generic [ref=f5e148] [cursor=pointer]:
+          - checkbox "Trades on chart" [checked]
+          - generic [ref=f5e150]: Trades on chart
+      - generic [ref=f5e151]:
+        - generic [ref=f5e152]:
+          - generic [ref=f5e153]:
+            - generic [ref=f5e154]: Net profit
+            - generic [ref=f5e155]: −979.41
+            - generic [ref=f5e156]: "-9.79%"
+          - generic [ref=f5e157]:
+            - generic [ref=f5e158]: Gross profit
+            - generic [ref=f5e159]: 14,413.21
+          - generic [ref=f5e160]:
+            - generic [ref=f5e161]: Gross loss
+            - generic [ref=f5e162]: −15,392.62
+          - generic [ref=f5e163]:
+            - generic [ref=f5e164]: Total trades
+            - generic [ref=f5e165]: "364"
+            - generic [ref=f5e166]: 194 W · 170 L · 0 BE
+          - generic [ref=f5e167]:
+            - generic [ref=f5e168]: Win rate
+            - generic [ref=f5e169]: 53.30%
+            - generic [ref=f5e170]: 194 / 364
+          - generic "Gross profit / |gross loss|" [ref=f5e171]:
+            - generic [ref=f5e172]: Profit factor
+            - generic [ref=f5e173]: "0.936"
+          - generic "Largest peak-to-trough fall of bar-close mark-to-market equity" [ref=f5e174]:
+            - generic [ref=f5e175]: Max drawdown
+            - generic [ref=f5e176]: 1,878.52
+            - generic [ref=f5e177]: 18.79%
+          - generic [ref=f5e178]:
+            - generic [ref=f5e179]: Avg trade
+            - generic [ref=f5e180]: −2.69
+          - generic "Average realised net P&L divided by initial risk (entry fill to initial stop)" [ref=f5e181]:
+            - generic [ref=f5e182]: Avg R-multiple
+            - generic [ref=f5e183]: −0.03R
+          - generic "Average reward-to-risk of the targets as planned by the strategy (weighted by TP size)" [ref=f5e184]:
+            - generic [ref=f5e185]: Avg planned R:R
+            - generic [ref=f5e186]: "1 : 1.50"
+        - generic [ref=f5e187]:
+          - table [ref=f5e190]:
+            - row [ref=f5e191]:
+              - cell
+              - cell [ref=f5e192]
+              - cell [ref=f5e196]
+            - row [ref=f5e200]:
+              - cell
+              - cell [ref=f5e201]
+              - cell [ref=f5e205]
+          - generic [ref=f5e208]:
+            - generic [ref=f5e209]:
+              - text: Trade distribution (R-multiple)
+              - generic [ref=f5e210]: · 364 trades
+            - img "Histogram of trade R-multiples" [ref=f5e211]:
+              - 'generic "-3.0R to -2.5R: 1 trades" [ref=f5e212]': "1"
+              - 'generic "-2.5R to -2.0R: 0 trades" [ref=f5e215]'
+              - 'generic "-2.0R to -1.5R: 0 trades" [ref=f5e216]'
+              - 'generic "-1.5R to -1.0R: 169 trades" [ref=f5e217]': "169"
+              - 'generic "-1.0R to -0.5R: 0 trades" [ref=f5e220]'
+              - 'generic "-0.5R to 0.0R: 0 trades" [ref=f5e221]'
+              - 'generic "0.0R to 0.5R: 120 trades" [ref=f5e222]': "120"
+              - 'generic "0.5R to 1.0R: 3 trades" [ref=f5e225]': "3"
+              - 'generic "1.0R to 1.5R: 22 trades" [ref=f5e228]': "22"
+              - 'generic "1.5R to 2.0R: 49 trades" [ref=f5e231]': "49"
+              - 'generic "2.0R to 2.5R: 0 trades" [ref=f5e234]'
+              - 'generic "2.5R to 3.0R: 0 trades" [ref=f5e235]'
+              - 'generic "3.0R to 3.5R: 0 trades" [ref=f5e236]'
+              - 'generic "3.5R to 4.0R: 0 trades" [ref=f5e237]'
+              - 'generic "4.0R to 4.5R: 0 trades" [ref=f5e238]'
+              - 'generic "4.5R to 5.0R: 0 trades" [ref=f5e239]'
+            - generic [ref=f5e240]:
+              - generic [ref=f5e241]: "-3R"
+              - generic [ref=f5e242]: "-2R"
+              - generic [ref=f5e243]: "-1R"
+              - generic [ref=f5e244]: 0R
+              - generic [ref=f5e245]: 1R
+              - generic [ref=f5e246]: 2R
+              - generic [ref=f5e247]: 3R
+              - generic [ref=f5e248]: 4R
+              - generic [ref=f5e249]: 5R
+      - generic [ref=f5e250]: XAUUSD · CSV dukascopy (bid) · 15m · 2026-07-10 00:00 → 2026-10-09 20:45 · 6,054 bars + 100 warm-up · 550 signals · spread 0.3 · slippage 0.05 · commission 0/lot · conservative intrabar path (46 ambiguous bars) · 311 ms
+  - dialog [ref=f5e252]:
+    - generic [ref=f5e253]:
+      - generic [ref=f5e254]: "Example: EMA Cross + ATR Brackets"
+      - button "Close" [ref=f5e255] [cursor=pointer]
+    - generic [ref=f5e258]:
+      - tablist [ref=f5e259]:
+        - tab "Inputs" [selected] [ref=f5e260] [cursor=pointer]
+        - tab "Style" [ref=f5e261] [cursor=pointer]
+        - tab "Visibility" [ref=f5e262] [cursor=pointer]
+      - generic [ref=f5e264]:
+        - generic [ref=f5e265]:
+          - heading "Moving averages" [level=4] [ref=f5e266]
+          - generic [ref=f5e267]:
+            - generic [ref=f5e268]:
+              - generic [ref=f5e269]: Fast EMA
+              - spinbutton "Fast EMA" [active] [ref=f5e271]: "12"
+            - generic [ref=f5e272]:
+              - generic [ref=f5e273]: Slow EMA
+              - spinbutton "Slow EMA" [ref=f5e275]: "21"
+          - generic [ref=f5e277]:
+            - generic [ref=f5e278]: Source
+            - combobox [ref=f5e279] [cursor=pointer]:
+              - option "open"
+              - option "high"
+              - option "low"
+              - option "close" [selected]
+              - option "hl2"
+              - option "hlc3"
+              - option "ohlc4"
+              - option "hlcc4"
+        - generic [ref=f5e280]:
+          - heading "Trend filter" [level=4] [ref=f5e281]
+          - generic [ref=f5e283]:
+            - generic "Longs only above the higher-timeframe EMA, shorts only below it. The HTF value comes from closed higher-timeframe bars only (no lookahead)." [ref=f5e284] [cursor=pointer]:
+              - checkbox "Higher-timeframe trend filter" [checked]
+              - generic [ref=f5e286]: Higher-timeframe trend filter
+            - generic "Longs only above the higher-timeframe EMA, shorts only below it. The HTF value comes from closed higher-timeframe bars only (no lookahead)." [ref=f5e287]
+          - generic [ref=f5e290]:
+            - generic [ref=f5e291]:
+              - generic [ref=f5e292]: Timeframe
+              - combobox [ref=f5e293] [cursor=pointer]:
+                - option "Chart"
+                - option "1m"
+                - option "5m"
+                - option "15m"
+                - option "30m"
+                - option "1H" [selected]
+                - option "4H"
+                - option "1D"
+            - generic [ref=f5e294]:
+              - generic [ref=f5e295]: EMA length
+              - spinbutton "EMA length" [ref=f5e297]: "50"
+        - generic [ref=f5e298]:
+          - heading "Risk" [level=4] [ref=f5e299]
+          - generic [ref=f5e301]:
+            - generic [ref=f5e302]: ATR length
+            - spinbutton "ATR length" [ref=f5e304]: "14"
+          - generic [ref=f5e306]:
+            - generic [ref=f5e307]: Stop-loss distance (× ATR)
+            - spinbutton "Stop-loss distance (× ATR)" [ref=f5e309]: "1.5"
+          - generic [ref=f5e310]:
+            - generic [ref=f5e311]:
+              - generic [ref=f5e312]: TP1 (R)
+              - spinbutton "TP1 (R)" [ref=f5e314]: "1"
+            - generic [ref=f5e315]:
+              - generic [ref=f5e316]: TP2 (R)
+              - spinbutton "TP2 (R)" [ref=f5e318]: "2"
+          - generic [ref=f5e320]:
+            - generic [ref=f5e321]: Close at TP1 (%)
+            - spinbutton "Close at TP1 (%)" [ref=f5e323]: "50"
+            - generic "Share of the position closed at TP1; the remainder targets TP2. 100% = single target." [ref=f5e324]
+          - generic [ref=f5e329] [cursor=pointer]:
+            - checkbox "Move stop to breakeven after TP1" [checked]
+            - generic [ref=f5e331]: Move stop to breakeven after TP1
+        - generic [ref=f5e332]:
+          - heading "Pullback strategy" [level=4] [ref=f5e333]
+          - generic [ref=f5e335]:
+            - generic [ref=f5e336]: Limit offset (× ATR)
+            - spinbutton "Limit offset (× ATR)" [ref=f5e338]: "0.5"
+            - generic "The pullback strategy places a limit order this many ATRs better than the signal close (below it for longs, above it for shorts)." [ref=f5e339]
+          - generic [ref=f5e343]:
+            - generic [ref=f5e344]: Order expiry (bars)
+            - spinbutton "Order expiry (bars)" [ref=f5e346]: "5"
+        - generic [ref=f5e347]:
+          - heading "Display" [level=4] [ref=f5e348]
+          - generic [ref=f5e351] [cursor=pointer]:
+            - checkbox "Show trade levels" [checked]
+            - generic [ref=f5e353]: Show trade levels
+          - generic [ref=f5e355]:
+            - generic [ref=f5e356]: Level length (bars)
+            - spinbutton "Level length (bars)" [ref=f5e358]: "15"
+          - generic [ref=f5e359]:
+            - generic [ref=f5e360]:
+              - generic [ref=f5e361]: Bullish
+              - button "Pick color" [ref=f5e363] [cursor=pointer]
+            - generic [ref=f5e364]:
+              - generic [ref=f5e365]: Bearish
+              - button "Pick color" [ref=f5e367] [cursor=pointer]
+    - generic [ref=f5e368]:
+      - button "Defaults" [ref=f5e369] [cursor=pointer]
+      - button "Cancel" [ref=f5e371] [cursor=pointer]
+      - button "Ok" [ref=f5e372] [cursor=pointer]

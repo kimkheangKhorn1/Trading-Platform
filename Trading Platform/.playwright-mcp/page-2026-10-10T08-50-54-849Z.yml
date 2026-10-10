@@ -1,0 +1,79 @@
+- generic [ref=f1e3]:
+  - banner [ref=f1e4]:
+    - generic "Local XAUUSD trading platform" [ref=f1e5]
+    - button "No data" [ref=f1e9] [cursor=pointer]
+    - group "Timeframe" [ref=f1e16]:
+      - button "1m" [ref=f1e17] [cursor=pointer]
+      - button "5m" [ref=f1e18] [cursor=pointer]
+      - button "15m" [ref=f1e19] [cursor=pointer]
+      - button "30m" [ref=f1e20] [cursor=pointer]
+      - button "1H" [ref=f1e21] [cursor=pointer]
+      - button "4H" [ref=f1e22] [cursor=pointer]
+      - button "1D" [ref=f1e23] [cursor=pointer]
+    - button "ƒx Indicators" [ref=f1e25] [cursor=pointer]:
+      - generic [ref=f1e26]: ƒx
+      - text: Indicators
+    - button "Replay" [ref=f1e27] [cursor=pointer]
+    - button "Go to date" [ref=f1e30] [cursor=pointer]
+    - button "Data" [ref=f1e33] [cursor=pointer]
+  - main [ref=f1e36]:
+    - generic [ref=f1e37]:
+      - generic [ref=f1e38]:
+        - table [ref=f1e41]:
+          - row [ref=f1e42]:
+            - cell
+            - cell [ref=f1e43]:
+              - link "Charting by TradingView" [ref=f1e47] [cursor=pointer]:
+                - /url: https://www.tradingview.com/?utm_medium=lwc-link&utm_campaign=lwc-chart&utm_source=127.0.0.1/
+            - cell [ref=f1e52]
+          - row [ref=f1e56]:
+            - cell
+            - cell [ref=f1e57]
+            - cell [ref=f1e61]
+        - generic:
+          - generic:
+            - generic: —
+            - generic: ·
+            - generic: 5m
+            - generic: ·
+        - button "Scroll to the most recent bar" [ref=f1e64] [cursor=pointer]
+      - generic [ref=f1e67]:
+        - generic [ref=f1e68]: 08:50:54
+        - combobox "Display timezone" [ref=f1e69] [cursor=pointer]:
+          - option "UTC" [selected]
+          - option "New York"
+          - option "London"
+          - option "Local"
+    - generic [ref=f1e71]:
+      - generic [ref=f1e72]:
+        - button "Strategy Tester" [ref=f1e73] [cursor=pointer]
+        - generic [ref=f1e78]: No strategy scripts available
+        - generic [ref=f1e79]:
+          - textbox "Start date (UTC)" [ref=f1e80]: 2026-07-10
+          - generic [ref=f1e81]: →
+          - textbox "End date (UTC)" [ref=f1e82]: 2026-10-09
+          - generic [ref=f1e83]: UTC
+          - generic [ref=f1e84]:
+            - button "1W" [disabled] [ref=f1e85]
+            - button "1M" [disabled] [ref=f1e86]
+            - button "3M" [disabled] [ref=f1e87]
+            - button "6M" [disabled] [ref=f1e88]
+            - button "1Y" [disabled] [ref=f1e89]
+            - button "All" [disabled] [ref=f1e90]
+        - combobox "Backtest timeframe" [ref=f1e91] [cursor=pointer]:
+          - option "Chart (5m)"
+          - option "1m" [selected]
+          - option "5m"
+          - option "15m"
+          - option "30m"
+          - option "1H"
+          - option "4H"
+          - option "1D"
+        - button "Run backtest" [disabled] [ref=f1e92]
+      - tablist [ref=f1e96]:
+        - tab "Overview" [selected] [ref=f1e97] [cursor=pointer]
+        - tab "Performance Summary" [ref=f1e98] [cursor=pointer]
+        - tab "List of Trades" [ref=f1e99] [cursor=pointer]
+        - tab "Cancelled orders" [ref=f1e100] [cursor=pointer]
+        - tab "Properties" [ref=f1e101] [cursor=pointer]
+      - paragraph [ref=f1e104]: The Strategy Tester runs scripts that emit trade signals. None is on the chart, and no such script exists in the project yet.

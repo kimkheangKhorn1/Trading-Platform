@@ -1,0 +1,239 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic "Local XAUUSD trading platform" [ref=e5]
+    - button "No data" [ref=e9] [cursor=pointer]
+    - group "Timeframe" [ref=e16]:
+      - button "1m" [ref=e17] [cursor=pointer]
+      - button "5m" [ref=e18] [cursor=pointer]
+      - button "15m" [ref=e19] [cursor=pointer]
+      - button "30m" [ref=e20] [cursor=pointer]
+      - button "1H" [ref=e21] [cursor=pointer]
+      - button "4H" [ref=e22] [cursor=pointer]
+      - button "1D" [ref=e23] [cursor=pointer]
+    - button "ƒx Indicators" [ref=e25] [cursor=pointer]:
+      - generic [ref=e26]: ƒx
+      - text: Indicators
+    - button "Replay" [ref=e27] [cursor=pointer]
+    - button "Go to date" [ref=e30] [cursor=pointer]
+    - button "Data" [ref=e33] [cursor=pointer]
+  - main [ref=e38]:
+    - generic [ref=e39]:
+      - generic [ref=e110]:
+        - heading "No market data yet" [level=2] [ref=e111]
+        - paragraph [ref=e112]: OANDA credentials are not configured. Import XAUUSD candles from a CSV file to get started, or add OANDA_API_TOKEN to backend/.env and restart the backend.
+        - button "Open data manager" [active] [ref=e113] [cursor=pointer]
+      - generic [ref=e69]:
+        - generic [ref=e70]: 06:13:19
+        - combobox "Display timezone" [ref=e71] [cursor=pointer]:
+          - option "UTC" [selected]
+          - option "New York"
+          - option "London"
+          - option "Local"
+    - generic [ref=e73]:
+      - generic [ref=e74]:
+        - button "Strategy Tester" [ref=e75] [cursor=pointer]
+        - generic [ref=e116]: EMA Cross (example)
+        - button "Strategy inputs" [ref=e117] [cursor=pointer]
+        - generic [ref=e120]:
+          - generic "Market order at the next bar's open after a confirmed EMA cross." [ref=e121] [cursor=pointer]:
+            - checkbox "EMA Cross · Market" [checked]
+            - generic [ref=e123]: EMA Cross · Market
+          - generic "Limit order offset from the signal close; cancelled if not filled within the expiry." [ref=e124] [cursor=pointer]:
+            - checkbox "EMA Pullback · Limit" [checked]
+            - generic [ref=e126]: EMA Pullback · Limit
+        - generic [ref=e83]:
+          - textbox "Start date (UTC)" [ref=e84]: 2026-09-10
+          - generic [ref=e85]: →
+          - textbox "End date (UTC)" [ref=e86]: 2026-10-10
+          - generic [ref=e87]: UTC
+          - generic [ref=e88]:
+            - button "1W" [disabled] [ref=e89]
+            - button "1M" [disabled] [ref=e90]
+            - button "3M" [disabled] [ref=e91]
+            - button "6M" [disabled] [ref=e92]
+            - button "1Y" [disabled] [ref=e93]
+            - button "All" [disabled] [ref=e94]
+        - combobox "Backtest timeframe" [ref=e95] [cursor=pointer]:
+          - option "Chart (15m)" [selected]
+          - option "1m"
+          - option "5m"
+          - option "15m"
+          - option "30m"
+          - option "1H"
+          - option "4H"
+          - option "1D"
+        - button "Run backtest" [ref=e96] [cursor=pointer]
+      - tablist [ref=e100]:
+        - tab "Overview" [ref=e101] [cursor=pointer]
+        - tab "Performance Summary" [ref=e102] [cursor=pointer]
+        - tab "List of Trades" [ref=e103] [cursor=pointer]
+        - tab "Cancelled orders" [ref=e104] [cursor=pointer]
+        - tab "Properties" [selected] [ref=e105] [cursor=pointer]
+      - generic [ref=e127]:
+        - generic [ref=e128]:
+          - heading "Strategy" [level=4] [ref=e129]
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - text: Script
+              - generic [ref=e132]: The tester runs the strategies of this chart indicator with its current inputs.
+            - generic [ref=e133]:
+              - generic [ref=e134]: "Example: EMA Cross + ATR Brackets"
+              - button "Edit inputs…" [ref=e135] [cursor=pointer]
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - text: Warm-up bars
+              - generic [ref=e138]: Bars before the start date fed to the indicator only (never traded). Empty = script default.
+            - spinbutton "100" [ref=e141]
+          - heading "Capital & sizing" [level=4] [ref=e142]
+          - generic [ref=e143]:
+            - generic [ref=e144]: Initial capital (USD)
+            - spinbutton [ref=e147]: "10000"
+          - generic [ref=e148]:
+            - generic [ref=e149]:
+              - text: Position sizing
+              - generic [ref=e150]: Evaluated when the entry fills, from the strategy's realised equity.
+            - generic [ref=e151]:
+              - combobox [ref=e152] [cursor=pointer]:
+                - option "Risk % of equity" [selected]
+                - option "Fixed cash risk"
+                - option "Fixed units (oz)"
+                - option "Fixed lots"
+              - spinbutton [ref=e154]: "1"
+              - generic [ref=e155]: "% of equity"
+          - generic [ref=e156]:
+            - generic [ref=e157]:
+              - text: Contract size
+              - generic [ref=e158]: Units per lot (100 oz for XAUUSD).
+            - spinbutton [ref=e161]: "100"
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - text: Unit step / minimum
+              - generic [ref=e164]: Sizes are rounded down; orders below the minimum are cancelled, never rounded up.
+            - generic [ref=e165]:
+              - spinbutton [ref=e167]: "1"
+              - spinbutton [ref=e169]: "1"
+          - generic [ref=e170]:
+            - generic [ref=e171]: Max units (optional)
+            - spinbutton "no cap" [ref=e174]
+          - generic [ref=e175]:
+            - generic [ref=e176]: Max open trades / strategy
+            - spinbutton [ref=e179]: "1"
+        - generic [ref=e180]:
+          - heading "Costs" [level=4] [ref=e181]
+          - generic [ref=e182]:
+            - generic [ref=e183]:
+              - text: Candle prices are
+              - generic [ref=e184]: OANDA feed = mid. Most CSV exports are bid prices.
+            - combobox [ref=e186] [cursor=pointer]:
+              - option "Mid" [selected]
+              - option "Bid"
+              - option "Ask"
+          - generic [ref=e187]:
+            - generic [ref=e188]:
+              - text: Spread (USD)
+              - generic [ref=e189]: Buys fill at the ask, sells at the bid; triggers use the executing side.
+            - spinbutton [ref=e192]: "0.3"
+          - generic [ref=e193]:
+            - generic [ref=e194]:
+              - text: Slippage (USD)
+              - generic [ref=e195]: Adverse, on market and stop fills (stop-losses included).
+            - spinbutton [ref=e198]: "0.05"
+          - generic [ref=e199]:
+            - generic [ref=e200]: Commission per lot, per side (USD)
+            - spinbutton [ref=e203]: "0"
+          - heading "Execution" [level=4] [ref=e204]
+          - generic [ref=e205]:
+            - generic [ref=e206]:
+              - text: Intrabar price path
+              - generic [ref=e207]: Simulates O-H-L-C and O-L-H-C for every bar and keeps the worse outcome (stop before target when both are reachable).
+            - combobox [ref=e209] [cursor=pointer]:
+              - option "Conservative (worst case)" [selected]
+              - option "TradingView heuristic"
+          - generic [ref=e210]:
+            - generic [ref=e211]: Order handling
+            - generic [ref=e213]:
+              - generic [ref=e214] [cursor=pointer]:
+                - checkbox "New signal replaces the strategy's pending orders" [checked]
+                - generic [ref=e216]: New signal replaces the strategy's pending orders
+              - generic [ref=e217] [cursor=pointer]:
+                - checkbox "Opposite signal closes open trades at next open"
+                - generic [ref=e219]: Opposite signal closes open trades at next open
+              - generic [ref=e220] [cursor=pointer]:
+                - checkbox "Close open trades at the end of the window" [checked]
+                - generic [ref=e222]: Close open trades at the end of the window
+          - button "Reset to defaults" [ref=e224] [cursor=pointer]
+        - generic [ref=e225]:
+          - heading "Execution rules (always applied)" [level=4] [ref=e226]
+          - list [ref=e227]:
+            - listitem [ref=e228]: Signals are evaluated on the close of confirmed bars only; orders become active on the next bar. Nothing fills on the signal bar.
+            - listitem [ref=e229]: Market orders fill at the next bar's open (ask for buys, bid for sells) plus slippage.
+            - listitem [ref=e230]: Limit orders fill at their price; only a gap open through the price fills at the better open.
+            - listitem [ref=e231]: Stops gapped through fill at the open (worse than the stop), plus slippage.
+            - listitem [ref=e232]: Inside a bar, orders trigger in the order the modelled price path reaches them, so TP1 → stop to breakeven → breakeven hit can all happen in one bar.
+            - listitem [ref=e233]: Warm-up bars before the start date feed the indicator but never create trades; only signals inside the window are traded.
+            - listitem [ref=e234]: Each strategy is an independent book with its own equity; "Combined" sums their P&L.
+  - dialog [ref=e236]:
+    - generic [ref=e237]:
+      - generic [ref=e238]: Data manager
+      - button "Close" [ref=e239] [cursor=pointer]
+    - generic [ref=e242]:
+      - generic [ref=e243]:
+        - heading "Stored feeds" [level=4] [ref=e244]
+        - paragraph [ref=e245]: Nothing stored yet.
+      - generic [ref=e246]:
+        - heading "OANDA" [level=4] [ref=e247]
+        - paragraph [ref=e248]:
+          - text: Not configured. Put
+          - code [ref=e249]: OANDA_API_TOKEN
+          - text: (and optionally
+          - code [ref=e250]: OANDA_ACCOUNT_ID
+          - text: ","
+          - code [ref=e251]: OANDA_ENVIRONMENT=practice|live
+          - text: ) in
+          - code [ref=e252]: backend/.env
+          - text: and restart the backend to enable historical downloads and live candles. Until then, import CSV data below.
+      - generic [ref=e253]:
+        - heading "Import CSV" [level=4] [ref=e254]
+        - generic [ref=e255]:
+          - generic [ref=e256] [cursor=pointer]: Choose a CSV file…
+          - generic [ref=e260]:
+            - text: Symbol
+            - textbox "Symbol" [ref=e261]: XAUUSD
+          - generic [ref=e262]:
+            - text: Dataset name
+            - textbox "Dataset name" [ref=e263]:
+              - /placeholder: e.g. dukascopy
+          - generic [ref=e264]:
+            - text: Prices are
+            - combobox "Prices are" [ref=e265] [cursor=pointer]:
+              - option "Bid" [selected]
+              - option "Mid"
+              - option "Ask"
+          - generic [ref=e266]:
+            - text: Timestamps in
+            - combobox "Timestamps in" [ref=e267] [cursor=pointer]:
+              - option "UTC (Dukascopy, most exports)" [selected]
+              - option "Broker server time (New York + 7h, MT4/MT5)"
+              - option "UTC−5 fixed (HistData EST)"
+              - option "UTC+2 fixed"
+              - option "UTC+3 fixed"
+              - option "America/New_York (with DST)"
+              - option "Europe/London (with DST)"
+          - generic [ref=e268]:
+            - text: Timeframe
+            - combobox "Timeframe" [ref=e269] [cursor=pointer]:
+              - option "Auto-detect" [selected]
+              - option "1m"
+              - option "5m"
+              - option "15m"
+              - option "30m"
+              - option "1H"
+              - option "4H"
+              - option "1D"
+          - generic [ref=e270]:
+            - text: Higher-timeframe sessions
+            - combobox "Higher-timeframe sessions" [ref=e271] [cursor=pointer]:
+              - option "17:00 New York (OANDA/TradingView FX)" [selected]
+              - option "00:00 UTC"
+          - button "Import" [disabled] [ref=e273]
+        - paragraph [ref=e274]: Columns are detected automatically (time or date+time, open, high, low, close, optional volume). Rows with inconsistent OHLC values are rejected and reported, never repaired. Higher timeframes are built from the imported candles.
