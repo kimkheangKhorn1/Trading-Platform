@@ -8,9 +8,9 @@ export function IndicatorTables({ ctrl, tables }: { ctrl: ChartController; table
   if (!tables.length) return null
   const byPos = new Map<string, IndicatorTable[]>()
   for (const t of tables) byPos.set(t.position, [...(byPos.get(t.position) ?? []), t])
-  // keep clear of the price/time axes and of the scroll-to-realtime button (bottom right)
+  // keep clear of the price and time axes
   const right = ctrl.chart.priceScale('right').width() + 6
-  const bottom = ctrl.chart.timeScale().height() + 36
+  const bottom = ctrl.chart.timeScale().height() + 6
   return (
     <>
       {[...byPos].map(([pos, list]) => {

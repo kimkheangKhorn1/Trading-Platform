@@ -239,11 +239,6 @@ export function ChartView() {
       {picking ? <div className="replay-hint">Click a bar to start replay from it · Esc to cancel</div> : null}
       {loadingAny ? <div className="chart-busy"><Spinner size={12} /> calculating</div> : null}
       {ctrl ? <ReplayBar ctrl={ctrl} /> : null}
-      {ctrl && replayMode === 'off' ? (
-        <button className="to-realtime" title="Scroll to the most recent bar" onClick={() => ctrl.scrollToRealtime()}>
-          <Icon name="realtime" size={14} />
-        </button>
-      ) : null}
     </div>
   )
 }

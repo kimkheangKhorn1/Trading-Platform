@@ -20,7 +20,6 @@ const PATHS: Record<string, string> = {
   upload: 'M9 12V3M5.5 6.5 9 3l3.5 3.5M3 12v3h12v-3',
   trash: 'M3.5 5h11M7 5V3h4v2M5 5l.8 10h6.4L13 5',
   target: 'M9 16A7 7 0 1 0 9 2a7 7 0 0 0 0 14Zm0-4a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
-  realtime: 'M3 4v10M7 4l6 5-6 5Z',
   flask: 'M7 2h4M7.5 2v5L3.5 14.5c-.4.8.1 1.5 1 1.5h9c.9 0 1.4-.7 1-1.5L10.5 7V2',
 }
 

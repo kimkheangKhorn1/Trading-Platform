@@ -377,10 +377,6 @@ export class ChartController {
     this.chart.timeScale().setVisibleLogicalRange({ from: a - pad, to: b + pad })
   }
 
-  scrollToRealtime(): void {
-    this.chart.timeScale().scrollToRealTime()
-  }
-
   // ------------------------------------------------------------------- replay
   startReplay(index: number): void {
     const range = this.chart.timeScale().getVisibleLogicalRange()
