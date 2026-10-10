@@ -1,0 +1,20 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets and local data
+backend/.env
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/node_modules/.tmp/
+
+# Tooling
+.playwright-mcp/
+.DS_Store
