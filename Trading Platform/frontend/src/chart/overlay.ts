@@ -257,10 +257,17 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       ctx.fillStyle = cssColor(d.bg_color)
       ctx.fillRect(x0, y0, w, h)
       if (d.border_width > 0) {
+        // Hairline borders: half the width in device pixels (1 physical px for width 1 on Retina),
+        // snapped to the pixel grid so the edge is not blurred across neighbouring pixels.
+        const px = ctx.getTransform().a || 1
+        const devWidth = Math.max(1, Math.round((d.border_width * px) / 2))
+        const snap = (v: number) => (Math.round(v * px) + (devWidth % 2) / 2) / px
+        const sx0 = snap(x0)
+        const sy0 = snap(y0)
         ctx.strokeStyle = cssColor(d.border_color)
-        ctx.lineWidth = d.border_width
+        ctx.lineWidth = devWidth / px
         dash(ctx, d.border_style, d.border_width)
-        ctx.strokeRect(x0 + 0.5, y0 + 0.5, w, h)
+        ctx.strokeRect(sx0, sy0, snap(x0 + w) - sx0, snap(y0 + h) - sy0)
         ctx.setLineDash([])
       }
       if (d.text) {
