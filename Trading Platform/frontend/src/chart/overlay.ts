@@ -307,8 +307,15 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
         }
       }
       if (Math.max(xa, xb) < 0 || Math.min(xa, xb) > width) continue
+      // Hairlines like box borders: half the width in device pixels (1 physical px for width 1 on Retina);
+      // horizontal and vertical lines are snapped to the pixel grid so they are not blurred.
+      const px = ctx.getTransform?.()?.a || 1
+      const devWidth = Math.max(1, Math.round((d.width * px) / 2))
+      const snap = (v: number) => (Math.round(v * px) + (devWidth % 2) / 2) / px
+      if (ya === yb) ya = yb = snap(ya)
+      if (xa === xb) xa = xb = snap(xa)
       ctx.strokeStyle = cssColor(d.color)
-      ctx.lineWidth = d.width
+      ctx.lineWidth = devWidth / px
       dash(ctx, d.style, d.width)
       ctx.beginPath()
       ctx.moveTo(xa, ya)
