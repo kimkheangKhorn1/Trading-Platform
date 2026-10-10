@@ -399,6 +399,16 @@ export class ChartController {
     return true
   }
 
+  /** One bar back: candles can only be appended in place, so the shown range is redrawn. */
+  stepBackReplay(): boolean {
+    if (this.replayIndex === null || this.replayIndex <= 0) return false
+    const range = this.chart.timeScale().getVisibleLogicalRange()
+    this.replayIndex--
+    this.render()
+    if (range) this.chart.timeScale().setVisibleLogicalRange(range)
+    return true
+  }
+
   stopReplay(): void {
     this.replayIndex = null
     this.render()

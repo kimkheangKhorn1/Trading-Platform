@@ -178,6 +178,23 @@ code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); pa
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 .replay-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; color: var(--accent); margin-right: 4px; }
+.replay-bar { gap: 4px; padding: 6px 10px; border-radius: 10px; }
+.replay-bar .icon-btn { width: 30px; height: 30px; border-radius: 8px; }
+.replay-bar .icon-btn.play { color: var(--text-strong); background: rgba(41, 98, 255, 0.18); }
+.replay-bar .icon-btn.play:hover:not(:disabled) { background: rgba(41, 98, 255, 0.3); }
+.replay-bar .btn { border-radius: 8px; }
+.replay-speed .select-trigger { height: 28px; border-radius: 8px; }
+.replay-sep { width: 1px; height: 20px; background: var(--border-2); margin: 0 4px; }
+.replay-time { display: inline-flex; flex-direction: column; line-height: 1.2; min-width: 128px; }
+.replay-time .small { font-size: 11px; }
+.flip-x { transform: scaleX(-1); }
+/* replay start picker: cut line at the hovered bar, bars after it shaded (they will be hidden) */
+.replay-cut { position: absolute; top: 0; z-index: 4; pointer-events: none; background: rgba(41, 98, 255, 0.14); }
+.replay-cut-line { position: absolute; left: 0; top: 0; bottom: 0; border-left: 2px solid var(--accent); }
+.replay-cut-icon {
+  position: absolute; left: -12px; top: 50%; width: 24px; height: 24px; margin-top: -12px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; background: var(--accent); color: #fff;
+}
 .chart-footer {
   height: 28px; display: flex; align-items: center; gap: 10px; padding: 0 10px; flex-shrink: 0;
   border-top: 1px solid var(--border); font-size: 12px;
@@ -236,7 +253,7 @@ code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); pa
   background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55); font-size: 13px; scrollbar-color: var(--border-2) var(--panel);
 }
-.select-option { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 5px 8px; border-radius: 3px; cursor: pointer; }
+.select-option { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 5px 8px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
 .select-option.active { background: var(--hover); color: var(--text-strong); }
 .select-option[aria-selected='true'] { color: #7aa2ff; }
 .select-option[aria-disabled='true'] { opacity: 0.4; cursor: default; }
