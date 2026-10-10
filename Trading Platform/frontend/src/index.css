@@ -535,3 +535,17 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
   background: rgba(242, 54, 69, 0.08); border: 1px solid rgba(242, 54, 69, 0.3); color: var(--text);
 }
 .legend-row.ind .spinner { opacity: 0; animation: appear 0.15s ease-out 0.4s forwards; }
+
+/* Settings dialog: softer, rounder controls */
+.settings-dialog { border-radius: 12px; }
+.settings-dialog .input, .settings-dialog .swatch, .settings-dialog .btn, .settings-dialog .settings-search { border-radius: 8px; }
+.settings-dialog .checkbox .box { border-radius: 5px; }
+.settings-dialog .input-row { border-radius: 8px; }
+.color-pop { border-radius: 10px; }
+.color-pop .input, .color-pop .preview, .color-pop .sv { border-radius: 8px; }
+.color-pop .pal { border-radius: 4px; }
+.color-pop .custom-toggle .plus { border-radius: 6px; }
+.help-card { border-radius: 10px; }
+.help-example { border-radius: 0 6px 6px 0; }
+.select-menu { border-radius: 8px; }
+.select-option { border-radius: 6px; }
