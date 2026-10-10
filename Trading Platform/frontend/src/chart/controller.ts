@@ -17,7 +17,7 @@ import { api } from '../api/client'
 import type { BarRow, IndicatorOutput, ScriptMeta, TimeframeCode } from '../api/types'
 import { cssColor, THEME } from '../lib/colors'
 import { fmtCrosshair, fmtTick, tradingDate, type TimezoneId } from '../lib/format'
-import { TF_SECONDS } from '../state/app'
+import { TF_SECONDS, useApp } from '../state/app'
 import type { IndicatorInstance } from '../state/indicators'
 import { OverlayPrimitive, type HitInfo, type OverlayLayer, type TradeOverlay } from './overlay'
 import { indexAtOrBefore } from './timeIndex'
@@ -54,6 +54,11 @@ export class ChartController {
   hasMore = false
   version = 0
   replayIndex: number | null = null
+  /** Replay candle being built from lower-timeframe data (TradingView-style movement); ticks[k] is shown. */
+  private forming: { ticks: BarRow[]; k: number } | null = null
+  /** Lower-timeframe candles for replay movement, covering [from, to). */
+  private sub: { feedId: string; tf: TimeframeCode; chartTf: TimeframeCode; from: number; to: number; rows: BarRow[] } | null = null
+  private subLoading: Promise<void> | null = null
   private loadingMore: Promise<void> | null = null
   private loadSeq = 0
   private tz: TimezoneId = 'UTC'
@@ -137,7 +142,10 @@ export class ChartController {
 
   // --------------------------------------------------------------------- data
   get shownBars(): BarRow[] {
-    return this.replayIndex === null ? this.bars : this.bars.slice(0, this.replayIndex + 1)
+    if (this.replayIndex === null) return this.bars
+    const shown = this.bars.slice(0, this.replayIndex + 1)
+    if (this.forming) shown.push(this.forming.ticks[this.forming.k])
+    return shown
   }
 
   get times(): number[] {
@@ -380,7 +388,9 @@ export class ChartController {
   // ------------------------------------------------------------------- replay
   startReplay(index: number): void {
     const range = this.chart.timeScale().getVisibleLogicalRange()
+    this.forming = null
     this.replayIndex = Math.max(0, Math.min(index, this.bars.length - 1))
+    void this.prefetchSub(this.replayIndex + 1)
     this.render()
     // keep the picked bar where it was; upcoming replay bars fill the empty space to its right
     if (range) this.chart.timeScale().setVisibleLogicalRange(range)
@@ -388,6 +398,7 @@ export class ChartController {
 
   stepReplay(): boolean {
     if (this.replayIndex === null || this.replayIndex >= this.bars.length - 1) return false
+    this.forming = null // the full bar replaces any partly formed one (same time)
     this.replayIndex++
     const row = this.bars[this.replayIndex]
     this.candles.update(this.toCandle(row))
@@ -399,18 +410,136 @@ export class ChartController {
 
   /** One bar back: candles can only be appended in place, so the shown range is redrawn. */
   stepBackReplay(): boolean {
-    if (this.replayIndex === null || this.replayIndex <= 0) return false
+    if (this.replayIndex === null) return false
     const range = this.chart.timeScale().getVisibleLogicalRange()
-    this.replayIndex--
+    if (this.forming) this.forming = null // back to the last completed bar
+    else if (this.replayIndex > 0) this.replayIndex--
+    else return false
     this.render()
     if (range) this.chart.timeScale().setVisibleLogicalRange(range)
     return true
   }
 
   stopReplay(): void {
+    this.forming = null
     this.replayIndex = null
     this.render()
     this.chart.timeScale().scrollToRealTime()
+  }
+
+  /** Open time of the last completed replay bar: indicators are computed up to here, never the forming one. */
+  replayCursorTime(): number | null {
+    return this.replayIndex === null ? null : this.bars[this.replayIndex]?.[0] ?? null
+  }
+
+  /** Ticks the current (or next) replay candle forms in; play speed spreads one bar's time over them. */
+  replayTickCount(): number {
+    return this.forming?.ticks.length ?? 1
+  }
+
+  /**
+   * Plays the replay like TradingView: the next candle forms from lower-timeframe candles (its open stays,
+   * high/low stretch and the close moves) before it completes. maxTicks caps the steps per candle (1 = whole bars).
+   * Returns 'tick' for a partial update, 'bar' when a candle completed, 'end' at the last bar.
+   */
+  advanceReplay(maxTicks: number): 'tick' | 'bar' | 'end' {
+    if (this.replayIndex === null || this.replayIndex >= this.bars.length - 1) return 'end'
+    if (maxTicks <= 1 && !this.forming) return this.stepReplay() ? 'bar' : 'end'
+    if (!this.forming) {
+      const next = this.replayIndex + 1
+      this.forming = { ticks: this.buildTicks(next, maxTicks), k: -1 }
+      if (!this.subCovers(next + 20)) void this.prefetchSub(next + 1)
+    }
+    this.forming.k++
+    // the last tick is the completed bar itself
+    if (this.forming.k >= this.forming.ticks.length - 1) return this.stepReplay() ? 'bar' : 'end'
+    this.candles.update(this.toCandle(this.forming.ticks[this.forming.k]))
+    this.version++
+    this.ev.onData()
+    return 'tick'
+  }
+
+  /** Lower timeframe that drives replay movement for the chart timeframe, if the feed has it. */
+  private subTf(): TimeframeCode | null {
+    const prefer: Partial<Record<TimeframeCode, TimeframeCode[]>> = {
+      M5: ['M1'], M15: ['M1', 'M5'], M30: ['M1', 'M5'], H1: ['M1', 'M5'], H4: ['M5', 'M15', 'M1'], D: ['M30', 'M15', 'H1'],
+    }
+    const have = useApp.getState().feeds.find((f) => f.id === this.feedId)?.timeframes ?? []
+    return (prefer[this.tf] ?? []).find((t) => have.includes(t)) ?? null
+  }
+
+  private subCovers(index: number): boolean {
+    const bar = this.bars[Math.min(index, this.bars.length - 1)]
+    const c = this.sub
+    return !!bar && !!c && c.feedId === this.feedId && c.chartTf === this.tf && c.from <= bar[0] && bar[0] + TF_SECONDS[this.tf] <= c.to
+  }
+
+  /** Loads lower-timeframe candles for about 100 replay bars starting at bar ``index``. */
+  private prefetchSub(index: number): Promise<void> {
+    const tf = this.subTf()
+    if (!tf || !this.feedId || index >= this.bars.length || this.subLoading) return this.subLoading ?? Promise.resolve()
+    const feedId = this.feedId
+    const chartTf = this.tf
+    const span = TF_SECONDS[chartTf]
+    const from = this.bars[index][0]
+    const last = Math.min(this.bars.length - 1, index + 99)
+    const to = this.bars[last][0] + span
+    const limit = Math.min(20000, Math.ceil((to - from) / TF_SECONDS[tf]) + 2)
+    this.subLoading = api.candles(feedId, tf, { before: to, limit }).then((res) => {
+      if (this.feedId !== feedId || this.tf !== chartTf) return
+      const rows = res.bars.filter((r) => r[0] >= from && r[0] < to && r[6] !== 0)
+      // a full page may not reach back to ``from``: then coverage starts at its first candle
+      const start = res.bars.length >= limit && rows.length ? rows[0][0] : from
+      this.sub = { feedId, tf, chartTf, from: start, to, rows }
+    }).catch(() => { /* movement falls back to the candle's own OHLC path */ }).finally(() => { this.subLoading = null })
+    return this.subLoading
+  }
+
+  /** Partial candles for bar ``index``, ending with the completed bar. */
+  private buildTicks(index: number, maxTicks: number): BarRow[] {
+    const bar = this.bars[index]
+    const [t, o, h, l, c, v] = bar
+    const end = t + TF_SECONDS[this.tf]
+    const subs = this.subCovers(index) ? this.sub!.rows.filter((r) => r[0] >= t && r[0] < end) : []
+    // price path inside the candle: each lower-timeframe candle as open -> nearer extreme -> other extreme -> close
+    const path: { price: number; hi: number; lo: number; vol: number }[] = []
+    const walk = (open: number, high: number, low: number, close: number, vol: number) => {
+      const first = Math.abs(open - low) < Math.abs(open - high) ? low : high
+      const pts = [open, first, first === low ? high : low, close]
+      pts.forEach((price, j) => path.push({ price, hi: Math.max(open, ...pts.slice(0, j + 1)), lo: Math.min(open, ...pts.slice(0, j + 1)), vol: vol * (j / 3) }))
+    }
+    if (subs.length) {
+      let done = 0 // volume of the lower-timeframe candles already completed
+      for (const r of subs) {
+        const before = path.length
+        if (subs.length <= 15) walk(r[1], r[2], r[3], r[4], r[5])
+        else path.push({ price: r[4], hi: r[2], lo: r[3], vol: r[5] })
+        for (let j = before; j < path.length; j++) path[j].vol += done
+        done += r[5]
+      }
+    } else {
+      walk(o, h, l, c, v)
+      // interpolate the four corners so the move is not a jump
+      const corners = path.splice(0)
+      for (let j = 0; j < corners.length - 1; j++) {
+        for (let s = 0; s < 4; s++) {
+          const f = s / 4
+          const price = corners[j].price + (corners[j + 1].price - corners[j].price) * f
+          path.push({ price, hi: Math.max(corners[j].hi, price), lo: Math.min(corners[j].lo, price), vol: v * ((j * 4 + s) / 12) })
+        }
+      }
+    }
+    // running candle after each point, thinned to at most maxTicks steps
+    let hi = o
+    let lo = o
+    const rows: BarRow[] = path.map((p) => {
+      hi = Math.max(hi, p.hi)
+      lo = Math.min(lo, p.lo)
+      return [t, o, Math.min(hi, h), Math.max(lo, l), Math.min(h, Math.max(l, p.price)), p.vol, 0] as BarRow
+    })
+    const keep = Math.max(1, maxTicks - 1)
+    const thinned = rows.length <= keep ? rows : Array.from({ length: keep }, (_, k) => rows[Math.floor(((k + 1) * rows.length) / keep) - 1])
+    return [...thinned, bar]
   }
 
   /** Price scale like TradingView's auto / log / % buttons. */

@@ -19,25 +19,30 @@ function isTyping(t: EventTarget | null): boolean {
  * backend with ``end_time = cursor`` - later candles are never sent to the engine.
  */
 export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
-  const { mode, playing, speed, cursorTime, set } = useReplay()
+  const { mode, playing, speed, smooth, cursorTime, set } = useReplay()
   const tz = useApp((s) => s.timezone)
   const [cut, setCut] = useState<{ x: number; width: number; height: number } | null>(null)
 
-  const sync = () => {
-    const shown = ctrl.shownBars
-    set({ cursorTime: shown.length ? shown[shown.length - 1][0] : null })
-  }
+  // indicators run up to the last completed bar, never the candle that is still forming
+  const sync = () => set({ cursorTime: ctrl.replayCursorTime() })
   const step = () => { if (ctrl.stepReplay()) sync() }
   const back = () => { if (ctrl.stepBackReplay()) sync() }
 
   useEffect(() => {
     if (mode !== 'active' || !playing) return
-    const id = setInterval(() => {
-      if (!ctrl.stepReplay()) set({ playing: false })
-      else set({ cursorTime: ctrl.shownBars[ctrl.shownBars.length - 1][0] })
-    }, 1000 / speed)
-    return () => clearInterval(id)
-  }, [mode, playing, speed, ctrl, set])
+    const barMs = 1000 / speed
+    // smooth: about one update per 30 ms within each bar's time, so slow speeds show more movement
+    const maxTicks = smooth ? Math.max(1, Math.min(60, Math.floor(barMs / 30))) : 1
+    let timer: ReturnType<typeof setTimeout>
+    const tick = () => {
+      const r = ctrl.advanceReplay(maxTicks)
+      if (r === 'end') return set({ playing: false })
+      if (r === 'bar') set({ cursorTime: ctrl.replayCursorTime() })
+      timer = setTimeout(tick, maxTicks > 1 ? barMs / ctrl.replayTickCount() : barMs)
+    }
+    timer = setTimeout(tick, maxTicks > 1 ? barMs / maxTicks : barMs)
+    return () => clearTimeout(timer)
+  }, [mode, playing, speed, smooth, ctrl, set])
 
   // keyboard shortcuts while replaying
   useEffect(() => {
@@ -46,8 +51,8 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
       if (!e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return
       const st = useReplay.getState()
       if (e.key === 'ArrowDown') set({ playing: !st.playing })
-      else if (e.key === 'ArrowRight') { set({ playing: false }); if (ctrl.stepReplay()) set({ cursorTime: ctrl.shownBars[ctrl.shownBars.length - 1][0] }) }
-      else if (e.key === 'ArrowLeft') { set({ playing: false }); if (ctrl.stepBackReplay()) set({ cursorTime: ctrl.shownBars[ctrl.shownBars.length - 1][0] }) }
+      else if (e.key === 'ArrowRight') { set({ playing: false }); if (ctrl.stepReplay()) set({ cursorTime: ctrl.replayCursorTime() }) }
+      else if (e.key === 'ArrowLeft') { set({ playing: false }); if (ctrl.stepBackReplay()) set({ cursorTime: ctrl.replayCursorTime() }) }
       else return
       // capture phase + stop: a focused control (e.g. the speed dropdown) must not also react to the arrow
       e.preventDefault()
@@ -93,7 +98,7 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
   return (
     <div className="replay-bar" role="toolbar" aria-label="Replay controls">
       <span className="replay-tag">REPLAY</span>
-      <button className="icon-btn" title="Step back one bar (Shift+←)" aria-label="Step back" disabled={idx <= 0} onClick={() => { set({ playing: false }); back() }}>
+      <button className="icon-btn" title="Step back one bar (Shift+←)" aria-label="Step back" disabled={idx <= 0 && ctrl.shownBars.length === 1} onClick={() => { set({ playing: false }); back() }}>
         <Icon name="step" className="flip-x" />
       </button>
       <button className="icon-btn play" title={`${playing ? 'Pause' : 'Play'} (Shift+↓)`} aria-label={playing ? 'Pause' : 'Play'} disabled={atEnd}
@@ -105,6 +110,10 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
       </button>
       <Select<number> className="replay-speed" value={speed} ariaLabel="Replay speed" width={96}
         options={SPEEDS.map((s) => ({ value: s, label: `${s} bar/s` }))} onChange={(v) => set({ speed: v })} />
+      <button className={`btn ghost sm movement ${smooth ? 'on' : ''}`} aria-pressed={smooth}
+        title={smooth ? 'Candles form tick by tick from lower-timeframe data, like TradingView. Click for whole bars'
+          : 'Whole bars at a time. Click to let candles form tick by tick'}
+        onClick={() => set({ smooth: !smooth })}>{smooth ? 'Live candles' : 'Whole bars'}</button>
       <span className="replay-sep" />
       <span className="replay-time">
         <span className="mono">{fmtDateTime(cursorTime, tz)}</span>

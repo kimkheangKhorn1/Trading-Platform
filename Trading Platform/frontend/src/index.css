@@ -179,6 +179,8 @@ code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); pa
 .replay-bar .btn { border-radius: 8px; }
 .replay-speed .select-trigger { height: 28px; border-radius: 8px; }
 .replay-sep { width: 1px; height: 20px; background: var(--border-2); margin: 0 4px; }
+.replay-bar .btn.movement { min-width: 92px; }
+.replay-bar .btn.movement.on { color: var(--accent); border-color: rgba(41, 98, 255, 0.5); }
 .replay-time { display: inline-flex; flex-direction: column; line-height: 1.2; min-width: 128px; }
 .replay-time .small { font-size: 11px; }
 .flip-x { transform: scaleX(-1); }
