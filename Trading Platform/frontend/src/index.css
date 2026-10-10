@@ -538,12 +538,14 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
 
 /* Settings dialog: softer, rounder controls */
 .settings-dialog { border-radius: 12px; }
-.settings-dialog .input, .settings-dialog .swatch, .settings-dialog .btn, .settings-dialog .settings-search { border-radius: 8px; }
+.settings-dialog .input, .settings-dialog .btn, .settings-dialog .settings-search { border-radius: 8px; }
+.swatch { border-radius: 10px; }
 .settings-dialog .checkbox .box { border-radius: 5px; }
 .settings-dialog .input-row { border-radius: 8px; }
 .color-pop { border-radius: 10px; }
-.color-pop .input, .color-pop .preview, .color-pop .sv { border-radius: 8px; }
-.color-pop .pal { border-radius: 4px; }
+.color-pop .input, .color-pop .preview, .color-pop .sv { border-radius: 10px; }
+.color-pop .pal { border-radius: 7px; }
+.color-pop .palette { gap: 4px; }
 .color-pop .custom-toggle .plus { border-radius: 6px; }
 .help-card { border-radius: 10px; }
 .help-example { border-radius: 0 6px 6px 0; }
