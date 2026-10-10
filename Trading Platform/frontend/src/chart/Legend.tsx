@@ -64,7 +64,7 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
           <button className="legend-collapse" onClick={() => setCollapsed(!collapsed)}
             title={collapsed ? 'Show indicators' : 'Hide indicator list'}
             aria-label={collapsed ? 'Show indicators' : 'Hide indicator list'} aria-expanded={!collapsed}>
-            <Icon name={collapsed ? 'chevronDown' : 'chevronUp'} size={14} />
+            <Icon name={collapsed ? 'chevronDown' : 'chevronUp'} size={12} />
           </button>
           <div className="legend-indicator-rows">
             {!collapsed &&
@@ -83,13 +83,13 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
                     </span>
                     <span className="legend-actions">
                       <button className="icon-btn sm" title={inst.visible ? 'Hide' : 'Show'} onClick={() => update(inst.uid, { visible: !inst.visible })}>
-                        <Icon name={inst.visible ? 'eye' : 'eyeOff'} size={15} />
+                        <Icon name={inst.visible ? 'eye' : 'eyeOff'} size={14} />
                       </button>
                       <button className="icon-btn sm" title="Settings" aria-label={`Settings for ${meta.short_name}`} onClick={() => openDialog({ type: 'settings', uid: inst.uid })}>
-                        <Icon name="gear" size={18} />
+                        <Icon name="gear" size={13} />
                       </button>
                       <button className="icon-btn sm" title="Remove" onClick={() => remove(inst.uid)}>
-                        <Icon name="close" size={15} />
+                        <Icon name="close" size={13} />
                       </button>
                     </span>
                     {inst.visible && data && k >= 0

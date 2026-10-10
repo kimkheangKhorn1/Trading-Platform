@@ -2,10 +2,8 @@ import {
   CandlestickSeries,
   createChart,
   CrosshairMode,
-  HistogramSeries,
   LineSeries,
   LineStyle as LwLineStyle,
-  type HistogramData,
   type IChartApi,
   type ISeriesApi,
   type LineData,
@@ -38,7 +36,6 @@ interface CandleStyle { color: string; wickColor: string; borderColor: string }
 export class ChartController {
   readonly chart: IChartApi
   readonly candles: ISeriesApi<'Candlestick'>
-  readonly volume: ISeriesApi<'Histogram'>
   readonly overlay = new OverlayPrimitive()
   private plotSeries = new Map<string, ISeriesApi<'Line'>>()
   private paneOf = new Map<string, number>()
@@ -89,13 +86,6 @@ export class ChartController {
       wickDownColor: THEME.down,
       priceLineColor: THEME.muted,
     })
-    this.volume = this.chart.addSeries(HistogramSeries, {
-      priceScaleId: 'vol',
-      priceFormat: { type: 'volume' },
-      lastValueVisible: false,
-      priceLineVisible: false,
-    })
-    this.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 }, visible: false })
     this.candles.attachPrimitive(this.overlay)
     this.applyFormatters()
 
@@ -230,7 +220,6 @@ export class ChartController {
     else {
       for (const row of rows.filter((r) => r[0] >= this.bars[this.bars.length - 1][0] - TF_SECONDS[this.tf])) {
         this.candles.update(this.toCandle(row))
-        this.volume.update(toVolume(row))
       }
       this.syncOverlayBars()
       this.version++
@@ -242,7 +231,6 @@ export class ChartController {
   private render(): void {
     const bars = this.shownBars
     this.candles.setData(bars.map((b) => this.toCandle(b)))
-    this.volume.setData(bars.map(toVolume))
     this.syncOverlayBars()
     this.version++
     this.ev.onData()
@@ -399,7 +387,6 @@ export class ChartController {
     this.replayIndex++
     const row = this.bars[this.replayIndex]
     this.candles.update(this.toCandle(row))
-    this.volume.update(toVolume(row))
     this.syncOverlayBars()
     this.version++
     this.ev.onData()
@@ -411,8 +398,4 @@ export class ChartController {
     this.render()
     this.chart.timeScale().scrollToRealTime()
   }
-}
-
-function toVolume(b: BarRow): HistogramData {
-  return { time: b[0] as UTCTimestamp, value: b[5], color: b[4] >= b[1] ? 'rgba(8,153,129,0.35)' : 'rgba(242,54,69,0.35)' }
 }
