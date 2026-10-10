@@ -1,0 +1,11 @@
+# Runtime (versions verified with Python 3.14.4 on macOS)
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.0
+numpy==2.5.3
+pandas==3.0.6
+httpx==0.28.1
+python-multipart==0.0.32
+python-dotenv==1.2.4
+# Tests
+pytest==9.1.1

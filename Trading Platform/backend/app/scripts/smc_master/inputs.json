@@ -1,0 +1,1899 @@
+[
+  {
+    "id": "mode",
+    "type": "string",
+    "title": "mode",
+    "default": "Historical",
+    "options": [
+      "Historical",
+      "Present"
+    ],
+    "group": "Smart Money Concepts",
+    "tooltip": "Allows to display historical Structure or only the recent ones"
+  },
+  {
+    "id": "style",
+    "type": "string",
+    "title": "style",
+    "default": "Colored",
+    "options": [
+      "Colored",
+      "Monochrome"
+    ],
+    "group": "Smart Money Concepts",
+    "tooltip": "Indicator color theme"
+  },
+  {
+    "id": "show_trend",
+    "type": "bool",
+    "title": "Color Candles",
+    "default": true,
+    "group": "Smart Money Concepts",
+    "tooltip": "Paint whole candles (body, border and wick) with the internal structure trend: the Bullish Structure color while it is bullish, the Bearish Structure color while it is bearish (light/dark gray in Monochrome style). Filled = the candle closed with the trend, hollow = a pullback candle.\n\nThe indicator has to sit in front of the chart candles (indicator ⋯ menu → Visual Order → Bring to Front). Sent behind them, only the candle bodies are colored"
+  },
+  {
+    "id": "aoi_max_dist",
+    "type": "float",
+    "title": "Hide Zones Farther Than (× Recent Range)",
+    "default": 0.2,
+    "minval": 0,
+    "step": 0.05,
+    "group": "Smart Money Concepts",
+    "tooltip": "Recent range = highest high to lowest low of the last 120 chart bars (about one screen).\n\nOrder blocks, fair value gaps, previous day/week/month levels, key level zones and demand/supply lines lying more than this share of the recent range above its high or below its low are not drawn (they are still tracked and reappear when price gets closer), so far-away objects never squash the candles.\n\nThe range is measured on the chart itself, so one value fits every timeframe and follows the current volatility.\n\n0.2 is a display padding choice, not a predicted price boundary. Zones reappear when their price range intersects the recent range plus padding. Market price can travel beyond this range.\n\n0 = draw everything"
+  },
+  {
+    "id": "show_internals",
+    "type": "bool",
+    "title": "Show Internal Structure",
+    "default": true,
+    "group": "Real Time Internal Structure",
+    "tooltip": "Display internal market structure"
+  },
+  {
+    "id": "show_ibull",
+    "type": "string",
+    "title": "Bullish Structure",
+    "default": "All",
+    "options": [
+      "All",
+      "BOS",
+      "CHoCH"
+    ],
+    "group": "Real Time Internal Structure",
+    "inline": "ibull"
+  },
+  {
+    "id": "swing_ibull_css",
+    "type": "color",
+    "title": "",
+    "default": "#00C8FFFF",
+    "group": "Real Time Internal Structure",
+    "inline": "ibull"
+  },
+  {
+    "id": "show_ibear",
+    "type": "string",
+    "title": "Bearish Structure",
+    "default": "All",
+    "options": [
+      "All",
+      "BOS",
+      "CHoCH"
+    ],
+    "group": "Real Time Internal Structure",
+    "inline": "ibear"
+  },
+  {
+    "id": "swing_ibear_css",
+    "type": "color",
+    "title": "",
+    "default": "#FFC800FF",
+    "group": "Real Time Internal Structure",
+    "inline": "ibear"
+  },
+  {
+    "id": "ilength",
+    "type": "int",
+    "title": "Internal Length",
+    "default": 5,
+    "minval": 2,
+    "maxval": 250,
+    "group": "Real Time Internal Structure",
+    "tooltip": "Number of bars used to confirm internal (minor) swing points. The effective internal length is capped below Swing Length so internal structure stays the smaller structure"
+  },
+  {
+    "id": "ifilter_confluence",
+    "type": "bool",
+    "title": "Confluence Filter",
+    "default": true,
+    "group": "Real Time Internal Structure",
+    "tooltip": "Filter non significant internal structure breakouts\n\nA bullish break only counts when the breakout candle closes in the upper half of its range (a bearish break: lower half), so rejection-wick fakeouts are ignored. A later candle that closes beyond the level with a valid close still confirms the break"
+  },
+  {
+    "id": "show_Structure",
+    "type": "bool",
+    "title": "Show Swing Structure",
+    "default": true,
+    "group": "Real Time Swing Structure",
+    "tooltip": "Display swing market Structure"
+  },
+  {
+    "id": "show_bull",
+    "type": "string",
+    "title": "Bullish Structure",
+    "default": "All",
+    "options": [
+      "All",
+      "BOS",
+      "CHoCH"
+    ],
+    "group": "Real Time Swing Structure",
+    "inline": "bull"
+  },
+  {
+    "id": "swing_bull_css",
+    "type": "color",
+    "title": "",
+    "default": "#00C8FFFF",
+    "group": "Real Time Swing Structure",
+    "inline": "bull"
+  },
+  {
+    "id": "show_bear",
+    "type": "string",
+    "title": "Bearish Structure",
+    "default": "All",
+    "options": [
+      "All",
+      "BOS",
+      "CHoCH"
+    ],
+    "group": "Real Time Swing Structure",
+    "inline": "bear"
+  },
+  {
+    "id": "swing_bear_css",
+    "type": "color",
+    "title": "",
+    "default": "#FFC800FF",
+    "group": "Real Time Swing Structure",
+    "inline": "bear"
+  },
+  {
+    "id": "show_swings",
+    "type": "bool",
+    "title": "Show Swings Points",
+    "default": true,
+    "group": "Real Time Swing Structure",
+    "inline": "swings",
+    "tooltip": "Display swing point as labels on the chart"
+  },
+  {
+    "id": "length",
+    "type": "int",
+    "title": "",
+    "default": 25,
+    "minval": 10,
+    "maxval": 250,
+    "group": "Real Time Swing Structure",
+    "inline": "swings"
+  },
+  {
+    "id": "show_hl_swings",
+    "type": "bool",
+    "title": "Show Strong/Weak High/Low",
+    "default": true,
+    "group": "Real Time Swing Structure",
+    "tooltip": "Highlight most recent strong and weak high/low points on the chart"
+  },
+  {
+    "id": "show_iob",
+    "type": "bool",
+    "title": "Internal Order Blocks",
+    "default": true,
+    "group": "Order Blocks",
+    "inline": "iob",
+    "tooltip": "Display internal order blocks on the chart\n\nNumber of internal order blocks to display: the ones nearest to price"
+  },
+  {
+    "id": "iob_showlast",
+    "type": "int",
+    "title": "",
+    "default": 3,
+    "minval": 1,
+    "maxval": 20,
+    "group": "Order Blocks",
+    "inline": "iob"
+  },
+  {
+    "id": "show_ob",
+    "type": "bool",
+    "title": "Swing Order Blocks",
+    "default": true,
+    "group": "Order Blocks",
+    "inline": "ob",
+    "tooltip": "Display swing order blocks on the chart\n\nNumber of swing order blocks to display: the ones nearest to price"
+  },
+  {
+    "id": "ob_showlast",
+    "type": "int",
+    "title": "",
+    "default": 3,
+    "minval": 1,
+    "maxval": 20,
+    "group": "Order Blocks",
+    "inline": "ob"
+  },
+  {
+    "id": "ob_filter",
+    "type": "string",
+    "title": "Order Block Filter",
+    "default": "Atr",
+    "options": [
+      "Atr",
+      "Cumulative Mean Range"
+    ],
+    "group": "Order Blocks",
+    "tooltip": "Method used to filter out volatile order blocks \n\nIt is recommended to use the cumulative mean range method when a low amount of data is available"
+  },
+  {
+    "id": "ob_candle",
+    "type": "string",
+    "title": "Order Block Candle",
+    "default": "Opposite Candle (ICT)",
+    "options": [
+      "Opposite Candle (ICT)",
+      "Extreme Candle (LuxAlgo)"
+    ],
+    "group": "Order Blocks",
+    "tooltip": "Opposite Candle (ICT): bullish OB = last down-close candle before the bullish displacement that broke structure, bearish OB = last up-close candle before the bearish displacement. If the leg has no such candle, or that candle is a volatile outlier (Order Block Filter) or was closed through before the break, no OB is drawn\n\nExtreme Candle (LuxAlgo): the candle with the lowest low / highest high of the leg, whatever its color"
+  },
+  {
+    "id": "ob_disp_mult",
+    "type": "float",
+    "title": "Displacement Body (× ATR)",
+    "default": 1.0,
+    "minval": 0,
+    "step": 0.1,
+    "group": "Order Blocks",
+    "tooltip": "ICT mode. A displacement candle needs a body of at least this many ATR(14) in the direction of the break"
+  },
+  {
+    "id": "ibull_ob_css",
+    "type": "color",
+    "title": "Internal Bullish OB",
+    "default": "#3179F533",
+    "group": "Order Blocks"
+  },
+  {
+    "id": "ibear_ob_css",
+    "type": "color",
+    "title": "Internal Bearish OB",
+    "default": "#F77C8033",
+    "group": "Order Blocks"
+  },
+  {
+    "id": "bull_ob_css",
+    "type": "color",
+    "title": "Bullish OB",
+    "default": "#1848CC33",
+    "group": "Order Blocks"
+  },
+  {
+    "id": "bear_ob_css",
+    "type": "color",
+    "title": "Bearish OB",
+    "default": "#B2283333",
+    "group": "Order Blocks"
+  },
+  {
+    "id": "show_eq",
+    "type": "bool",
+    "title": "Equal High/Low",
+    "default": true,
+    "group": "EQH/EQL",
+    "tooltip": "Display equal highs and equal lows on the chart"
+  },
+  {
+    "id": "eq_len",
+    "type": "int",
+    "title": "Bars Confirmation",
+    "default": 5,
+    "minval": 1,
+    "maxval": 100,
+    "group": "EQH/EQL",
+    "tooltip": "Number of bars used to confirm equal highs and equal lows"
+  },
+  {
+    "id": "eq_threshold",
+    "type": "float",
+    "title": "Threshold",
+    "default": 0.1,
+    "minval": 0,
+    "maxval": 0.5,
+    "step": 0.1,
+    "group": "EQH/EQL",
+    "tooltip": "Sensitivity threshold in a range (0, 1) used for the detection of equal highs & lows\n\nLower values will return fewer but more pertinent results"
+  },
+  {
+    "id": "show_fvg",
+    "type": "bool",
+    "title": "Fair Value Gaps",
+    "default": true,
+    "group": "Fair Value Gaps",
+    "tooltip": "Display fair values gaps on the chart"
+  },
+  {
+    "id": "fvg_auto",
+    "type": "bool",
+    "title": "Auto Threshold",
+    "default": true,
+    "group": "Fair Value Gaps",
+    "tooltip": "Filter out non significant fair value gaps"
+  },
+  {
+    "id": "fvg_tf",
+    "type": "timeframe",
+    "title": "Timeframe",
+    "default": "",
+    "group": "Fair Value Gaps",
+    "tooltip": "Fair value gaps timeframe. Must be the chart timeframe or higher; a lower timeframe falls back to the chart timeframe (a label on the chart says so)"
+  },
+  {
+    "id": "bull_fvg_css",
+    "type": "color",
+    "title": "Bullish FVG",
+    "default": "#00FF684D",
+    "group": "Fair Value Gaps"
+  },
+  {
+    "id": "bear_fvg_css",
+    "type": "color",
+    "title": "Bearish FVG",
+    "default": "#FF00084D",
+    "group": "Fair Value Gaps"
+  },
+  {
+    "id": "fvg_extend",
+    "type": "int",
+    "title": "Extend FVG",
+    "default": 5,
+    "minval": 0,
+    "maxval": 500,
+    "group": "Fair Value Gaps",
+    "tooltip": "Determine how many bars to extend the Fair Value Gap boxes past the current bar"
+  },
+  {
+    "id": "fvg_extend_active",
+    "type": "bool",
+    "title": "Extend Until Filled",
+    "default": true,
+    "group": "Fair Value Gaps",
+    "tooltip": "Keep unfilled gaps extended to the current bar (plus the Extend FVG bars). A gap is deleted once price fills it completely"
+  },
+  {
+    "id": "fvg_max_active",
+    "type": "int",
+    "title": "Max Active FVGs (per side)",
+    "default": 5,
+    "minval": 1,
+    "maxval": 15,
+    "group": "Fair Value Gaps",
+    "tooltip": "Oldest unfilled gaps beyond this count are removed"
+  },
+  {
+    "id": "show_pdhl",
+    "type": "bool",
+    "title": "Daily",
+    "default": true,
+    "group": "Highs & Lows MTF",
+    "inline": "daily"
+  },
+  {
+    "id": "pdhl_style",
+    "type": "string",
+    "title": "",
+    "default": "⎯⎯⎯",
+    "options": [
+      "⎯⎯⎯",
+      "----",
+      "····"
+    ],
+    "group": "Highs & Lows MTF",
+    "inline": "daily"
+  },
+  {
+    "id": "pdhl_css",
+    "type": "color",
+    "title": "",
+    "default": "#2157F3FF",
+    "group": "Highs & Lows MTF",
+    "inline": "daily"
+  },
+  {
+    "id": "show_pwhl",
+    "type": "bool",
+    "title": "Weekly",
+    "default": true,
+    "group": "Highs & Lows MTF",
+    "inline": "weekly"
+  },
+  {
+    "id": "pwhl_style",
+    "type": "string",
+    "title": "",
+    "default": "----",
+    "options": [
+      "⎯⎯⎯",
+      "----",
+      "····"
+    ],
+    "group": "Highs & Lows MTF",
+    "inline": "weekly"
+  },
+  {
+    "id": "pwhl_css",
+    "type": "color",
+    "title": "",
+    "default": "#2157F3FF",
+    "group": "Highs & Lows MTF",
+    "inline": "weekly"
+  },
+  {
+    "id": "show_pmhl",
+    "type": "bool",
+    "title": "Monthly",
+    "default": true,
+    "group": "Highs & Lows MTF",
+    "inline": "monthly"
+  },
+  {
+    "id": "pmhl_style",
+    "type": "string",
+    "title": "",
+    "default": "····",
+    "options": [
+      "⎯⎯⎯",
+      "----",
+      "····"
+    ],
+    "group": "Highs & Lows MTF",
+    "inline": "monthly"
+  },
+  {
+    "id": "pmhl_css",
+    "type": "color",
+    "title": "",
+    "default": "#2157F3FF",
+    "group": "Highs & Lows MTF",
+    "inline": "monthly"
+  },
+  {
+    "id": "show_sd",
+    "type": "bool",
+    "title": "Premium/Discount Zones",
+    "default": true,
+    "group": "Premium & Discount Zones",
+    "tooltip": "Display premium, discount, and equilibrium zones on chart"
+  },
+  {
+    "id": "premium_css",
+    "type": "color",
+    "title": "Premium Zone",
+    "default": "#FFC800FF",
+    "group": "Premium & Discount Zones"
+  },
+  {
+    "id": "eq_css",
+    "type": "color",
+    "title": "Equilibrium Zone",
+    "default": "#B2B5BEFF",
+    "group": "Premium & Discount Zones"
+  },
+  {
+    "id": "discount_css",
+    "type": "color",
+    "title": "Discount Zone",
+    "default": "#00C8FFFF",
+    "group": "Premium & Discount Zones"
+  },
+  {
+    "id": "ds_mode",
+    "type": "string",
+    "title": "Threshold Mode",
+    "default": "ATR",
+    "options": [
+      "ATR",
+      "Percent"
+    ],
+    "group": "Demand & Supply",
+    "tooltip": " --- Threshold Mode ---\n\nATR: every distance below is a multiple of ATR(14), so one setting fits every timeframe and adapts to gold volatility.\n\nPercent: the legacy fixed % inputs further down."
+  },
+  {
+    "id": "ds_min_atr",
+    "type": "float",
+    "title": "Min departure (× ATR)",
+    "default": 2.0,
+    "minval": 0,
+    "step": 0.25,
+    "group": "Demand & Supply",
+    "tooltip": "ATR mode. A zone is added once the bullish/bearish run away from the base candle covers this many ATRs (open to close)."
+  },
+  {
+    "id": "ds_max_atr",
+    "type": "float",
+    "title": "Max zone height (× ATR)",
+    "default": 1.0,
+    "minval": 0,
+    "step": 0.25,
+    "group": "Demand & Supply",
+    "tooltip": "ATR mode. Zones taller than this are trimmed toward the base candle."
+  },
+  {
+    "id": "ds_line_atr",
+    "type": "float",
+    "title": "Show lines within (× ATR)",
+    "default": 10.0,
+    "minval": 0,
+    "step": 1,
+    "group": "Demand & Supply",
+    "tooltip": "ATR mode. Lines are shown for active zones within this distance of the close."
+  },
+  {
+    "id": "ds_min_pc_change",
+    "type": "float",
+    "title": "Min % change (Percent mode)",
+    "default": 0.05,
+    "minval": 0,
+    "step": 0.01,
+    "group": "Demand & Supply",
+    "tooltip": " --- Min % change ---\n\nA zone is added if one candle or a run of bullish/bearish candles meets this minimum % change.\n\nSigned change is measured from the first departure candle open to the current close, divided by that first open. Demand requires a rise; supply requires a fall. Adjust the % for the pair and the timeframe.\ne.g. Crypto 15m 0.8% 1m 0.5%, Forex 15m 0.4%"
+  },
+  {
+    "id": "ds_max_pc_zone",
+    "type": "float",
+    "title": "Max % zone height (Percent mode)",
+    "default": 0.05,
+    "minval": 0,
+    "step": 0.2,
+    "group": "Demand & Supply",
+    "tooltip": " --- Max % zone height ---\n\nThe zone height is decided by the size of the candle before a significant drop or rally.\n\nSetting a higher max % will keep the height closer to candle height.\nSetting a lower max % makes the boxes look a bit tidier."
+  },
+  {
+    "id": "ds_line_pc_display",
+    "type": "float",
+    "title": "% line (Percent mode)",
+    "default": 3.0,
+    "minval": 0,
+    "maxval": 5,
+    "step": 0.5,
+    "group": "Demand & Supply",
+    "inline": "line"
+  },
+  {
+    "id": "ds_line_max",
+    "type": "int",
+    "title": "Max line",
+    "default": 3,
+    "minval": 1,
+    "maxval": 5,
+    "group": "Demand & Supply",
+    "inline": "line",
+    "tooltip": " --- % Line  --- \nDisplay lines of active zones when the close is within this % of the line. Max is 5%.\n\n --- Max Line  --- \nThe maximum number of lines to display for each zone type."
+  },
+  {
+    "id": "ds_max_zones",
+    "type": "int",
+    "title": "Max number of zones",
+    "default": 100,
+    "minval": 1,
+    "maxval": 150,
+    "step": 10,
+    "group": "Demand & Supply",
+    "tooltip": " --- Max number of zones ---\n\nThe maximum number of zones for each zone type.\nUp to 150 boxes per side, reserving drawing capacity for the independent OB, FVG and pivot systems. Oldest tested/invalidated zones leave first."
+  },
+  {
+    "id": "ds_hours_offset",
+    "type": "float",
+    "title": "Timezone offset (H)",
+    "default": 0.0,
+    "minval": -12,
+    "maxval": 14,
+    "group": "Demand & Supply",
+    "tooltip": " --- Timezone offset (H)  --- \nIf your chart timezone is not set set to UTC, set the offset in hours.\nRange: -12 to +14.\n\nTime information is displayed when hovering over zone labels."
+  },
+  {
+    "id": "showDemandZone",
+    "type": "bool",
+    "title": "Demand",
+    "default": true,
+    "group": "Demand & Supply",
+    "inline": "demand_1"
+  },
+  {
+    "id": "demand_bord_col",
+    "type": "color",
+    "title": "Border",
+    "default": "#0AFF02B2",
+    "group": "Demand & Supply",
+    "inline": "demand_1"
+  },
+  {
+    "id": "demand_bg_col",
+    "type": "color",
+    "title": "Background",
+    "default": "#0AFF0226",
+    "group": "Demand & Supply",
+    "inline": "demand_1",
+    "tooltip": "Filled/solid = Fresh. A proximal wick touch makes the zone Tested (transparent/dotted). A confirmed close below its distal bottom makes demand Invalidated (transparent/dashed gray)."
+  },
+  {
+    "id": "showSupplyZone",
+    "type": "bool",
+    "title": "Supply",
+    "default": true,
+    "group": "Demand & Supply",
+    "inline": "supply_1"
+  },
+  {
+    "id": "supply_bord_col",
+    "type": "color",
+    "title": "Border",
+    "default": "#FF0000B2",
+    "group": "Demand & Supply",
+    "inline": "supply_1"
+  },
+  {
+    "id": "supply_bg_col",
+    "type": "color",
+    "title": "Background",
+    "default": "#FF000026",
+    "group": "Demand & Supply",
+    "inline": "supply_1",
+    "tooltip": "Filled/solid = Fresh. A proximal wick touch makes the zone Tested (transparent/dotted). A confirmed close above its distal top makes supply Invalidated (transparent/dashed gray)."
+  },
+  {
+    "id": "dsAlertDemand",
+    "type": "bool",
+    "title": "Demand",
+    "default": true,
+    "group": "Demand & Supply Alerts",
+    "inline": "ds_alert_1"
+  },
+  {
+    "id": "dsAlertSupply",
+    "type": "bool",
+    "title": "Supply",
+    "default": true,
+    "group": "Demand & Supply Alerts",
+    "inline": "ds_alert_1",
+    "tooltip": " --- Demand & Supply Alerts ---\n\nTwo types of alerts are sent:\n1. Hit: The price hits an active zone.\n2. Near: The price approaches the active zone.\n\n --- Supply Example ---\n1. When the price is below the supply zone and the high hits the zone, an alert is sent.\n2. When the price is below the supply zone and the high is within the Near %, an alert is sent."
+  },
+  {
+    "id": "ds_alert_mins_no_repeat",
+    "type": "int",
+    "title": "Mins no repeat",
+    "default": 60,
+    "minval": 0,
+    "maxval": 120,
+    "group": "Demand & Supply Alerts",
+    "tooltip": " --- Mins No Repeat ---\n\nWait x mins before sending a similar alert type for the same zone.\n\nSetting this to 0 will turn this feature off.\nMax = 120mins."
+  },
+  {
+    "id": "ds_alerts_pc_near",
+    "type": "float",
+    "title": "Near %",
+    "default": 1.5,
+    "minval": 0,
+    "maxval": 5,
+    "step": 0.1,
+    "group": "Demand & Supply Alerts",
+    "tooltip": " --- Near % ---\nPercent mode. The alert is sent when the high or low is within this % of the zone. Max is 5%."
+  },
+  {
+    "id": "ds_near_atr",
+    "type": "float",
+    "title": "Near (× ATR)",
+    "default": 1.0,
+    "minval": 0,
+    "step": 0.25,
+    "group": "Demand & Supply Alerts",
+    "tooltip": "ATR mode. The near alert is sent when the high or low is within this many ATRs of the zone."
+  },
+  {
+    "id": "left",
+    "type": "int",
+    "title": "Look Left",
+    "default": 20,
+    "minval": 1,
+    "maxval": 250,
+    "group": "Zones",
+    "tooltip": "Look left for swing high/low in x number of bars to form pivot. The higher the number, the higher the script looks to the left for the highest/lowest point before drawing pivot"
+  },
+  {
+    "id": "right",
+    "type": "int",
+    "title": "Look Right",
+    "default": 10,
+    "minval": 1,
+    "maxval": 250,
+    "group": "Zones",
+    "tooltip": "Look right for swing high/low in x number of bars to form pivot. The higher the number, the higher the script looks to the right for the highest/lowest point before drawing pivot"
+  },
+  {
+    "id": "nPiv",
+    "type": "int",
+    "title": "Number of Pivots",
+    "default": 2,
+    "minval": 1,
+    "maxval": 10,
+    "group": "Zones",
+    "tooltip": "This sets the array size, or the number of pivots to track at a time (x highs, and x number of lows)"
+  },
+  {
+    "id": "atrLen",
+    "type": "int",
+    "title": "ATR Length",
+    "default": 30,
+    "minval": 1,
+    "maxval": 250,
+    "group": "Zones",
+    "tooltip": "Number of bars to average. ATR is used to standardize zone width between assets and timeframes"
+  },
+  {
+    "id": "mult",
+    "type": "float",
+    "title": "Zone Width (ATR)",
+    "default": 0.5,
+    "minval": 0.1,
+    "maxval": 10,
+    "step": 0.1,
+    "group": "Zones",
+    "tooltip": "ATR multiplier to set zone width. Default is half of one ATR from box bottom to box top"
+  },
+  {
+    "id": "per",
+    "type": "float",
+    "title": "Max Zone Percent",
+    "default": 5,
+    "minval": 0.01,
+    "maxval": 20,
+    "group": "Zones",
+    "tooltip": "Max zone size as a percent of price. Some assets can be too volatile at low prices creating an unreasonably sized zone"
+  },
+  {
+    "id": "max",
+    "type": "int",
+    "title": "Max Boxes for Patterns",
+    "default": 10,
+    "minval": 0,
+    "maxval": 10,
+    "group": "Zones",
+    "tooltip": "Number of boxes for candlestick patterns to track historically. Note: the higher the number the less pivot zones will be tracked when looking back in time due to the limitation on the number of box elements allowed at once"
+  },
+  {
+    "id": "fut",
+    "type": "int",
+    "title": "Offset For Labels",
+    "default": 30,
+    "minval": 0,
+    "maxval": 250,
+    "group": "Zones",
+    "tooltip": "Number of bars to offset labels for price levels"
+  },
+  {
+    "id": "src",
+    "type": "string",
+    "title": "Source For Pivots",
+    "default": "High/Low Body",
+    "options": [
+      "HA",
+      "High/Low Body",
+      "High/Low"
+    ],
+    "group": "Zones",
+    "tooltip": "Source input for pivots. Default uses actual candle bodies. HA uses averaged Heikin-Ashi bodies; High/Low uses actual candle wicks. These are pivot Support/Resistance zones, separate from SMC order blocks and Demand/Supply"
+  },
+  {
+    "id": "alignZones",
+    "type": "bool",
+    "title": "Align Zones",
+    "default": true,
+    "group": "Zones",
+    "tooltip": "Aligns recurring zones who's edges overlap an existing zone creating a zone that ages in time and intensifies visually"
+  },
+  {
+    "id": "extend",
+    "type": "bool",
+    "title": "Extend Right",
+    "default": false,
+    "group": "Zones",
+    "tooltip": "Extends current zones right"
+  },
+  {
+    "id": "lLab",
+    "type": "bool",
+    "title": "Show Level Labels",
+    "default": true,
+    "group": "Zones",
+    "tooltip": "Show labels for price levels extended off Key Levels"
+  },
+  {
+    "id": "dhighs",
+    "type": "bool",
+    "title": "Detect Pivot Highs",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Disabling will prevent highs from being tracked"
+  },
+  {
+    "id": "dlows",
+    "type": "bool",
+    "title": "Detect Pivot Lows",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Disabling will prevent lows from being tracked"
+  },
+  {
+    "id": "detectBO",
+    "type": "bool",
+    "title": "Detect Breakout",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show points that price action breaks above all pivots. An arrow from below is displayed"
+  },
+  {
+    "id": "detectBD",
+    "type": "bool",
+    "title": "Detect Breakdown",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show points that price action breaks below all pivots. An arrow from above is displayed"
+  },
+  {
+    "id": "breakUp",
+    "type": "bool",
+    "title": "Detect Resistance Break",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show points that price action breaks above resistance. An arrow from below is displayed"
+  },
+  {
+    "id": "breakDn",
+    "type": "bool",
+    "title": "Detect Support Break",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show points that price action breaks below support. An arrow from above is displayed"
+  },
+  {
+    "id": "falseBull",
+    "type": "bool",
+    "title": "Detect False Breakdown",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show points that price action initially breaks below support before reversing. False moves can lead to fast moves in the opposite direction (bear trap). A large arrow from below is displayed"
+  },
+  {
+    "id": "falseBear",
+    "type": "bool",
+    "title": "Detect False Breakup",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show points that price action initially breaks above resistance before reversing. False moves can lead to fast moves in the opposite direction (bull trap). A large arrow from above is displayed"
+  },
+  {
+    "id": "supPush",
+    "type": "bool",
+    "title": "Detect Moves Off Support",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show up candles that are detected within a support zone. Can show points support is being respected. A triangle from below is displayed"
+  },
+  {
+    "id": "resPush",
+    "type": "bool",
+    "title": "Detect Moves Off Resistance",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show down candles that are detected within a resistance zone. Can show points resistance is being respected. A triangle from above is displayed"
+  },
+  {
+    "id": "curl",
+    "type": "bool",
+    "title": "Detect TSI Curl",
+    "default": true,
+    "group": "Detection",
+    "tooltip": "Show Bjorgum TSI 'curl' when candles are detected in the range of a key zone. Can show momentum shift at Key Levels. (Correlates to Bjorgum TSI indicator)"
+  },
+  {
+    "id": "repaint",
+    "type": "bool",
+    "title": "Wait For Confirmed Bar",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Wait for candles end before detecting patterns. False will show potential patterns forming before they are confirmed."
+  },
+  {
+    "id": "labels",
+    "type": "bool",
+    "title": "Show Label",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Show a label for detected candle patterns"
+  },
+  {
+    "id": "sBox",
+    "type": "bool",
+    "title": "Show Boxes Around Patterns",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Show a box around detected candle patterns"
+  },
+  {
+    "id": "d_",
+    "type": "bool",
+    "title": "Detect Doji",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Doji candle patterns"
+  },
+  {
+    "id": "be_",
+    "type": "bool",
+    "title": "Detect Engulfing",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Engulfing patterns"
+  },
+  {
+    "id": "hs_",
+    "type": "bool",
+    "title": "Detect Hammers and Stars",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Hammers and Shooting Star patterns"
+  },
+  {
+    "id": "dg_",
+    "type": "bool",
+    "title": "Detect Dragons and Graves",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Dragonfly Doji and Gravestone Doji patterns"
+  },
+  {
+    "id": "tw_",
+    "type": "bool",
+    "title": "Detect Tweezers",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Tweezer Top and Tweezer Bottom patterns"
+  },
+  {
+    "id": "st_",
+    "type": "bool",
+    "title": "Detect Spinning Top",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Spinning Top patterns"
+  },
+  {
+    "id": "pc_",
+    "type": "bool",
+    "title": "Detect Piercing and Clouds",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Piercing and Dark Cloud Cover patterns"
+  },
+  {
+    "id": "bh_",
+    "type": "bool",
+    "title": "Detect Harami",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Harami candle patterns"
+  },
+  {
+    "id": "ls_",
+    "type": "bool",
+    "title": "Detect Long Shadows",
+    "default": true,
+    "group": "Candle Patterns",
+    "tooltip": "Detect Long Upper Shadow and Long Lower Shadow patterns"
+  },
+  {
+    "id": "alertMode",
+    "type": "string",
+    "title": "Alerts Mode",
+    "default": "once_per_bar_close",
+    "options": [
+      "once_per_bar",
+      "once_per_bar_close"
+    ],
+    "group": "Alert Frequency"
+  },
+  {
+    "id": "ecWick",
+    "type": "bool",
+    "title": "Engulfing Must Engulf Wick",
+    "default": false,
+    "group": "Candle Filters",
+    "tooltip": "Determines if engulfing candles must engulf the wick or just the body of the preceding candle"
+  },
+  {
+    "id": "colorMatch",
+    "type": "bool",
+    "title": "H&S Must Match Color",
+    "default": false,
+    "group": "Candle Filters",
+    "tooltip": "Determines if hammers must be up candles and shooting stars must be down candles"
+  },
+  {
+    "id": "closeHalf",
+    "type": "bool",
+    "title": "Tweezer Close Over Half",
+    "default": false,
+    "group": "Candle Filters",
+    "tooltip": "Determines if Tweezer patterns must close beyond the half way point of the preceding candle"
+  },
+  {
+    "id": "atrMax",
+    "type": "float",
+    "title": "Max Candle Size (× ATR)",
+    "default": 0.0,
+    "minval": 0,
+    "maxval": 20,
+    "step": 0.1,
+    "group": "Candle Filters",
+    "tooltip": "Maximum size of setup candles (as a multiplier of the current ATR)"
+  },
+  {
+    "id": "rejectWickMax",
+    "type": "float",
+    "title": "[EC] Max Reject Wick Size",
+    "default": 0.0,
+    "minval": 0,
+    "maxval": 1000,
+    "step": 1,
+    "group": "Candle Filters",
+    "tooltip": "The maximum wick size as a percentage of body size allowable for a rejection wick on the resolution candle of the pattern. 0 disables the filter"
+  },
+  {
+    "id": "hammerFib",
+    "type": "float",
+    "title": "[HS] H&S Ratio (%)",
+    "default": 33,
+    "minval": 1,
+    "maxval": 50,
+    "step": 1,
+    "group": "Candle Filters",
+    "tooltip": "The relationship of body to candle size for hammers and stars. (ie. body is 33% of total candle size)."
+  },
+  {
+    "id": "hsShadowPerc",
+    "type": "float",
+    "title": "[HS] H&S Opposing Shadow (%)",
+    "default": 5,
+    "minval": 0,
+    "maxval": 100,
+    "step": 1,
+    "group": "Candle Filters",
+    "tooltip": "The maximum allowable opposing wick size as a percent of body size (ex. top wick for a hammer pattern etc.)"
+  },
+  {
+    "id": "hammerSize",
+    "type": "float",
+    "title": "[HS] H&S Min Size (× ATR)",
+    "default": 0.1,
+    "minval": 0,
+    "maxval": 10,
+    "step": 0.1,
+    "group": "Candle Filters",
+    "tooltip": "The minimum size of hammers, stars, or long shadows as a multiplier of ATR. (To filter out tiny setups)"
+  },
+  {
+    "id": "dojiSize",
+    "type": "float",
+    "title": "[DJ] Doji Size (%)",
+    "default": 5,
+    "minval": 0,
+    "maxval": 50,
+    "step": 1,
+    "group": "Candle Filters",
+    "tooltip": "The relationship of body to candle size (ie. body is 5% of total candle size)."
+  },
+  {
+    "id": "dojiWickSize",
+    "type": "float",
+    "title": "[DJ] Max Doji Wick Size",
+    "default": 2,
+    "minval": 1,
+    "maxval": 10,
+    "step": 1,
+    "group": "Candle Filters",
+    "tooltip": "Maximum wick size comparative to the opposite wick. (eg. 2 = bottom wick must be less than or equal to 2x the top wick)."
+  },
+  {
+    "id": "luRatio",
+    "type": "float",
+    "title": "[LS] Long Shadow (%)",
+    "default": 75,
+    "minval": 50,
+    "maxval": 100,
+    "step": 1,
+    "group": "Candle Filters",
+    "tooltip": "A relationship of the upper wick to the overall candle size expressed as a percent."
+  },
+  {
+    "id": "lookback",
+    "type": "int",
+    "title": "Lookback For Breaks",
+    "default": 2,
+    "minval": 1,
+    "maxval": 50,
+    "group": "Lookback",
+    "tooltip": "Maximum confirmed bars from a close beyond one pivot zone to a close reclaiming its opposite edge. Break and reclaim must refer to the same unchanged zone; wick-only sweeps are not included"
+  },
+  {
+    "id": "swing",
+    "type": "int",
+    "title": "swing High/Low",
+    "default": 5,
+    "minval": 1,
+    "maxval": 250,
+    "group": "Lookback",
+    "tooltip": "Swing detection is used to filter signals on breakout type signals. A higher number will mean more significant points, but less of them"
+  },
+  {
+    "id": "reflect",
+    "type": "int",
+    "title": "Significant High/Low",
+    "default": 10,
+    "minval": 1,
+    "maxval": 250,
+    "group": "Lookback",
+    "tooltip": "Filter to ensure a setup is a significant swing point. Look back this far (maximum 250 bars)"
+  },
+  {
+    "id": "offset",
+    "type": "int",
+    "title": "Consider Bar From High/Low",
+    "default": 1,
+    "minval": 0,
+    "maxval": 250,
+    "group": "Lookback",
+    "tooltip": "Candle pattern high/low rank from the significant extreme. 0 requires the highest/lowest; 1 accepts the next rank. Values above Significant High/Low are clamped to that length"
+  },
+  {
+    "id": "bullBorder",
+    "type": "color",
+    "title": "",
+    "default": "#7EC4FDFF",
+    "group": "Pivot Color",
+    "inline": "0"
+  },
+  {
+    "id": "bullBgCol",
+    "type": "color",
+    "title": "",
+    "default": "#64B5F60D",
+    "group": "Pivot Color",
+    "inline": "0",
+    "tooltip": "Color of bullish Key Levels\n(border, background)"
+  },
+  {
+    "id": "bearBorder",
+    "type": "color",
+    "title": "",
+    "default": "#F7EA7EFF",
+    "group": "Pivot Color",
+    "inline": "1"
+  },
+  {
+    "id": "bearBgCol",
+    "type": "color",
+    "title": "",
+    "default": "#FFEB3B0D",
+    "group": "Pivot Color",
+    "inline": "1",
+    "tooltip": "Color of bearish Key Levels\n(border, background)"
+  },
+  {
+    "id": "upCol",
+    "type": "color",
+    "title": "",
+    "default": "#FF6D00BF",
+    "group": "Breakout Color",
+    "inline": "2"
+  },
+  {
+    "id": "dnCol",
+    "type": "color",
+    "title": "",
+    "default": "#FF00FFBF",
+    "group": "Breakout Color",
+    "inline": "2",
+    "tooltip": "Color of breakout arrows\n(bull, bear,)"
+  },
+  {
+    "id": "supCol",
+    "type": "color",
+    "title": "",
+    "default": "#17FF00BF",
+    "group": "S&R Break Color",
+    "inline": "3"
+  },
+  {
+    "id": "resCol",
+    "type": "color",
+    "title": "",
+    "default": "#FF0000BF",
+    "group": "S&R Break Color",
+    "inline": "3",
+    "tooltip": "Color of triangles for broken support or resistance\n(bull, bear)"
+  },
+  {
+    "id": "fBull",
+    "type": "color",
+    "title": "",
+    "default": "#17FF00BF",
+    "group": "False Break Color",
+    "inline": "4"
+  },
+  {
+    "id": "fBear",
+    "type": "color",
+    "title": "",
+    "default": "#FF0000BF",
+    "group": "False Break Color",
+    "inline": "4"
+  },
+  {
+    "id": "arrowMax",
+    "type": "int",
+    "title": "",
+    "default": 75,
+    "minval": 1,
+    "maxval": 300,
+    "group": "False Break Color",
+    "inline": "4",
+    "tooltip": "Color of arrows for false breaks\n(bull, bear, arrow max height in pixels)"
+  },
+  {
+    "id": "moveBullCol",
+    "type": "color",
+    "title": "",
+    "default": "#957AF7FC",
+    "group": "Moves From S&R Color",
+    "inline": "5"
+  },
+  {
+    "id": "moveBearCol",
+    "type": "color",
+    "title": "",
+    "default": "#F8EB79FC",
+    "group": "Moves From S&R Color",
+    "inline": "5",
+    "tooltip": "Color of triangles for candles that are detected within zones\n(bull, bear)"
+  },
+  {
+    "id": "curlBullCol",
+    "type": "color",
+    "title": "",
+    "default": "#17FF0099",
+    "group": "Momentum Curl Color",
+    "inline": "6"
+  },
+  {
+    "id": "curlBearCol",
+    "type": "color",
+    "title": "",
+    "default": "#F3FF0099",
+    "group": "Momentum Curl Color",
+    "inline": "6",
+    "tooltip": "Show Bjorgum TSI 'curl' when candles are detected in the range of a key zone. Can show momentum shift at Key Levels. (Correlates to Bjorgum TSI indicator)"
+  },
+  {
+    "id": "patBullBg",
+    "type": "color",
+    "title": "",
+    "default": "#17FF0019",
+    "group": "Pattern Box Color",
+    "inline": "7"
+  },
+  {
+    "id": "patNeutBg",
+    "type": "color",
+    "title": "",
+    "default": "#B2B5BE19",
+    "group": "Pattern Box Color",
+    "inline": "7"
+  },
+  {
+    "id": "patBearBg",
+    "type": "color",
+    "title": "",
+    "default": "#FF000019",
+    "group": "Pattern Box Color",
+    "inline": "7"
+  },
+  {
+    "id": "patBullBo",
+    "type": "color",
+    "title": "",
+    "default": "#17FF0033",
+    "group": "Pattern Box Color",
+    "inline": "8"
+  },
+  {
+    "id": "patNeutBo",
+    "type": "color",
+    "title": "",
+    "default": "#B2B5BE33",
+    "group": "Pattern Box Color",
+    "inline": "8"
+  },
+  {
+    "id": "patBearBo",
+    "type": "color",
+    "title": "",
+    "default": "#FF000033",
+    "group": "Pattern Box Color",
+    "inline": "8",
+    "tooltip": "Color of boxes that wrap candestick patterns\nBackgrounds: (bull, neutral, bear)\nBorders: (bull, neutral, bear)"
+  },
+  {
+    "id": "textBullCol",
+    "type": "color",
+    "title": "",
+    "default": "#17FF00FF",
+    "group": "Label Color (Text/Bg)",
+    "inline": "9"
+  },
+  {
+    "id": "textNeutCol",
+    "type": "color",
+    "title": "",
+    "default": "#B2B5BEFF",
+    "group": "Label Color (Text/Bg)",
+    "inline": "9"
+  },
+  {
+    "id": "textBearCol",
+    "type": "color",
+    "title": "",
+    "default": "#FF0000FF",
+    "group": "Label Color (Text/Bg)",
+    "inline": "9"
+  },
+  {
+    "id": "labBullCol",
+    "type": "color",
+    "title": "",
+    "default": "#17FF0033",
+    "group": "Label Color (Text/Bg)",
+    "inline": "10"
+  },
+  {
+    "id": "labNeutCol",
+    "type": "color",
+    "title": "",
+    "default": "#B2B5BE33",
+    "group": "Label Color (Text/Bg)",
+    "inline": "10"
+  },
+  {
+    "id": "labBearCol",
+    "type": "color",
+    "title": "",
+    "default": "#FF000033",
+    "group": "Label Color (Text/Bg)",
+    "inline": "10",
+    "tooltip": "Color of labels that mark candestick patterns\nText: (bull, neutral, bear)\nLabels: (bull, neutral, bear)"
+  },
+  {
+    "id": "strat",
+    "type": "string",
+    "title": "Select a Speed",
+    "default": "Fast",
+    "options": [
+      "Fast",
+      "Slow"
+    ],
+    "group": "TSI Speed Control",
+    "tooltip": "TSI speed control presets. Both speeds correlate to the Bjorgum TSI indicator"
+  },
+  {
+    "id": "longf",
+    "type": "int",
+    "title": "Long Length",
+    "default": 25,
+    "minval": 1,
+    "maxval": 250,
+    "group": "TSI Fast Settings"
+  },
+  {
+    "id": "shortf",
+    "type": "int",
+    "title": "Short Length",
+    "default": 5,
+    "minval": 1,
+    "maxval": 250,
+    "group": "TSI Fast Settings"
+  },
+  {
+    "id": "signalf",
+    "type": "int",
+    "title": "Signal Length",
+    "default": 14,
+    "minval": 1,
+    "maxval": 250,
+    "group": "TSI Fast Settings"
+  },
+  {
+    "id": "longs",
+    "type": "int",
+    "title": "Long Length",
+    "default": 25,
+    "minval": 1,
+    "maxval": 250,
+    "group": "TSI Slow Settings"
+  },
+  {
+    "id": "shorts",
+    "type": "int",
+    "title": "Short Length",
+    "default": 13,
+    "minval": 1,
+    "maxval": 250,
+    "group": "TSI Slow Settings"
+  },
+  {
+    "id": "signals",
+    "type": "int",
+    "title": "Signal Length",
+    "default": 13,
+    "minval": 1,
+    "maxval": 250,
+    "group": "TSI Slow Settings"
+  },
+  {
+    "id": "directions",
+    "type": "bool",
+    "title": "Directions Dashboard",
+    "default": true,
+    "group": "Info الاتجاه",
+    "tooltip": "Show secondary directional context. To reorder rows, swap BOTH position numbers. On/Off controls row visibility; all-nine alerts still require all nine calculations."
+  },
+  {
+    "id": "infoDataTableOn",
+    "type": "bool",
+    "title": "الاتجاه On/Off",
+    "default": true,
+    "group": "Info الاتجاه"
+  },
+  {
+    "id": "itablePosition",
+    "type": "string",
+    "title": "1",
+    "default": "bottom_right",
+    "options": [
+      "bottom_right",
+      "bottom_left",
+      "bottom_center",
+      "top_right",
+      "top_left",
+      "top_center",
+      "middle_right",
+      "middle_left",
+      "middle_center"
+    ],
+    "group": "Info الاتجاه"
+  },
+  {
+    "id": "macdOn",
+    "type": "bool",
+    "title": "Turn MACD Label On/Off",
+    "default": true,
+    "group": "MACD Settings"
+  },
+  {
+    "id": "macdOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 1,
+    "minval": 1,
+    "maxval": 9,
+    "group": "MACD Settings"
+  },
+  {
+    "id": "macdFast",
+    "type": "int",
+    "title": "MACD Fast Length",
+    "default": 12,
+    "minval": 2,
+    "maxval": 500,
+    "group": "MACD Settings"
+  },
+  {
+    "id": "macdSlow",
+    "type": "int",
+    "title": "MACD Slow Length",
+    "default": 26,
+    "minval": 2,
+    "maxval": 500,
+    "group": "MACD Settings"
+  },
+  {
+    "id": "macdSignal",
+    "type": "int",
+    "title": "MACD Signal Length",
+    "default": 9,
+    "minval": 2,
+    "maxval": 500,
+    "group": "MACD Settings"
+  },
+  {
+    "id": "stochasticOn",
+    "type": "bool",
+    "title": "Turn Stochstic RSI Label On/Off",
+    "default": true,
+    "group": "Stochastic RSI Settings"
+  },
+  {
+    "id": "stochasticOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 2,
+    "minval": 1,
+    "maxval": 9,
+    "group": "Stochastic RSI Settings"
+  },
+  {
+    "id": "smoothK",
+    "type": "int",
+    "title": "K Value - Stochastic RSI",
+    "default": 3,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Stochastic RSI Settings"
+  },
+  {
+    "id": "smoothD",
+    "type": "int",
+    "title": "D Value - Stochastic RSI",
+    "default": 3,
+    "minval": 2,
+    "maxval": 100,
+    "group": "Stochastic RSI Settings",
+    "tooltip": "Used by K vs D direction mode. K vs 50 uses K only."
+  },
+  {
+    "id": "stochDirectionMode",
+    "type": "string",
+    "title": "Direction Rule",
+    "default": "K vs 50",
+    "options": [
+      "K vs 50",
+      "K vs D"
+    ],
+    "group": "Stochastic RSI Settings"
+  },
+  {
+    "id": "lengthRSI",
+    "type": "int",
+    "title": "Stochastic RSI Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Stochastic RSI Settings"
+  },
+  {
+    "id": "lengthStoch",
+    "type": "int",
+    "title": "Stochastic Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Stochastic RSI Settings"
+  },
+  {
+    "id": "vortexOn",
+    "type": "bool",
+    "title": "Turn Vortex Label On/Off",
+    "default": true,
+    "group": "Vortex Settings"
+  },
+  {
+    "id": "vortexOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 3,
+    "minval": 1,
+    "maxval": 9,
+    "group": "Vortex Settings"
+  },
+  {
+    "id": "vortexLength",
+    "type": "int",
+    "title": "Vortex Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Vortex Settings"
+  },
+  {
+    "id": "momOn",
+    "type": "bool",
+    "title": "Turn Momentum Label On/Off",
+    "default": true,
+    "group": "Momentum Settings"
+  },
+  {
+    "id": "momOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 4,
+    "minval": 1,
+    "maxval": 9,
+    "group": "Momentum Settings"
+  },
+  {
+    "id": "momLength",
+    "type": "int",
+    "title": "Momentum Length",
+    "default": 10,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Momentum Settings",
+    "tooltip": "Close compared with its value this many bars ago. Positive = bullish, negative = bearish; a directional context reading, not an entry signal."
+  },
+  {
+    "id": "rsiOn",
+    "type": "bool",
+    "title": "Turn RSI Label On/Off",
+    "default": true,
+    "group": "RSI Settings"
+  },
+  {
+    "id": "rsiOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 5,
+    "minval": 1,
+    "maxval": 9,
+    "group": "RSI Settings"
+  },
+  {
+    "id": "rsiLength",
+    "type": "int",
+    "title": "Relative Strength Index Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "RSI Settings"
+  },
+  {
+    "id": "psarOn",
+    "type": "bool",
+    "title": "Turn PSAR Label On/Off",
+    "default": true,
+    "group": "PSAR Settings"
+  },
+  {
+    "id": "psarOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 6,
+    "minval": 1,
+    "maxval": 9,
+    "group": "PSAR Settings"
+  },
+  {
+    "id": "psarStart",
+    "type": "float",
+    "title": "PSAR Start",
+    "default": 0.02,
+    "minval": 0.01,
+    "group": "PSAR Settings"
+  },
+  {
+    "id": "psarInc",
+    "type": "float",
+    "title": "PSAR Increment",
+    "default": 0.02,
+    "minval": 0.01,
+    "group": "PSAR Settings"
+  },
+  {
+    "id": "psarMax",
+    "type": "float",
+    "title": "PSAR Max",
+    "default": 0.2,
+    "minval": 0.01,
+    "group": "PSAR Settings"
+  },
+  {
+    "id": "dmiOn",
+    "type": "bool",
+    "title": "Turn DMI Label On/Off",
+    "default": true,
+    "group": "DMI Settings"
+  },
+  {
+    "id": "dmiOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 7,
+    "minval": 1,
+    "maxval": 9,
+    "group": "DMI Settings"
+  },
+  {
+    "id": "dmiLength",
+    "type": "int",
+    "title": "DMI Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "DMI Settings"
+  },
+  {
+    "id": "dmiSmooth",
+    "type": "int",
+    "title": "DMI Smoothing",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "DMI Settings"
+  },
+  {
+    "id": "adxThreshold",
+    "type": "float",
+    "title": "ADX Trend Threshold",
+    "default": 0,
+    "minval": 0,
+    "group": "DMI Settings",
+    "tooltip": "DMI shows wait while ADX is below this level. 0 = always show the DI+/DI- direction. ADX measures trend strength, not direction."
+  },
+  {
+    "id": "mfiOn",
+    "type": "bool",
+    "title": "Turn Money Flow Index Label On/Off",
+    "default": true,
+    "group": "Money Flow Index Settings"
+  },
+  {
+    "id": "mfiOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 8,
+    "minval": 1,
+    "maxval": 9,
+    "group": "Money Flow Index Settings"
+  },
+  {
+    "id": "mfiLength",
+    "type": "int",
+    "title": "Money Flow Index Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Money Flow Index Settings"
+  },
+  {
+    "id": "fisherOn",
+    "type": "bool",
+    "title": "Turn Fisher Label On/Off",
+    "default": true,
+    "group": "Fisher Settings"
+  },
+  {
+    "id": "fisherOrder",
+    "type": "int",
+    "title": "Place On The List",
+    "default": 9,
+    "minval": 1,
+    "maxval": 9,
+    "group": "Fisher Settings"
+  },
+  {
+    "id": "fisherLength",
+    "type": "int",
+    "title": "Fisher Length",
+    "default": 14,
+    "minval": 2,
+    "maxval": 500,
+    "group": "Fisher Settings"
+  },
+  {
+    "id": "recommendation",
+    "type": "bool",
+    "title": "BULB",
+    "default": true,
+    "group": "BULB Signals"
+  },
+  {
+    "id": "bulbMode",
+    "type": "string",
+    "title": "Mode",
+    "default": "Moving (original)",
+    "options": [
+      "Moving (original)",
+      "Fixed (confirmed)"
+    ],
+    "group": "BULB Signals"
+  },
+  {
+    "id": "rsiLength1",
+    "type": "int",
+    "title": "RSI Length",
+    "default": 13,
+    "minval": 2,
+    "maxval": 500,
+    "group": "BULB Signals"
+  },
+  {
+    "id": "rsiOverbought",
+    "type": "int",
+    "title": "Overbought",
+    "default": 65,
+    "minval": 51,
+    "maxval": 100,
+    "group": "BULB Signals"
+  },
+  {
+    "id": "rsiOvesold",
+    "type": "int",
+    "title": "Oversold",
+    "default": 30,
+    "minval": 0,
+    "maxval": 49,
+    "group": "BULB Signals"
+  },
+  {
+    "id": "bulbAlternate",
+    "type": "bool",
+    "title": "Alternate Buy/Sell (Fixed mode)",
+    "default": true,
+    "group": "BULB Signals",
+    "tooltip": "Fixed mode only. Only allow a SELL after a BUY (and vice versa), so a strong trend does not print repeated counter-trend signals"
+  },
+  {
+    "id": "mal",
+    "type": "int",
+    "title": "SMA Length",
+    "default": 47,
+    "minval": 1,
+    "maxval": 500,
+    "group": "ATR Bands"
+  },
+  {
+    "id": "atrl",
+    "type": "int",
+    "title": "Atr Length",
+    "default": 89,
+    "minval": 1,
+    "maxval": 500,
+    "group": "ATR Bands"
+  },
+  {
+    "id": "atrm",
+    "type": "float",
+    "title": "Atr Multiplier",
+    "default": 3.0,
+    "minval": 0,
+    "step": 0.25,
+    "group": "ATR Bands"
+  },
+  {
+    "id": "bandWidth",
+    "type": "int",
+    "title": "Line Width",
+    "default": 1,
+    "minval": 1,
+    "maxval": 4,
+    "group": "ATR Bands"
+  }
+]
