@@ -39,3 +39,24 @@ export const THEME = {
   accent: '#2962ff',
   crosshair: '#758696',
 }
+
+/** HSV (h 0-360, s/v 0-1) <-> #RRGGBB, for the custom color picker. */
+export function hexToHsv(hex: string): { h: number; s: number; v: number } {
+  const s = hex.replace('#', '')
+  const r = parseInt(s.slice(0, 2), 16) / 255
+  const g = parseInt(s.slice(2, 4), 16) / 255
+  const b = parseInt(s.slice(4, 6), 16) / 255
+  const max = Math.max(r, g, b)
+  const d = max - Math.min(r, g, b)
+  let h = 0
+  if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return { h: (h * 60 + 360) % 360, s: max ? d / max : 0, v: max }
+}
+
+export function hsvToHex(h: number, s: number, v: number): string {
+  const f = (n: number) => {
+    const k = (n + h / 60) % 6
+    return Math.round((v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) * 255).toString(16).padStart(2, '0')
+  }
+  return `#${f(5)}${f(3)}${f(1)}`.toUpperCase()
+}

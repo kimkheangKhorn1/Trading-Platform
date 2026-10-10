@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { joinColor, splitColor } from '../../lib/colors'
+import { useState } from 'react'
 
 /** Number input that only commits valid values (keeps the text while typing). */
 export function NumberField({
@@ -65,34 +64,4 @@ export function Checkbox({ checked, onChange, label, title }: { checked: boolean
 
 export { Select } from './Select'
 
-/** TradingView-style color swatch with a popover (color + opacity). */
-export function ColorField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLSpanElement>(null)
-  const { hex, alpha } = splitColor(value)
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    window.addEventListener('mousedown', close)
-    return () => window.removeEventListener('mousedown', close)
-  }, [open])
-  return (
-    <span className="color-field" ref={ref}>
-      <button className="swatch" style={{ ['--c' as string]: `${hex}${Math.round(alpha * 255).toString(16).padStart(2, '0')}` }}
-        onClick={() => setOpen(!open)} aria-label="Pick color" />
-      {open ? (
-        <div className="color-pop">
-          <input type="color" value={hex} onChange={(e) => onChange(joinColor(e.target.value, alpha))} aria-label="Color" />
-          <label className="opacity">
-            <span>Opacity</span>
-            <input type="range" min={0} max={100} value={Math.round(alpha * 100)}
-              onChange={(e) => onChange(joinColor(hex, Number(e.target.value) / 100))} />
-            <span className="mono">{Math.round(alpha * 100)}%</span>
-          </label>
-        </div>
-      ) : null}
-    </span>
-  )
-}
+export { ColorField } from './ColorPicker'
