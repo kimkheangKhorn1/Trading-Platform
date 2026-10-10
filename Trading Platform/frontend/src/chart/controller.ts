@@ -296,6 +296,8 @@ export class ChartController {
           lineWidth: style.linewidth as 1 | 2 | 3 | 4,
           lineStyle: LW_STYLE[style.linestyle] ?? LwLineStyle.Solid,
           title: '',
+          // TradingView shows each plot's latest value on the price scale in the plot's color
+          lastValueVisible: true,
         })
         const colors = colorsByPlot.get(p.id)
         const data: (LineData | WhitespaceData)[] = []
