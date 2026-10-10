@@ -404,7 +404,7 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
 .input-help-col { display: flex; justify-content: center; }
 .tip-icon {
   display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
-  color: var(--muted); background: none; border: 0; border-radius: 50%; cursor: help;
+  color: var(--muted); background: none; border: 0; border-radius: 50%; cursor: pointer;
 }
 .tip-icon:hover, .tip-icon:focus-visible, .tip-icon[aria-expanded='true'] { color: var(--accent); background: rgba(41, 98, 255, 0.12); }
 .tip-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

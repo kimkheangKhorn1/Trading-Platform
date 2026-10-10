@@ -160,7 +160,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
 
   hitTest(x: number, y: number): PrimitiveHoveredItem | null {
     const h = this.hit(x, y)
-    return h ? { externalId: h.tradeId ?? 'overlay', zOrder: 'top', cursorStyle: h.tradeId ? 'pointer' : 'help' } : null
+    return h ? { externalId: h.tradeId ?? 'overlay', zOrder: 'top', cursorStyle: 'pointer' } : null
   }
 
   /** Topmost tooltip region under the cursor (media coordinates). */
