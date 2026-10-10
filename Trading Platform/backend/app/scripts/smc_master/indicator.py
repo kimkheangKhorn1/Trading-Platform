@@ -31,6 +31,7 @@ class Zone:
     pending_bottom: float=NAN
     near_time: int|None=None
     identity: int=0
+    box_left: int|None=None  # where the current box starts: the pivot, or the last role-flip break (Pine)
 
 class SmcMaster(Script):
     meta=META
@@ -275,11 +276,13 @@ class SmcMaster(Script):
                     up+=int(ub); dn+=int(db); falsedn|=fd; falseup|=fu
                     if fd or fu: z.pending_bar=None; z.pending_dir=0
                     else: z.pending_bar=n; z.pending_dir=1 if ub else -1; z.pending_top=z.top; z.pending_bottom=z.bottom
-                    # A role flip recolors this same pivot zone from its original pivot.
-                    # Retiring/recreating it here split one zone into detached historical pieces.
+                    # As in the Pine source: a break ends the box at this bar in its old role's color (history stays
+                    # truthful) and the zone continues from this bar in a new box with the new role's color.
+                    if z.box: z.box.right=ctx.time
+                    self.retire(ctx,z); z.box_left=ctx.time
                     z.side=1 if ub else -1
             col=p['bullBorder' if z.side==1 else 'bearBorder']; bg=p['bullBgCol' if z.side==1 else 'bearBgCol']
-            if not z.box: z.box=ctx.box(left=z.origin,right=ctx.time,top=z.top,bottom=z.bottom,border_color=col,bg_color=bg,extend='right' if p['extend'] else 'none',group='pivot_sr',tooltip=f'Pivot S/R #{z.identity}')
+            if not z.box: z.box=ctx.box(left=z.origin if z.box_left is None else z.box_left,right=ctx.time,top=z.top,bottom=z.bottom,border_color=col,bg_color=bg,extend='right' if p['extend'] else 'none',group='pivot_sr',tooltip=f'Pivot S/R #{z.identity}')
             z.box.right=ctx.time; z.box.border_color=col; z.box.bg_color=bg
         active=self.pivots[0]+self.pivots[1]; touched=[z for z in active if l<=z.top and h>=z.bottom]
         bull=any(z.side==1 for z in touched) and not any(z.side==-1 for z in touched); bear=any(z.side==-1 for z in touched) and not any(z.side==1 for z in touched)

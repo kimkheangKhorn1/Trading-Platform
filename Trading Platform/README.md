@@ -40,11 +40,11 @@ The original Pine file at the repository root is kept unchanged as the reference
 - **Verified:** runs on the Dukascopy feed on every chart timeframe (1m–1D). Previous D/W/M highs and
   lows match values computed independently from the daily candles. Live updates and replay steps
   produce the same output as a fresh full run (`backend/tests/test_smc_master.py`).
-- **Pivot S/R display:** each zone keeps one continuous box anchored to its original pivot. A confirmed
-  close above resistance recolors that box as support; a close below support recolors it as resistance.
-  Wick-only penetrations and still-forming candles do not change its role. Break/reclaim markers keep
-  their existing rules. This requested display behavior replaces the split historical segments in the
-  preserved Pine reference; genuinely new pivots and aged-out zone history remain separate zones.
+- **Pivot S/R display:** as in the Pine source, a confirmed close through a zone splits its box at that
+  candle: the part before the break keeps the old role's color and the zone continues from the break in
+  the new role's color (close below support: blue, then yellow; close above resistance: yellow, then
+  blue). History therefore shows what the zone was at the time. Wick-only penetrations and
+  still-forming candles do not change its role. Break/reclaim markers keep their existing rules.
 - **Not verified:** no TradingView-exported comparison data exists yet, so bar-by-bar parity with the
   Pine original (structure, zones, patterns, dashboard values) is unconfirmed. Weekly/monthly candles
   are built from the feed's daily candles (week opens Sunday 17:00 New York), which can differ from

@@ -1,4 +1,5 @@
-"""Pivot S/R display lifecycle: one continuous box per zone through confirmed role flips."""
+"""Pivot S/R display lifecycle, as in the Pine source: a confirmed role flip ends the zone's box at the break bar
+in its old color and continues the zone in a new box, in the new color, from that bar."""
 import numpy as np
 import pytest
 
@@ -37,7 +38,7 @@ def pivot_boxes(r):
 
 
 @pytest.mark.parametrize("extend", [False, True])
-def test_breaks_and_reclaims_recolor_one_box_from_original_pivot(extend):
+def test_breaks_split_the_box_old_role_left_new_role_right(extend):
     bars = bars_from_ohlc([
         (100, 100.5, 99.5, 100),
         (100, 103, 99.5, 100.5),  # wick above resistance, close still inside
@@ -49,20 +50,24 @@ def test_breaks_and_reclaims_recolor_one_box_from_original_pivot(extend):
         (99, 100, 97, 98),  # support becomes resistance (full reclaim)
         (98, 103, 97, 102),  # resistance becomes support again
     ])
+    t = [int(x) for x in bars.time]
     r = runner(extend=extend, lookback=10)
-    original_id = None
-    for k, side in enumerate([-1, -1, -1, 1, 1, 1, 1, -1, 1], start=1):
+    color = lambda side: (r.script.p["bullBorder" if side == 1 else "bearBorder"], r.script.p["bullBgCol" if side == 1 else "bearBgCol"])
+    sides = [-1, -1, -1, 1, 1, 1, 1, -1, 1]
+    for k, side in enumerate(sides, start=1):
         r.process(bars.slice(0, k))
-        [box] = pivot_boxes(r)
-        original_id = original_id or box["id"]
-        assert box["id"] == original_id
-        assert (box["left"], box["top"], box["bottom"]) == (int(bars.time[0]), 101, 99)
-        assert box["right"] == int(bars.time[k - 1])
-        assert box["extend"] == ("right" if extend else "none")
-        assert box["border_color"] == r.script.p["bullBorder" if side == 1 else "bearBorder"]
-        assert box["bg_color"] == r.script.p["bullBgCol" if side == 1 else "bearBgCol"]
+        boxes = sorted(pivot_boxes(r), key=lambda b: b["left"])
+        breaks = [i for i in range(1, k) if sides[i] != sides[i - 1]]
+        # one segment per role: from the pivot (or a break) to the next break, which it shares with the next segment
+        starts = [t[0]] + [t[i] for i in breaks]
+        ends = [t[i] for i in breaks] + [t[k - 1]]
+        assert [(b["left"], b["right"]) for b in boxes] == list(zip(starts, ends))
+        roles = [sides[0]] + [sides[i] for i in breaks]
+        assert [(b["border_color"], b["bg_color"]) for b in boxes] == [color(x) for x in roles]
+        assert all((b["top"], b["bottom"]) == (101, 99) for b in boxes)
+        assert [b["extend"] for b in boxes] == ["none"] * (len(boxes) - 1) + ["right" if extend else "none"]
         assert r.script.pivots[0][0].side == side
-        assert r.script.retired == []
+        assert len(r.script.retired) == len(breaks)
     out = r.output()
     assert [(h["up"], h["dn"]) for h in r.script.pivot_history] == [(0, 0), (0, 0), (0, 0), (1, 0), (0, 0), (0, 0), (0, 0), (0, 1), (1, 0)]
     assert len(out["shapes"]["resistance_break"]) == 2
@@ -70,6 +75,7 @@ def test_breaks_and_reclaims_recolor_one_box_from_original_pivot(extend):
 
 
 def test_forming_candle_cannot_recolor_or_split_zone():
+    """A still-forming candle never splits or recolors a zone; only its confirmed close does."""
     committed = bars_from_ohlc([(100, 100.5, 99.5, 100)])
     r = runner()
     r.process(committed)
@@ -87,9 +93,11 @@ def test_forming_candle_cannot_recolor_or_split_zone():
         assert r.script.retired == []
     closed = bars_from_ohlc([(100, 100.5, 99.5, 100), (100, 104, 97, 103)])
     r.process(closed)
-    [box] = pivot_boxes(r)
-    assert box["id"] == before["id"] and box["left"] == before["left"]
-    assert box["border_color"] == r.script.p["bullBorder"]
+    # only the confirmed close splits it: the old box ends at the break in the old color, a new one starts there
+    old, new = sorted(pivot_boxes(r), key=lambda b: b["left"])
+    assert old["id"] == before["id"] and old["left"] == before["left"] and old["right"] == int(closed.time[1])
+    assert old["border_color"] == r.script.p["bearBorder"]
+    assert new["left"] == int(closed.time[1]) and new["border_color"] == r.script.p["bullBorder"]
     full = runner()
     full.process(closed)
     assert r.output() == full.output()
