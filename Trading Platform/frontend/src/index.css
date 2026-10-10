@@ -351,12 +351,59 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
   margin: 16px 0 8px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px;
 }
 .settings-body { padding-top: 6px; min-height: 260px; }
-.input-group:first-child .group-title { margin-top: 10px; }
-.input-row { display: flex; align-items: center; gap: 14px; min-height: 38px; flex-wrap: wrap; }
-.input-cell { display: inline-flex; align-items: center; gap: 8px; }
-.input-cell.first .input-label { min-width: 200px; }
+.inputs-toolbar {
+  position: sticky; top: -4px; z-index: 2; display: flex; align-items: center; gap: 10px;
+  margin: 0 -20px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--border);
+}
+.settings-search {
+  flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; height: 34px; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border-2); border-radius: 4px;
+}
+.settings-search:focus-within { border-color: var(--accent); }
+.settings-search .input { flex: 1; border: 0; background: transparent; padding: 0; height: 32px; outline: none; }
+.inputs-empty { padding: 24px 0; text-align: center; }
+.input-group { border-bottom: 1px solid var(--border); }
+.group-head {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 0 10px; background: none; border: 0;
+  cursor: pointer; color: var(--muted); text-align: left; font: inherit;
+}
+.group-head:hover:not(:disabled), .group-head:focus-visible { color: var(--text-strong); }
+.group-head:disabled { cursor: default; }
+.group-head .group-title { margin: 0; flex: 1; color: inherit; }
+.group-count { font-size: 11px; color: var(--muted); background: var(--bg); border-radius: 8px; padding: 1px 7px; }
+.input-group.open { padding-bottom: 8px; }
+.input-row {
+  display: grid; grid-template-columns: 230px minmax(0, 1fr) 24px; align-items: center; column-gap: 12px;
+  min-height: 40px; padding: 3px 6px; margin: 0 -6px; border-radius: 4px;
+}
+.input-row:hover { background: rgba(255, 255, 255, 0.025); }
+.input-label-col { min-width: 0; }
 .input-label { color: var(--text); }
-.tip-icon { color: var(--muted); display: inline-flex; cursor: help; }
+.input-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.input-cell { display: inline-flex; align-items: center; gap: 6px; }
+.cell-label { color: var(--muted); font-size: 12px; }
+.input-help-col { display: flex; justify-content: center; }
+.tip-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0;
+  color: var(--muted); background: none; border: 0; border-radius: 50%; cursor: help;
+}
+.tip-icon:hover, .tip-icon:focus-visible, .tip-icon[aria-expanded='true'] { color: var(--accent); background: rgba(41, 98, 255, 0.12); }
+.tip-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.help-card {
+  position: fixed; z-index: 1100; padding: 12px 14px; pointer-events: none; font-size: 12.5px; line-height: 1.5;
+  background: #131722; color: var(--text); border: 1px solid var(--border-2); border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.help-title { font-weight: 600; color: var(--text-strong); margin-bottom: 4px; }
+.help-about { margin: 0; white-space: pre-line; }
+.help-example { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--accent); background: rgba(41, 98, 255, 0.08); border-radius: 0 4px 4px 0; }
+.help-example-label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+.help-example p { margin: 0; }
+@media (max-width: 640px) {
+  .input-row { grid-template-columns: minmax(0, 1fr) 24px; row-gap: 6px; padding: 6px; }
+  .input-controls { grid-column: 1; }
+  .input-help-col { grid-row: 1; grid-column: 2; }
+}
 .style-row { display: flex; align-items: center; gap: 10px; min-height: 40px; border-bottom: 1px solid rgba(42, 46, 57, 0.6); }
 .search-box {
   display: flex; align-items: center; gap: 8px; padding: 0 10px; margin-bottom: 8px;

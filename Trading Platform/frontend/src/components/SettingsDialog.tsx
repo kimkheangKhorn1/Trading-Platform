@@ -7,6 +7,14 @@ import { Modal, Tabs } from './common/Modal'
 import { InputsForm } from './InputsForm'
 
 type Tab = 'inputs' | 'style' | 'visibility'
+const SHAPE_NAMES: Record<string, string> = {
+  arrowup: 'Arrow up', arrowdown: 'Arrow down', triangleup: 'Triangle up', triangledown: 'Triangle down',
+  circle: 'Circle', cross: 'Cross', xcross: 'X', diamond: 'Diamond', square: 'Square', flag: 'Flag',
+  labelup: 'Label up', labeldown: 'Label down',
+}
+const LOCATION_NAMES: Record<string, string> = {
+  abovebar: 'above bar', belowbar: 'below bar', top: 'top', bottom: 'bottom', absolute: 'at price',
+}
 
 /**
  * Indicator settings (Inputs / Style / Visibility). Like TradingView, edits apply to the chart
@@ -29,7 +37,7 @@ export function SettingsDialog({ uid }: { uid: string }) {
   const reset = () => replace({ ...inst, ...defaultsFor(meta), uid: inst.uid, visible: inst.visible })
 
   return (
-    <Modal title={meta.name} onClose={cancel} width={560} className="settings-dialog"
+    <Modal title={meta.name} onClose={cancel} width={680} className="settings-dialog"
       footer={
         <>
           <button className="btn ghost" onClick={reset} title="Restore the script's default inputs and styles">Defaults</button>
@@ -56,7 +64,7 @@ export function SettingsDialog({ uid }: { uid: string }) {
                   <Checkbox checked={st.visible} onChange={(v) => set({ visible: v })} label={p.title} />
                   <div className="grow" />
                   <ColorField value={st.color} onChange={(c) => set({ color: c })} />
-                  <Select value={st.linewidth} ariaLabel="Line width" width={64}
+                  <Select value={st.linewidth} ariaLabel="Line width" width={78}
                     options={[1, 2, 3, 4].map((w) => ({ value: w, label: `${w}px` }))} onChange={(w) => set({ linewidth: w })} />
                   <Select<LineStyle> value={st.linestyle} ariaLabel="Line style" width={92}
                     options={[{ value: 'solid', label: 'Solid' }, { value: 'dashed', label: 'Dashed' }, { value: 'dotted', label: 'Dotted' }]}
@@ -71,7 +79,7 @@ export function SettingsDialog({ uid }: { uid: string }) {
                   <Checkbox checked={st.visible} label={s.title}
                     onChange={(v) => patch({ shapeStyles: { ...inst.shapeStyles, [s.id]: { ...st, visible: v } } })} />
                   <div className="grow" />
-                  <span className="muted small">{s.shape} · {s.location}</span>
+                  <span className="muted small">{SHAPE_NAMES[s.shape] ?? s.shape} · {LOCATION_NAMES[s.location] ?? s.location}</span>
                   <ColorField value={st.color} onChange={(c) => patch({ shapeStyles: { ...inst.shapeStyles, [s.id]: { ...st, color: c } } })} />
                 </div>
               )

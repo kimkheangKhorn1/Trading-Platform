@@ -3,7 +3,12 @@ import json
 from pathlib import Path
 from ...engine.inputs import DrawingGroup, InputSpec, PlotSpec, ScriptMeta, ShapeSpec
 
-INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is not None else None}) for s in json.loads(Path(__file__).with_name('inputs.json').read_text())]
+# help.json (hand-written: plain explanation + example per settings row) is kept apart from the extracted inputs.json
+HELP=json.loads(Path(__file__).with_name('help.json').read_text())
+INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is not None else None,
+                     'title':HELP.get(s['id'],{}).get('label',s['title']),
+                     'help':HELP.get(s['id'],{}).get('about'), 'example':HELP.get(s['id'],{}).get('example')})
+        for s in json.loads(Path(__file__).with_name('inputs.json').read_text())]
 SHAPES=[
     ('breakout','Pivot breakout','arrowup','belowbar','upCol'),
     ('breakdown','Pivot breakdown','arrowdown','abovebar','dnCol'),

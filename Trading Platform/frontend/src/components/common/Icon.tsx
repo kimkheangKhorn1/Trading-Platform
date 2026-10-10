@@ -6,6 +6,7 @@ const PATHS: Record<string, string> = {
   plus: 'M9 3v12M3 9h12',
   chevronDown: 'M5 7l4 4 4-4',
   chevronUp: 'M5 11l4-4 4 4',
+  chevronRight: 'M7 5l4 4-4 4',
   play: 'M6 4v10l8-5Z',
   pause: 'M6 4v10M12 4v10',
   step: 'M5 4v10l7-5ZM14 4v10',

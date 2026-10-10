@@ -72,6 +72,9 @@ export interface InputSpec {
   group: string | null
   inline: string | null
   tooltip: string | null
+  /** plain-language explanation and a worked example, shown in the settings help card */
+  help?: string | null
+  example?: string | null
 }
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted'

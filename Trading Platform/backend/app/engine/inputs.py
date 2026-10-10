@@ -34,6 +34,9 @@ class InputSpec:
     group: str | None = None
     inline: str | None = None
     tooltip: str | None = None
+    # plain-language help for the settings dialog: what the input does, and a worked example
+    help: str | None = None
+    example: str | None = None
 
     def validate(self, value: Any) -> Any:
         t = self.type

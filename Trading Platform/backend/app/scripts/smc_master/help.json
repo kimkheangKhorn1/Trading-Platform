@@ -1,0 +1,718 @@
+{
+ "mode": {
+  "label": "Mode",
+  "about": "Historical keeps every structure label (BOS / CHoCH) the indicator has found. Present shows only the most recent ones, so the chart stays clean.",
+  "example": "Scrolling back a week to study how gold trended → Historical. Live scalping where only the current structure matters → Present."
+ },
+ "style": {
+  "label": "Style",
+  "about": "Color theme for the structure drawings. Colored uses the bullish/bearish colors you pick below; Monochrome draws everything in grays.",
+  "example": "Monochrome is useful when you also run other colorful indicators and want SMC structure to stay in the background."
+ },
+ "show_trend": {
+  "about": "Paints the candles with the internal structure trend: bullish color while structure is bullish, bearish color while it is bearish. A filled candle closed with the trend; a hollow candle is a pullback.",
+  "example": "Gold breaks internal structure up at 2,610 → candles turn the Bullish Structure color (blue) until a bearish break turns them yellow."
+ },
+ "aoi_max_dist": {
+  "about": "Hides zones far outside the recent range (highest high to lowest low of the last 120 bars). Zones more than this number × that range above the high or below the low are hidden. 0 turns the filter off.",
+  "example": "Recent range 2,560–2,600 (40 points) and 0.2 → zones above 2,608 or below 2,552 are hidden."
+ },
+ "show_internals": {
+  "about": "Shows internal (minor) market structure: the small BOS and CHoCH breaks inside the bigger swing.",
+  "example": "On a 5m chart this marks the small breaks you would scalp; turn it off to see only the major swing structure."
+ },
+ "show_ibull": {
+  "about": "Which bullish internal breaks to draw, and their color. BOS = break of structure (trend continues). CHoCH = change of character (trend flips).",
+  "example": "Choose CHoCH to see only the first bullish break after a downtrend, the typical early reversal signal."
+ },
+ "show_ibear": {
+  "about": "Which bearish internal breaks to draw, and their color. BOS = trend continues down. CHoCH = the trend flips from up to down.",
+  "example": "Choose BOS to see only bearish continuation breaks while gold is already falling."
+ },
+ "ilength": {
+  "about": "How many bars on each side confirm a minor (internal) swing high or low. Smaller = more, faster swings; larger = fewer, cleaner swings. It is always kept below Swing Length.",
+  "example": "5 → a high counts as an internal swing once 5 bars on its right fail to go above it."
+ },
+ "ifilter_confluence": {
+  "about": "Ignores weak internal breaks. A bullish break only counts when the breakout candle closes in the upper half of its range (bearish: lower half), so wick fakeouts are skipped.",
+  "example": "A candle spikes above the high to 2,615 but closes near its low at 2,606 → with the filter on, no BOS is drawn."
+ },
+ "show_Structure": {
+  "about": "Shows swing (major) market structure: the main BOS and CHoCH breaks of the larger trend.",
+  "example": "On the 1H chart this shows the trend a day trader follows; internal structure shows the smaller moves inside it."
+ },
+ "show_bull": {
+  "about": "Which bullish swing breaks to draw, and their color. BOS = trend continues up. CHoCH = the trend flips from down to up.",
+  "example": "All shows both. CHoCH only highlights the moment the higher-timeframe trend turned bullish."
+ },
+ "show_bear": {
+  "about": "Which bearish swing breaks to draw, and their color. BOS = trend continues down. CHoCH = the trend flips from up to down.",
+  "example": "Pick CHoCH to be alerted visually only when the major uptrend breaks."
+ },
+ "show_swings": {
+  "about": "Labels swing points HH / HL / LH / LL. The number is the Swing Length: how many bars on each side confirm a major swing point.",
+  "example": "Length 25 on 15m → a swing high needs 25 bars (about 6 hours) on its right that stay below it. HH = higher high, LL = lower low."
+ },
+ "show_hl_swings": {
+  "about": "Marks the latest strong and weak highs and lows. A weak high is likely to be taken out (liquidity); a strong high protects the trend.",
+  "example": "In an uptrend the latest high is Weak (target above it) and the low that started the move is Strong (break below = trend in doubt)."
+ },
+ "show_iob": {
+  "about": "Shows internal order blocks: the last opposite candle before a move that broke internal structure. The number is how many of the nearest ones to keep.",
+  "example": "3 → only the 3 internal order blocks closest to the current price are drawn."
+ },
+ "show_ob": {
+  "about": "Shows swing order blocks: the last opposite candle before a move that broke swing structure. The number is how many of the nearest ones to keep.",
+  "example": "A bullish swing OB at 2,588–2,592 is where price may bounce on a retest after the break."
+ },
+ "ob_filter": {
+  "about": "How very large (volatile) candles are kept from becoming order blocks. Atr compares the candle to ATR(200); Cumulative Mean Range compares it to the average range so far, which works better with little history.",
+  "example": "A news candle 3× the normal size is skipped as an OB source, so the block is not oversized."
+ },
+ "ob_candle": {
+  "about": "Which candle becomes the order block. Opposite Candle (ICT): the last down candle before a bullish displacement (up candle before a bearish one). Extreme Candle (LuxAlgo): the candle with the lowest low / highest high of the leg.",
+  "example": "ICT style: three red candles then a big green displacement breaks structure → the last red candle is the bullish OB."
+ },
+ "ob_disp_mult": {
+  "about": "ICT mode only. The breakout candle must have a body at least this many ATR(14) in the break direction to count as displacement.",
+  "example": "ATR = 4 points and value 1.0 → the displacement candle body must be at least 4 points."
+ },
+ "ibull_ob_css": {
+  "about": "Fill color of internal bullish order blocks. Keep it transparent so candles stay visible.",
+  "example": "Blue at about 20% opacity."
+ },
+ "ibear_ob_css": {
+  "about": "Fill color of internal bearish order blocks.",
+  "example": "Red at about 20% opacity."
+ },
+ "bull_ob_css": {
+  "about": "Fill color of swing bullish order blocks.",
+  "example": "A darker blue than internal OBs, so major blocks stand out."
+ },
+ "bear_ob_css": {
+  "about": "Fill color of swing bearish order blocks.",
+  "example": "A darker red than internal OBs."
+ },
+ "show_eq": {
+  "about": "Marks equal highs (EQH) and equal lows (EQL): two highs or lows at almost the same price. Stops tend to sit beyond them, so they act as liquidity targets.",
+  "example": "Two highs at 2,631.2 and 2,631.5 → EQH line; price often runs above it to take stops before reversing."
+ },
+ "eq_len": {
+  "about": "How many bars confirm each high/low used for equal-high/low detection.",
+  "example": "5 → each of the two highs needs 5 bars on its right that stay below it."
+ },
+ "eq_threshold": {
+  "about": "How close two highs (or lows) must be to count as equal, as a fraction of ATR. Lower = stricter, fewer but better matches.",
+  "example": "ATR = 5 points and 0.1 → highs within 0.5 point count as equal."
+ },
+ "show_fvg": {
+  "about": "Shows fair value gaps: a 3-candle imbalance where candle 1 and candle 3 do not overlap. Price often comes back to fill them.",
+  "example": "Candle 1 high 2,600, candle 3 low 2,604 → a bullish FVG box from 2,600 to 2,604."
+ },
+ "fvg_auto": {
+  "about": "Skips small gaps. The middle candle of the gap must move (open to close, in %) more than twice the average candle move so far.",
+  "example": "Average candle move 0.05% → only gaps whose middle candle moved more than 0.10% (about 2.6 points at 2,600) are drawn."
+ },
+ "fvg_tf": {
+  "about": "Timeframe used to find fair value gaps. Chart = the current timeframe. A higher timeframe shows its gaps on your chart; a lower one falls back to the chart timeframe.",
+  "example": "Trading on 5m with Timeframe 1H → you see the 1H gaps, which are stronger levels."
+ },
+ "bull_fvg_css": {
+  "about": "Fill color of bullish fair value gaps.",
+  "example": "Green at about 30% opacity."
+ },
+ "bear_fvg_css": {
+  "about": "Fill color of bearish fair value gaps.",
+  "example": "Red at about 30% opacity."
+ },
+ "fvg_extend": {
+  "about": "How many bars the FVG boxes reach past the current bar.",
+  "example": "5 → each gap box ends 5 bars to the right of the latest candle."
+ },
+ "fvg_extend_active": {
+  "about": "Keeps unfilled gaps stretched to the current bar. A gap is removed once price fills it completely.",
+  "example": "Off → each gap stays only as wide as its 3 candles; on → it follows price until filled."
+ },
+ "fvg_max_active": {
+  "about": "Maximum unfilled gaps kept on each side (bullish and bearish). Older ones are removed first.",
+  "example": "5 → at most 5 bullish and 5 bearish open gaps on the chart."
+ },
+ "show_pdhl": {
+  "about": "Draws the previous day's high and low (PDH / PDL) with the line style and color you pick.",
+  "example": "Yesterday's high was 2,624 → a PDH line at 2,624, a common target and reaction level."
+ },
+ "show_pwhl": {
+  "about": "Draws the previous week's high and low (PWH / PWL).",
+  "example": "Last week's low 2,571 → a PWL line; a sweep below it and a quick reclaim is a classic ICT setup."
+ },
+ "show_pmhl": {
+  "about": "Draws the previous month's high and low (PMH / PML). Needs at least one completed month of data in the feed.",
+  "example": "Last month's high 2,685 → a PMH line far above, a long-term target."
+ },
+ "show_sd": {
+  "about": "Shades premium (top), equilibrium (middle) and discount (bottom) of the current swing range. ICT idea: buy in discount, sell in premium.",
+  "example": "Swing range 2,560–2,620 → above 2,590 is premium, below 2,590 is discount."
+ },
+ "premium_css": {
+  "about": "Color of the premium zone (upper part of the range, expensive prices).",
+  "example": "Yellow at low opacity."
+ },
+ "eq_css": {
+  "about": "Color of the equilibrium zone (around the 50% level of the range).",
+  "example": "Gray at low opacity."
+ },
+ "discount_css": {
+  "about": "Color of the discount zone (lower part of the range, cheap prices).",
+  "example": "Cyan at low opacity."
+ },
+ "ds_mode": {
+  "about": "How demand/supply distances are measured. ATR: multiples of ATR(14), adapts to volatility and works on every timeframe. Percent: fixed percentages of price (the original settings).",
+  "example": "ATR is recommended for gold: 1 ATR is about 1.5 points on 1m and about 30 points on 1D, so one setting fits both."
+ },
+ "ds_min_atr": {
+  "about": "ATR mode. A demand/supply zone is created once price moves away from the base candle by at least this many ATRs.",
+  "example": "ATR = 4 points and 2.0 → price must run 8 points away from the base candle to create a zone."
+ },
+ "ds_max_atr": {
+  "about": "ATR mode. Zones taller than this many ATRs are trimmed toward the base candle.",
+  "example": "ATR = 4 and 1.0 → a zone is at most 4 points tall."
+ },
+ "ds_line_atr": {
+  "about": "ATR mode. Lines are shown for active zones within this many ATRs of the close.",
+  "example": "ATR = 4 and 10 → only zones within 40 points of price get a line."
+ },
+ "ds_min_pc_change": {
+  "about": "Percent mode. Minimum % move away from the base candle to create a zone.",
+  "example": "0.05% of 2,600 = 1.3 points; a rally of at least 1.3 points creates a demand zone."
+ },
+ "ds_max_pc_zone": {
+  "about": "Percent mode. Maximum zone height as a % of price; taller zones are trimmed toward the base candle.",
+  "example": "0.05% of 2,600 → zones at most 1.3 points tall."
+ },
+ "ds_line_pc_display": {
+  "about": "Percent mode. Lines are drawn for active zones when the close is within this % of them. Max line = how many lines per zone type.",
+  "example": "3% and Max line 3 → up to 3 demand and 3 supply lines, only for zones within 3% (about 78 points) of price."
+ },
+ "ds_max_zones": {
+  "about": "Maximum stored zones per type. The oldest tested or invalidated zones are removed first.",
+  "example": "100 → up to 100 demand and 100 supply zones kept in history."
+ },
+ "ds_hours_offset": {
+  "about": "Hours added to the times shown in zone label tooltips, for when you read times in a zone other than UTC.",
+  "example": "You are in Cambodia (UTC+7) → set 7 so a zone shows 21:00 instead of 14:00."
+ },
+ "showDemandZone": {
+  "about": "Shows demand zones (areas where buyers pushed price up) with their border and background colors. Solid = fresh, dotted = tested by a wick, dashed gray = invalidated by a close below.",
+  "example": "Gold rallies hard from 2,575 → a demand zone at the base; the first retest is the classic buy area."
+ },
+ "showSupplyZone": {
+  "about": "Shows supply zones (areas where sellers pushed price down) with their border and background colors. Solid = fresh, dotted = tested by a wick, dashed gray = invalidated by a close above.",
+  "example": "Gold drops sharply from 2,630 → a supply zone at the base; the first retest is the classic sell area."
+ },
+ "dsAlertDemand": {
+  "about": "Which zone types raise alerts: Hit (price touches an active zone) and Near (price approaches it). Alert conditions are calculated but not yet delivered anywhere in this app.",
+  "example": "Only Demand on → you would be alerted when price falls into or near a demand zone, never for supply."
+ },
+ "ds_alert_mins_no_repeat": {
+  "about": "Minutes to wait before repeating the same alert for the same zone. 0 turns this off; max 120.",
+  "example": "60 → if price keeps poking the same zone, you get at most one alert per hour for it."
+ },
+ "ds_alerts_pc_near": {
+  "about": "Percent mode. A Near alert fires when the high or low is within this % of a zone. Max 5%.",
+  "example": "1.5% of 2,600 = 39 points away counts as near."
+ },
+ "ds_near_atr": {
+  "about": "ATR mode. A Near alert fires when the high or low is within this many ATRs of a zone.",
+  "example": "ATR = 4 and 1.0 → within 4 points of the zone counts as near."
+ },
+ "left": {
+  "about": "Bars to the left that a pivot must beat to become a support/resistance zone. Higher = fewer, more important pivots.",
+  "example": "20 → a high must be the highest of the previous 20 bars."
+ },
+ "right": {
+  "about": "Bars to the right that must confirm the pivot. Higher = more reliable but appears later.",
+  "example": "10 on 15m → a pivot is confirmed 10 bars (2.5 hours) after it formed."
+ },
+ "nPiv": {
+  "about": "How many pivot highs and lows are tracked at the same time.",
+  "example": "2 → the latest 2 resistance and 2 support zones are kept."
+ },
+ "atrLen": {
+  "about": "Bars used to average the ATR that sets the zone width, so zones look similar across timeframes.",
+  "example": "30 → ATR over the last 30 candles."
+ },
+ "mult": {
+  "about": "Zone thickness as a multiple of ATR.",
+  "example": "ATR = 6 points and 0.5 → each zone is 3 points tall."
+ },
+ "per": {
+  "about": "Maximum zone height as a % of price, to stop huge zones during very volatile moves.",
+  "example": "5% of 2,600 = 130 points maximum height."
+ },
+ "max": {
+  "about": "How many candle-pattern boxes are kept. More pattern boxes leave fewer drawing slots for pivot zones far back in history.",
+  "example": "10 → only the latest 10 pattern boxes stay on the chart."
+ },
+ "fut": {
+  "about": "How many bars to the right of the last candle the price-level labels are placed.",
+  "example": "30 → level labels sit 30 bars to the right, in the empty space after the latest candle."
+ },
+ "src": {
+  "about": "Which prices form the pivots. High/Low Body: candle bodies (ignores wicks). High/Low: full wicks. HA: smoothed Heikin-Ashi bodies.",
+  "example": "Gold often wicks through levels → Body ignores those spikes and gives tighter zones."
+ },
+ "alignZones": {
+  "about": "Merges a new zone into an existing one when their edges overlap, so a level that holds again and again becomes one stronger zone.",
+  "example": "Support at 2,580–2,583 forms again at 2,582–2,585 → one zone that gets brighter each time it holds."
+ },
+ "extend": {
+  "about": "Extends current pivot zones to the right edge of the chart.",
+  "example": "On → today's support box keeps going right so you can see it as price approaches."
+ },
+ "lLab": {
+  "about": "Shows price labels on the key-level lines extended off pivot zones.",
+  "example": "A label reading 2,602.40 at the right end of a resistance line."
+ },
+ "dhighs": {
+  "about": "Tracks pivot highs (resistance). Off = no resistance zones are created.",
+  "example": "Turn off when you only want to see support below price."
+ },
+ "dlows": {
+  "about": "Tracks pivot lows (support). Off = no support zones are created.",
+  "example": "Turn off when you only want to see resistance above price."
+ },
+ "detectBO": {
+  "about": "Arrow below the bar when price breaks above ALL tracked pivots: a strong breakout.",
+  "example": "Close at 2,632 above every tracked resistance → breakout arrow."
+ },
+ "detectBD": {
+  "about": "Arrow above the bar when price breaks below ALL tracked pivots: a strong breakdown.",
+  "example": "Close at 2,548 below every tracked support → breakdown arrow."
+ },
+ "breakUp": {
+  "about": "Arrow when price closes above a resistance zone.",
+  "example": "Resistance 2,610–2,613, close at 2,615 → resistance-break arrow."
+ },
+ "breakDn": {
+  "about": "Arrow when price closes below a support zone.",
+  "example": "Support 2,580–2,583, close at 2,577 → support-break arrow."
+ },
+ "falseBull": {
+  "about": "Bear trap: price closes below support, then quickly closes back above it. Often leads to a fast move up.",
+  "example": "Close at 2,576 under support 2,580, next bar closes at 2,584 → false-breakdown arrow."
+ },
+ "falseBear": {
+  "about": "Bull trap: price closes above resistance, then quickly closes back below it. Often leads to a fast move down.",
+  "example": "Close at 2,616 over resistance 2,613, next bar closes at 2,609 → false-breakup arrow."
+ },
+ "supPush": {
+  "about": "Triangle under up candles that form inside a support zone: support is holding.",
+  "example": "A green candle closes inside support 2,580–2,583 → triangle below it."
+ },
+ "resPush": {
+  "about": "Triangle over down candles that form inside a resistance zone: resistance is holding.",
+  "example": "A red candle closes inside resistance 2,610–2,613 → triangle above it."
+ },
+ "curl": {
+  "about": "Marks a TSI momentum 'curl' (momentum turning) while price is inside a key zone, a hint that the move is changing direction.",
+  "example": "Price sits in support and TSI turns up → bullish curl triangle."
+ },
+ "repaint": {
+  "about": "Wait for the candle to close before detecting patterns. Off shows possible patterns while the candle is still forming, and they may disappear.",
+  "example": "On → a hammer only appears after its candle closes, so it never vanishes."
+ },
+ "labels": {
+  "about": "Shows a text label with the name of each detected candle pattern.",
+  "example": "A label 'Bullish Engulfing' under the candle."
+ },
+ "sBox": {
+  "about": "Draws a box around each detected candle pattern.",
+  "example": "A green box around the two candles of a bullish engulfing."
+ },
+ "d_": {
+  "about": "Detects doji candles: a tiny body with wicks on both sides, showing indecision.",
+  "example": "Open 2,600.10, close 2,600.20, range 2,597–2,603 → doji."
+ },
+ "be_": {
+  "about": "Detects engulfing patterns: the second candle's body fully covers the previous candle's body in the opposite direction.",
+  "example": "Red candle 2,605→2,600, then green 2,599→2,607 → bullish engulfing."
+ },
+ "hs_": {
+  "about": "Detects hammers (long lower wick, small body at the top) and shooting stars (long upper wick, small body at the bottom).",
+  "example": "Range 2,590–2,602 with the body at 2,600–2,602 → hammer."
+ },
+ "dg_": {
+  "about": "Detects dragonfly doji (long lower wick, no upper wick) and gravestone doji (long upper wick, no lower wick).",
+  "example": "Open = close = high = 2,600, low 2,594 → dragonfly doji."
+ },
+ "tw_": {
+  "about": "Detects tweezer tops and bottoms: two candles with almost the same high (top) or low (bottom), in opposite colors.",
+  "example": "Two candles both with a low of 2,580.3 → tweezer bottom."
+ },
+ "st_": {
+  "about": "Detects spinning tops: a small body in the middle with similar wicks above and below.",
+  "example": "Body 2,600–2,601 in a 2,596–2,605 range → spinning top."
+ },
+ "pc_": {
+  "about": "Detects piercing line (green closes above the middle of the previous red) and dark cloud cover (red closes below the middle of the previous green).",
+  "example": "Red 2,610→2,600, then green 2,598→2,606 (above the 2,605 midpoint) → piercing."
+ },
+ "bh_": {
+  "about": "Detects harami: a small candle whose body sits inside the previous large body.",
+  "example": "Big red 2,620→2,600, then small green 2,604→2,608 → bullish harami."
+ },
+ "ls_": {
+  "about": "Detects candles with a very long upper or lower shadow (wick), a sign of rejection.",
+  "example": "Range 2,590–2,610 with the body at the bottom 2,590–2,592 → long upper shadow."
+ },
+ "alertMode": {
+  "about": "When pattern alerts would fire: once per bar (as soon as it appears, may change before close) or once per bar close (confirmed only).",
+  "example": "once_per_bar_close avoids alerts for patterns that disappear before the candle closes."
+ },
+ "ecWick": {
+  "about": "Engulfing candles must cover the previous candle's wicks too, not only its body. Stricter.",
+  "example": "On → the engulfing candle's range must also exceed the previous high and low."
+ },
+ "colorMatch": {
+  "about": "Hammers must be green candles and shooting stars must be red. Stricter, fewer signals.",
+  "example": "On → a red hammer is no longer counted."
+ },
+ "closeHalf": {
+  "about": "Tweezer patterns must close beyond the middle of the previous candle.",
+  "example": "On → a tweezer bottom needs the second candle to close above the first candle's midpoint."
+ },
+ "atrMax": {
+  "about": "Ignores pattern candles bigger than this many ATRs (for example news spikes). 0 turns it off.",
+  "example": "ATR = 5 and 3.0 → candles longer than 15 points are not used for patterns."
+ },
+ "rejectWickMax": {
+  "about": "Engulfing: the largest wick allowed on the confirming candle, as a % of its body. 0 turns it off.",
+  "example": "50 → a confirming candle with a 4-point body may have at most a 2-point wick against the move."
+ },
+ "hammerFib": {
+  "about": "Hammers and stars: the body may be at most this % of the whole candle.",
+  "example": "33 → a 12-point candle may have at most a 4-point body."
+ },
+ "hsShadowPerc": {
+  "about": "Hammers and stars: the opposite wick may be at most this % of the body.",
+  "example": "5 → a hammer with a 4-point body may have at most a 0.2-point upper wick."
+ },
+ "hammerSize": {
+  "about": "Hammers, stars and long shadows must be at least this many ATRs long, to skip tiny candles.",
+  "example": "ATR = 5 and 0.1 → the candle must be at least 0.5 point long."
+ },
+ "dojiSize": {
+  "about": "Doji: the body may be at most this % of the whole candle.",
+  "example": "5 → a 10-point candle counts as a doji with a body of 0.5 point or less."
+ },
+ "dojiWickSize": {
+  "about": "Doji: one wick may be at most this many times the other, so the doji stays balanced.",
+  "example": "2 → bottom wick 3 points, top wick 1 point is rejected (3× is more than 2×)."
+ },
+ "luRatio": {
+  "about": "Long shadow: the wick must be at least this % of the whole candle.",
+  "example": "75 → in a 20-point candle the long wick must be 15 points or more."
+ },
+ "lookback": {
+  "about": "Maximum bars between a close beyond a zone and the close back inside it, for false-break signals. Wick-only sweeps do not count.",
+  "example": "2 → close below support, then a close back above within 2 bars = false breakdown."
+ },
+ "swing": {
+  "label": "Swing High/Low",
+  "about": "Swing size used to filter breakout-type signals. Higher = only more significant swings, so fewer signals.",
+  "example": "5 → a breakout must clear a swing confirmed by 5 bars on each side."
+ },
+ "reflect": {
+  "about": "A pattern only counts near a significant high or low within this many bars (max 250).",
+  "example": "10 → a hammer counts only if it is at, or near, the lowest low of the last 10 bars."
+ },
+ "offset": {
+  "about": "How close to the extreme the pattern candle must be. 0 = must be the highest/lowest bar; 1 = can be the next one.",
+  "example": "1 → a hammer one bar after the actual low still counts."
+ },
+ "bullBorder": {
+  "label": "Bullish levels",
+  "about": "Border and background colors of bullish key levels (support zones).",
+  "example": "Light blue border with an almost transparent fill."
+ },
+ "bearBorder": {
+  "label": "Bearish levels",
+  "about": "Border and background colors of bearish key levels (resistance zones).",
+  "example": "Light yellow border with an almost transparent fill."
+ },
+ "upCol": {
+  "label": "Breakout / breakdown",
+  "about": "Colors of the breakout (up) and breakdown (down) arrows.",
+  "example": "Orange for breakouts, magenta for breakdowns."
+ },
+ "supCol": {
+  "label": "Resistance / support break",
+  "about": "Colors of the resistance-break (up) and support-break (down) arrows.",
+  "example": "Green when resistance breaks, red when support breaks."
+ },
+ "fBull": {
+  "label": "Bear trap / bull trap",
+  "about": "Colors of the false-break arrows (bear trap, bull trap) and their maximum height in pixels.",
+  "example": "Green / red arrows, at most 75 px tall."
+ },
+ "moveBullCol": {
+  "label": "Off support / resistance",
+  "about": "Colors of the triangles for candles reacting off support (bullish) and resistance (bearish).",
+  "example": "Purple under candles bouncing from support, yellow over candles rejected at resistance."
+ },
+ "curlBullCol": {
+  "label": "Bullish / bearish curl",
+  "about": "Colors of the bullish and bearish TSI momentum-curl markers.",
+  "example": "Green for a bullish curl, yellow for a bearish curl."
+ },
+ "patBullBg": {
+  "label": "Backgrounds",
+  "about": "Background colors of candle-pattern boxes: bullish, neutral, bearish.",
+  "example": "Very transparent green / gray / red so the candles stay readable."
+ },
+ "patBullBo": {
+  "label": "Borders",
+  "about": "Border colors of candle-pattern boxes: bullish, neutral, bearish.",
+  "example": "Slightly stronger green / gray / red than the background."
+ },
+ "textBullCol": {
+  "label": "Text",
+  "about": "Text colors of pattern labels: bullish, neutral, bearish.",
+  "example": "Bright green text for 'Hammer', gray for 'Doji', red for 'Shooting Star'."
+ },
+ "labBullCol": {
+  "label": "Label background",
+  "about": "Background colors of pattern labels: bullish, neutral, bearish.",
+  "example": "Transparent green / gray / red behind the label text."
+ },
+ "strat": {
+  "about": "TSI speed preset for the momentum-curl detection. Fast reacts sooner (more signals); Slow is smoother (fewer, later signals).",
+  "example": "Scalping on 1m–5m → Fast. Swing trading on 1H+ → Slow."
+ },
+ "longf": {
+  "about": "Fast preset: long smoothing length of the TSI.",
+  "example": "25 (default). Larger = smoother momentum line."
+ },
+ "shortf": {
+  "about": "Fast preset: short smoothing length of the TSI.",
+  "example": "5 (default). Smaller = reacts faster."
+ },
+ "signalf": {
+  "about": "Fast preset: signal-line length. A curl is the TSI turning relative to this line.",
+  "example": "14 (default)."
+ },
+ "longs": {
+  "about": "Slow preset: long smoothing length of the TSI.",
+  "example": "25 (default)."
+ },
+ "shorts": {
+  "about": "Slow preset: short smoothing length of the TSI.",
+  "example": "13 (default), slower than the fast preset's 5."
+ },
+ "signals": {
+  "about": "Slow preset: signal-line length.",
+  "example": "13 (default)."
+ },
+ "directions": {
+  "about": "Shows the direction dashboard: one row per indicator (MACD, Stoch RSI, Vortex…) saying buy or sell. Context only, not entry signals.",
+  "example": "8 of 9 rows say 'sell' → momentum broadly agrees the market is bearish."
+ },
+ "infoDataTableOn": {
+  "label": "Direction table",
+  "about": "Turns the whole direction (الاتجاه = 'direction') table on or off.",
+  "example": "Off frees space on the chart but keeps the calculations running."
+ },
+ "itablePosition": {
+  "label": "Position",
+  "about": "Where the direction dashboard sits on the chart.",
+  "example": "top_right keeps it away from the newest candles, which are at the bottom right when price is falling."
+ },
+ "macdOn": {
+  "about": "Shows the MACD row in the dashboard. MACD above its signal line = buy, below = sell.",
+  "example": "MACD 1.2, signal 0.8 → 'MACD buy'."
+ },
+ "macdOrder": {
+  "about": "Row position of this indicator in the dashboard (1 = top). To move a row, swap the numbers of two indicators.",
+  "example": "Set MACD to 3 and Vortex to 1 → Vortex moves to the top, MACD to row 3."
+ },
+ "macdFast": {
+  "about": "MACD fast EMA length.",
+  "example": "12 (standard)."
+ },
+ "macdSlow": {
+  "about": "MACD slow EMA length.",
+  "example": "26 (standard)."
+ },
+ "macdSignal": {
+  "about": "MACD signal-line EMA length.",
+  "example": "9 (standard)."
+ },
+ "stochasticOn": {
+  "about": "Shows the Stochastic RSI row in the dashboard. Adds OB/OS when it is overbought (above 80) or oversold (below 20).",
+  "example": "K at 85 and falling → 'Stoch sell OB'."
+ },
+ "stochasticOrder": {
+  "about": "Row position of Stochastic RSI in the dashboard (1 = top).",
+  "example": "2 → second row."
+ },
+ "smoothK": {
+  "about": "Smoothing of the Stochastic RSI K line.",
+  "example": "3 (standard)."
+ },
+ "smoothD": {
+  "about": "Smoothing of the D line (the average of K). Used only by the 'K vs D' direction rule.",
+  "example": "3 (standard)."
+ },
+ "stochDirectionMode": {
+  "about": "How the Stoch RSI direction is decided. K vs 50: K above 50 = buy. K vs D: K above D = buy (reacts faster).",
+  "example": "K = 60, D = 70 → 'K vs 50' says buy; 'K vs D' says sell."
+ },
+ "lengthRSI": {
+  "about": "RSI length used inside the Stochastic RSI.",
+  "example": "14 (standard)."
+ },
+ "lengthStoch": {
+  "about": "Stochastic length applied to that RSI.",
+  "example": "14 (standard)."
+ },
+ "vortexOn": {
+  "about": "Shows the Vortex row. VI+ above VI- = buy, below = sell.",
+  "example": "VI+ 1.08, VI- 0.92 → 'Vortex buy'."
+ },
+ "vortexOrder": {
+  "about": "Row position of Vortex in the dashboard (1 = top).",
+  "example": "3 → third row."
+ },
+ "vortexLength": {
+  "about": "Vortex indicator length.",
+  "example": "14 (standard)."
+ },
+ "momOn": {
+  "about": "Shows the Momentum row: close minus the close N bars ago. Positive = buy, negative = sell.",
+  "example": "Close 2,600 vs 2,590 ten bars ago → +10 → 'Mom buy'."
+ },
+ "momOrder": {
+  "about": "Row position of Momentum in the dashboard (1 = top).",
+  "example": "4 → fourth row."
+ },
+ "momLength": {
+  "about": "How many bars back Momentum compares the close with.",
+  "example": "10 → compares with the close 10 bars ago."
+ },
+ "rsiOn": {
+  "about": "Shows the RSI row. RSI above 50 = buy, below 50 = sell; OB above 70, OS below 30.",
+  "example": "RSI 28 → 'RSI sell OS' (bearish but oversold, so a bounce is possible)."
+ },
+ "rsiOrder": {
+  "about": "Row position of RSI in the dashboard (1 = top).",
+  "example": "5 → fifth row."
+ },
+ "rsiLength": {
+  "about": "RSI length.",
+  "example": "14 (standard)."
+ },
+ "psarOn": {
+  "about": "Shows the Parabolic SAR row. Close above the SAR dots = buy, below = sell.",
+  "example": "Close 2,600, SAR 2,592 → 'PSAR buy'."
+ },
+ "psarOrder": {
+  "about": "Row position of PSAR in the dashboard (1 = top).",
+  "example": "6 → sixth row."
+ },
+ "psarStart": {
+  "about": "PSAR starting acceleration factor.",
+  "example": "0.02 (standard)."
+ },
+ "psarInc": {
+  "about": "How much the acceleration grows each time a new extreme is made.",
+  "example": "0.02 (standard)."
+ },
+ "psarMax": {
+  "about": "Maximum acceleration factor. Higher = the SAR catches up with price faster.",
+  "example": "0.2 (standard)."
+ },
+ "dmiOn": {
+  "about": "Shows the DMI row. DI+ above DI- = buy, below = sell; shows 'wait' while ADX is below the threshold.",
+  "example": "DI+ 28, DI- 15 → 'DMI buy'."
+ },
+ "dmiOrder": {
+  "about": "Row position of DMI in the dashboard (1 = top).",
+  "example": "7 → seventh row."
+ },
+ "dmiLength": {
+  "about": "DI length.",
+  "example": "14 (standard)."
+ },
+ "dmiSmooth": {
+  "about": "ADX smoothing length.",
+  "example": "14 (standard)."
+ },
+ "adxThreshold": {
+  "about": "DMI shows 'wait' while ADX (trend strength) is below this level. 0 = always show a direction.",
+  "example": "20 → in a flat market with ADX 15 the row says 'wait' instead of buy or sell."
+ },
+ "mfiOn": {
+  "about": "Shows the Money Flow Index row (an RSI that also uses volume). Above 50 = buy, below 50 = sell; OB above 80, OS below 20.",
+  "example": "MFI 62 → 'MFI buy'. With no volume data the row says 'no volume'."
+ },
+ "mfiOrder": {
+  "about": "Row position of MFI in the dashboard (1 = top).",
+  "example": "8 → eighth row."
+ },
+ "mfiLength": {
+  "about": "Money Flow Index length.",
+  "example": "14 (standard)."
+ },
+ "fisherOn": {
+  "about": "Shows the Fisher Transform row. Rising = buy, falling = sell.",
+  "example": "Fisher went from 1.1 to 1.4 → 'Fisher buy'."
+ },
+ "fisherOrder": {
+  "about": "Row position of Fisher in the dashboard (1 = top).",
+  "example": "9 → last row."
+ },
+ "fisherLength": {
+  "about": "Fisher Transform length.",
+  "example": "14 (default)."
+ },
+ "recommendation": {
+  "about": "Shows BULB buy/sell labels at RSI extremes: buy when RSI is oversold, sell when it is overbought.",
+  "example": "RSI(13) drops below 30 → a 'buy' label under that candle."
+ },
+ "bulbMode": {
+  "about": "Moving (original): the label can move to a newer, more extreme bar while RSI stays extreme. Fixed (confirmed): the label stays where it was first printed.",
+  "example": "Backtesting or reviewing history → Fixed, so labels never move after the fact."
+ },
+ "rsiLength1": {
+  "about": "RSI length used by BULB.",
+  "example": "13 (default)."
+ },
+ "rsiOverbought": {
+  "about": "RSI level above which BULB prints a sell.",
+  "example": "65 → RSI 67 prints 'sell'. Raise to 70 for fewer, stronger signals."
+ },
+ "rsiOvesold": {
+  "about": "RSI level below which BULB prints a buy.",
+  "example": "30 → RSI 28 prints 'buy'."
+ },
+ "bulbAlternate": {
+  "about": "Fixed mode only. Allows a sell only after a buy (and the reverse), so a strong trend does not print many signals against it.",
+  "example": "In a strong downtrend you get one 'buy', then nothing until a 'sell' appears."
+ },
+ "mal": {
+  "about": "Length of the SMA in the middle of the ATR bands.",
+  "example": "47 → the blue middle line is the 47-bar average close."
+ },
+ "atrl": {
+  "about": "ATR length used for the band distance.",
+  "example": "89 → ATR over the last 89 bars."
+ },
+ "atrm": {
+  "about": "Band distance from the SMA, in ATRs. Higher = wider bands.",
+  "example": "ATR = 4 and 3.0 → bands 12 points above and below the SMA."
+ },
+ "bandWidth": {
+  "about": "Line thickness of the SMA and ATR bands, in pixels.",
+  "example": "2 → thicker, easier to see lines."
+ }
+}
