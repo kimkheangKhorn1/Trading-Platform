@@ -74,11 +74,17 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
       const half = ts.options().barSpacing / 2
       setCut({ x: x + half, width: ts.width(), height: ctrl.chart.paneSize(0).height })
     }
+    // the cut line is the cursor here, as on TradingView: hide the crosshair lines and their axis labels
+    const crosshair = (visible: boolean) => ctrl.chart.applyOptions({
+      crosshair: { vertLine: { visible, labelVisible: visible }, horzLine: { visible, labelVisible: visible } },
+    })
+    crosshair(false)
     window.addEventListener('keydown', onKey)
     ctrl.chart.subscribeCrosshairMove(onMove)
     return () => {
       window.removeEventListener('keydown', onKey)
       ctrl.chart.unsubscribeCrosshairMove(onMove)
+      crosshair(true)
       setCut(null)
     }
   }, [mode, ctrl, set])
