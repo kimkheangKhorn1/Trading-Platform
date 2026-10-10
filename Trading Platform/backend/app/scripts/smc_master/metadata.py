@@ -1,7 +1,7 @@
 # MPL-2.0. Settings extracted from the preserved Pine source by tools/extract_pine_inputs.py.
 import json
 from pathlib import Path
-from ...engine.inputs import DrawingGroup, InputSpec, PlotSpec, ScriptMeta, ShapeSpec
+from ...engine.inputs import DrawingGroup, InputSpec, PlotSpec, ScriptMeta, ShapeSpec, StrategySpec
 
 # help.json (hand-written: plain explanation + example per settings row) is kept apart from the extracted inputs.json
 HELP=json.loads(Path(__file__).with_name('help.json').read_text())
@@ -22,9 +22,12 @@ SHAPES=[
     ('tsi_bear','Bearish TSI curl','triangledown','abovebar','curlBearCol'),
 ]
 DEFAULTS={x.id:x.default for x in INPUTS}
+STRATEGY_ID='smc_master'
 META=ScriptMeta(id='smc_ict_scalping_master',name='SMC & ICT & Indicators + Scalping Master',short_name='SMC & ICT & Indicators + Scalping Master',category='Custom',
-    description='Python port of the supplied Pine indicator; separate structure, OB, Demand/Supply, pivot S/R, FVG, dashboard, BULB and ATR systems. Indicator only: no trade orders.',
+    description='Python port of the supplied Pine indicator; separate structure, OB, Demand/Supply, pivot S/R, FVG, dashboard, BULB and ATR systems. Indicator and strategy: trade signals come from SmcMaster.strategy().',
     inputs=INPUTS,
     plots=[PlotSpec('sma','Simple Moving Average','#2962FFFF'),PlotSpec('upper','High Envelope','#FF5252FF'),PlotSpec('lower','Low Envelope','#4CAF50FF')],
     shapes=[ShapeSpec(s,t,sh,loc,DEFAULTS[col]) for s,t,sh,loc,col in SHAPES],
+    # The script is both the chart indicator and the Strategy Tester strategy. Signals are emitted under this id.
+    strategies=[StrategySpec(STRATEGY_ID,'SMC Master','Trades the signals emitted by SmcMaster.strategy() (none until its entry rules are added).')],
     drawing_groups=[DrawingGroup(k,t) for k,t in [('internal_structure','Internal BOS / CHoCH'),('swing_structure','Swing BOS / CHoCH'),('swing_points','HH / LH / HL / LL'),('strong_weak','Strong / Weak High / Low'),('internal_ob','SMC Internal Order Blocks'),('swing_ob','SMC Swing Order Blocks'),('liquidity','EQH / EQL liquidity levels'),('fvg','Fair Value Gaps'),('mtf','Previous D / W / M levels'),('premium_discount','Premium / Equilibrium / Discount'),('demand_supply','Demand / Supply'),('pivot_sr','Pivot Support / Resistance'),('patterns','Candle patterns'),('bulb','BULB reversal extremes')]])

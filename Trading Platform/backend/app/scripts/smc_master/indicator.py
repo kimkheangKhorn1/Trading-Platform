@@ -9,7 +9,7 @@ from ...engine.script import Script, Context
 from ...engine.ta import ATR
 from ...engine.pine import new_color
 from ...market.timeframes import get_timeframe, bucket_start
-from .metadata import META, SHAPES
+from .metadata import META, SHAPES, STRATEGY_ID
 from .technical import EMA, Mean, RSI, TSI, DMI, SAR, pivot, div, NAN
 
 PINE_TF={'1':'M1','5':'M5','15':'M15','30':'M30','60':'H1','240':'H4','D':'D'}
@@ -517,3 +517,18 @@ class SmcMaster(Script):
         if p['show_trend']:
             bull=self.struct[0]['trend']==1; col=self.color(bull) if p['style']=='Colored' else '#B2B5BEFF' if bull else '#5D606BFF'; with_trend=ctx.close>=ctx.open if bull else ctx.close<=ctx.open
             ctx.plot_candle(col if with_trend else None,col,col); ctx.bar_color(col)
+        self.strategy(ctx)
+
+    def strategy(self,ctx:Context):
+        """Trade signals for the Strategy Tester (strategy id STRATEGY_ID). Runs after every indicator system on
+        each bar, so all of this bar's structure/zone state is available. Only confirmed bars produce orders, and
+        ctx only exposes current and past bars, so signals cannot look ahead. Example (market buy, 1:2 risk/reward):
+
+            if <your long condition>:
+                sl=ctx.low-self.atr14.value*0.5; risk=ctx.close-sl
+                ctx.signal(STRATEGY_ID,'long',stop_loss=sl,take_profits=[(ctx.close+2*risk,1.0)],comment='SMC long')
+
+        Limit/stop entries: order_type='limit'|'stop', entry=price, expiry_bars=N. Partial exits: several
+        take_profits [(price, fraction)], breakeven_after_tp1=True. See ctx.signal in engine/script.py.
+        """
+

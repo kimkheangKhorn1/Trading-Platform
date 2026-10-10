@@ -112,6 +112,8 @@ def run_backtest(
                 if it.strategy in selected and i0 <= it.bar_index <= i1]
     if rejected:
         warnings.append(f"{len(rejected)} signals were rejected as invalid by the order validator")
+    if n_signals == 0 and not rejected:
+        warnings.append("the strategy emitted no trade signals in this window, so there are no trades")
 
     return {
         "summary": {

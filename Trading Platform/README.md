@@ -35,8 +35,8 @@ The original Pine file at the repository root is kept unchanged as the reference
   strong/weak highs and lows, order blocks, EQH/EQL, FVGs (incl. a higher-timeframe option), previous
   day/week/month high-low, premium/discount, demand/supply zones, pivot S/R with breakout/false-break
   markers, candle patterns, BULB, the direction dashboard, the SMA/ATR envelope and trend-colored
-  candles. Indicator only: it emits no trade signals, and its alert conditions are computed but not
-  delivered anywhere yet.
+  candles. It is also the **SMC Master** strategy (see below), but has no entry rules yet; its alert
+  conditions are computed but not delivered anywhere yet.
 - **Verified:** runs on the Dukascopy feed on every chart timeframe (1m–1D). Previous D/W/M highs and
   lows match values computed independently from the daily candles. Live updates and replay steps
   produce the same output as a fresh full run (`backend/tests/test_smc_master.py`).
@@ -50,8 +50,11 @@ The original Pine file at the repository root is kept unchanged as the reference
   are built from the feed's daily candles (week opens Sunday 17:00 New York), which can differ from
   TradingView's session for the same symbol.
 
-Because it emits no trade signals yet, the Strategy Tester has nothing to run until the indicator's
-trade logic is wired to `ctx.signal(...)` (the EMA Cross example strategy was removed on request).
+The script is both the chart indicator and a strategy: it declares the **SMC Master** strategy, so the
+Strategy Tester lists it and can run it. It has no entry rules yet, so a backtest currently reports 0
+trades with a note saying no signals were emitted. Add the rules in `SmcMaster.strategy()` in
+`backend/app/scripts/smc_master/indicator.py` by calling `ctx.signal('smc_master', ...)`; the method's
+docstring has a worked example (`tests/test_smc_master.py` checks that such signals are traded).
 
 ---
 

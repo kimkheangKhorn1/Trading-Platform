@@ -131,3 +131,28 @@ def test_monthly_levels_need_a_completed_month(tmp_path):
     r = ScriptRunner(SmcMaster, {}, timeframe="M15", alignment=feed.alignment, htf_provider=provider)
     r.process(src)
     assert any("Previous M" in w for w in r.output()["warnings"])
+
+
+def test_smc_master_is_also_a_strategy(bars):
+    """The script plays both roles: it declares the SMC Master strategy, a backtest with no entry rules yet
+    runs cleanly with no trades, and signals emitted from SmcMaster.strategy() are traded."""
+    from app.backtest.config import ExecutionConfig
+    from app.backtest.engine import run_backtest
+    from app.scripts.smc_master.metadata import STRATEGY_ID
+
+    assert [s.id for s in SmcMaster.meta.strategies] == [STRATEGY_ID]
+    kw = dict(inputs={}, timeframe="M15", start=int(bars.time[400]), end=int(bars.time[-1]),
+              execution=ExecutionConfig(), htf_provider=CalendarProvider(bars))
+    empty = run_backtest(bars, script_cls=SmcMaster, **kw)
+    assert empty["summary"]["signals"] == 0 and empty["trades"] == []
+    assert any("no trade signals" in w for w in empty["warnings"])
+
+    class WithEntries(SmcMaster):
+        def strategy(self, ctx):
+            if ctx.bar_index % 200 == 0 and ctx.bar_index > 0:
+                sl = ctx.low - 5.0
+                ctx.signal(STRATEGY_ID, "long", stop_loss=sl, take_profits=[(ctx.close + 2 * (ctx.close - sl), 1.0)])
+
+    traded = run_backtest(bars, script_cls=WithEntries, **kw)
+    assert traded["summary"]["signals"] > 0 and len(traded["trades"]) > 0
+    assert {t["strategy"] for t in traded["trades"]} == {STRATEGY_ID}
