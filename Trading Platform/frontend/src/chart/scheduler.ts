@@ -12,6 +12,16 @@ export interface RunContext {
 }
 
 /**
+ * A replay result one or more bars behind the latest request still goes on the chart: during playback a newer
+ * request is always queued before the last one returns, and dropping every such result left new candles
+ * uncolored until playback paused. It is shown only if it ends at or before the latest cursor (never ahead of it).
+ */
+export function replayCatchUp(done: RunContext, latest: RunContext): boolean {
+  if (done.end === null || latest.end === null || done.end > latest.end) return false
+  return JSON.stringify({ ...done, end: null }) === JSON.stringify({ ...latest, end: null })
+}
+
+/**
  * Indicator requests per chart instance: debounced, at most one in flight, latest request wins.
  * The backend keeps an incremental runner per context, so repeated calls only compute new bars.
  */
@@ -51,8 +61,9 @@ export class IndicatorScheduler {
         feed_id: ctx.feedId, timeframe: ctx.tf, script_id: ctx.scriptId, inputs: ctx.inputs,
         start_time: ctx.start, end_time: ctx.end,
       })
-      if (!this.pending.has(uid) && this.lastKey.get(uid) === JSON.stringify(ctx)) {
-        useIndicators.getState().setOutput(uid, { data, loading: false, error: null })
+      const latest = this.lastKey.get(uid)
+      if (latest !== undefined && (latest === JSON.stringify(ctx) || replayCatchUp(ctx, JSON.parse(latest) as RunContext))) {
+        useIndicators.getState().setOutput(uid, { data, loading: !!this.pending.get(uid), error: null })
       }
     } catch (e) {
       useIndicators.getState().setOutput(uid, { loading: false, error: e instanceof Error ? e.message : String(e) })
