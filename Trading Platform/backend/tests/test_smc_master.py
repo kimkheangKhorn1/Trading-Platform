@@ -217,3 +217,12 @@ def test_every_drawing_is_anchored_on_a_bar_time(bars):
             if d.get(key) is not None and (int(d[key]) - t0) % step:
                 off_grid.append((d["group"], d["kind"], key, d.get("text", "")))
     assert off_grid == []
+
+
+@pytest.mark.parametrize("seed", [2, 3, 4, 5])
+def test_pivot_levels_shared_by_aligned_zones_get_one_label(seed):
+    """Align Zones snaps an overlapping new pivot zone onto an older one's edges; the shared level is one badge."""
+    data = random_walk_bars(4000, start="2026-03-02 00:00", step=900, seed=seed)
+    out = _run(data).output()
+    texts = [d["text"] for d in out["drawings"] if d["group"] == "pivot_sr" and d["kind"] == "label"]
+    assert texts and len(texts) == len(set(texts))

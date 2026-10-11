@@ -505,6 +505,9 @@ class SmcMaster(Script):
                     extra=0 if extra>0 else 25 if previous is not None and abs(div(y-previous,previous))*100<stagger else 0; previous=y; drawn+=1
                     line(x1=z.origin+2*ctx.timeframe.seconds,y1=y,x2=future(1),y2=y,color=col,group='demand_supply',tooltip=z.box.tooltip if z.box else '')
                     label(x=future(4+extra),y=y,text=f'{y:.{ctx.precision}f}',color=col,text_color='#111827FF',style='label_left',group='demand_supply',tooltip=z.box.tooltip if z.box else '')
+        # Align Zones snaps an overlapping new zone onto an older one's exact edges, so two zones can share a level.
+        # Pine stacks their labels on one spot; the chart spreads overlapping labels apart, so draw one per price.
+        labelled=set()
         for z in self.pivots[0]+self.pivots[1]:
             if z.box:
                 z.box.bg_color=p['bullBgCol' if z.side==1 else 'bearBgCol'] if visible(z.top,z.bottom) else TRANSPARENT
@@ -512,6 +515,8 @@ class SmcMaster(Script):
             if p['lLab'] and visible(z.top,z.bottom):
                 y=z.top if ctx.close>z.top else z.bottom if ctx.close<z.bottom else z.top if z.side==1 else z.bottom
                 col=p['bullBorder' if z.side==1 else 'bearBorder']; bg=p['bullBgCol' if z.side==1 else 'bearBgCol']; text=f'{math.floor(y/ctx.mintick+.5)*ctx.mintick:.{ctx.precision}f}'
+                if text in labelled: continue
+                labelled.add(text)
                 label(x=future(p['fut']),y=y,text=text,color=col,text_color='#111827FF',style='label_down' if ctx.close>z.top else 'label_up',group='pivot_sr',tooltip=f'Pivot S/R #{z.identity}')
                 if not p['extend'] and p['fut']>0: line(x1=ctx.time,y1=y,x2=future(p['fut']),y2=y,color=col,group='pivot_sr')
         for obj in self.retired:
