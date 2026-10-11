@@ -57,7 +57,11 @@ The original Pine file at the repository root is kept unchanged as the reference
   width, demand/supply departure and order-block displacement scored best, so they stay. The "move off
   support/resistance" and TSI curl triangles scored no better than random in every period and timeframe
   and now default to off. The dashboard values match textbook RSI, MACD, ADX, Momentum, Vortex, MFI and
-  Stoch RSI exactly, and PSAR matches TradingView's reference algorithm. Event history, plots and markers before any bar are identical with or
+  Stoch RSI exactly, and PSAR matches TradingView's reference algorithm. Candle patterns were checked
+  candle by candle on the chart: an engulfing candle must now be larger than the previous body and than the
+  average body (as in TradingView's built-in pattern), piercing / dark cloud no longer needs a price gap
+  (gold trades around the clock), and a candle matching several patterns gets one label, the most specific,
+  with the others in its tooltip (all of them still alert). Event history, plots and markers before any bar are identical with or
   without later data (no repainting or lookahead).
 - **Not verified:** no TradingView-exported comparison data exists yet, so bar-by-bar parity with the
   Pine original (structure, zones, patterns, dashboard values) is unconfirmed. Weekly/monthly candles

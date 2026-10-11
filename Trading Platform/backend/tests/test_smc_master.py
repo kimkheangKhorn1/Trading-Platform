@@ -226,3 +226,43 @@ def test_pivot_levels_shared_by_aligned_zones_get_one_label(seed):
     out = _run(data).output()
     texts = [d["text"] for d in out["drawings"] if d["group"] == "pivot_sr" and d["kind"] == "label"]
     assert texts and len(texts) == len(set(texts))
+
+
+class _BullContext(_Events):
+    """Every candle counts as sitting on pivot support, so pattern rules can be checked on hand-built candles."""
+    def patterns(self, ctx, atr, bull1, bear1, bull2, bear2):
+        super().patterns(ctx, atr, True, False, True, False)
+
+
+def _last_bar_patterns(last_two):
+    from tests.helpers import bars_from_ohlc
+    base = [(100, 100.8, 99.7, 100.5) if k % 2 else (100.5, 100.8, 99.7, 100) for k in range(30)]  # bodies 0.5
+    b = bars_from_ohlc(base + list(last_two), step=900)
+    r = ScriptRunner(_BullContext, {"show_pdhl": False, "show_pwhl": False, "show_pmhl": False}, timeframe="M15")
+    r.process(b)
+    n = len(b.time) - 1
+    titles = {t for i, t in r.script.all_events if i == n}
+    labels = [d for d in r.output()["drawings"] if d["group"] == "patterns" and d["kind"] == "label" and d["x"] == int(b.time[-1])]
+    return titles, labels
+
+
+def test_engulfing_needs_a_strong_candle_covering_a_real_body():
+    titles, labels = _last_bar_patterns([(101, 101.2, 99.8, 100), (99.9, 102.5, 99.7, 102.2)])
+    assert "Engulfing" in titles and [d["text"] for d in labels] == ["BE"]
+    # a small green candle covering a near-doji is not an engulfing pattern
+    titles, _ = _last_bar_patterns([(100.2, 100.5, 99.9, 100.15), (100.1, 100.4, 100.0, 100.3)])
+    assert "Engulfing" not in titles
+
+
+def test_one_label_per_candle_with_the_most_specific_pattern():
+    """A dragonfly doji is also a long lower shadow: both alert, one label (DD) is drawn and its tooltip names both."""
+    titles, labels = _last_bar_patterns([(100, 100.8, 99.7, 100.5), (100, 100.02, 97, 100.01)])
+    assert {"Dragonfly / Gravestone Doji", "Long Lower / Upper Shadow"} <= titles
+    assert [d["text"] for d in labels] == ["DD"] and "Long Lower / Upper Shadow" in labels[0]["tooltip"]
+
+
+def test_piercing_line_without_a_price_gap():
+    """XAUUSD trades around the clock: a green candle opening at the previous red close and closing above the middle
+    of its body (but below its open) is a piercing line, with no gap below the previous low."""
+    titles, labels = _last_bar_patterns([(102, 102.2, 99.8, 100), (100, 101.7, 99.9, 101.5)])
+    assert "Piercing / Dark Cloud Cover" in titles and [d["text"] for d in labels] == ["P"]

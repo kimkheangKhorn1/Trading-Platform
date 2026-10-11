@@ -322,7 +322,7 @@
   "example": "On → a hammer only appears after its candle closes, so it never vanishes."
  },
  "labels": {
-  "about": "Shows a text label with the name of each detected candle pattern.",
+  "about": "Shows a text label with the name of each detected candle pattern. When one candle matches several (a hammer is also a long lower shadow), only the most specific is labelled; the tooltip lists the others.",
   "example": "A label 'Bullish Engulfing' under the candle."
  },
  "sBox": {
@@ -334,8 +334,8 @@
   "example": "Open 2,600.10, close 2,600.20, range 2,597–2,603 → doji."
  },
  "be_": {
-  "about": "Detects engulfing patterns: the second candle's body fully covers the previous candle's body in the opposite direction.",
-  "example": "Red candle 2,605→2,600, then green 2,599→2,607 → bullish engulfing."
+  "about": "Detects engulfing patterns: an opposite-color candle whose body fully covers the previous body, is larger than it and is larger than the average body. A small candle covering a doji or another small candle does not count.",
+  "example": "Red candle 2,605→2,600, then a strong green 2,599→2,607 → bullish engulfing."
  },
  "hs_": {
   "about": "Detects hammers (long lower wick, small body at the top) and shooting stars (long upper wick, small body at the bottom).",
@@ -354,7 +354,7 @@
   "example": "Body 2,600–2,601 in a 2,596–2,605 range → spinning top."
  },
  "pc_": {
-  "about": "Detects piercing line (green closes above the middle of the previous red) and dark cloud cover (red closes below the middle of the previous green).",
+  "about": "Detects piercing line (green opens at or below the previous red close and closes above the middle of its body) and dark cloud cover (the mirror image). Gold trades 24 hours and rarely gaps, so no gap beyond the previous low/high is required.",
   "example": "Red 2,610→2,600, then green 2,598→2,606 (above the 2,605 midpoint) → piercing."
  },
  "bh_": {
