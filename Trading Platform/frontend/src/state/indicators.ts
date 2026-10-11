@@ -64,7 +64,24 @@ export function defaultsFor(meta: ScriptMeta): Omit<IndicatorInstance, 'uid'> {
 }
 
 function replacedDefaultKeys(meta: ScriptMeta): string[] {
-  return meta.inputs.flatMap((i) => (i.replaced_defaults ?? []).map((v) => `${i.id}=${JSON.stringify(v)}`))
+  return [
+    ...meta.inputs.flatMap((i) => (i.replaced_defaults ?? []).map((v) => `${i.id}=${JSON.stringify(v)}`)),
+    ...meta.plots.flatMap((p) => (p.replaced_colors ?? []).map((c) => colorKey('plot', p.id, c))),
+    ...meta.shapes.flatMap((p) => (p.replaced_colors ?? []).map((c) => colorKey('shape', p.id, c))),
+  ]
+}
+
+const colorKey = (kind: 'plot' | 'shape', id: string, color: string) => `${kind}:${id}.color=${color}`
+
+/** A saved plot/shape color still at an earlier default takes the current default, once (like inputs). */
+function upgradeColors<T extends { color: string }>(
+  kind: 'plot' | 'shape', saved: Record<string, T>, specs: { id: string; color: string; replaced_colors?: string[] | null }[], done: Set<string>,
+): Record<string, T> {
+  return Object.fromEntries(Object.entries(saved).map(([id, st]) => {
+    const spec = specs.find((s) => s.id === id)
+    const stale = spec?.replaced_colors?.includes(st.color) && !done.has(colorKey(kind, id, st.color))
+    return [id, stale ? { ...st, color: spec!.color } : st]
+  }))
 }
 
 export const useIndicators = create<IndicatorsState>((set, get) => ({
@@ -115,8 +132,8 @@ export const useIndicators = create<IndicatorsState>((set, get) => ({
         return {
           ...i,
           inputs: { ...d.inputs, ...validInputs },
-          plotStyles: { ...d.plotStyles, ...i.plotStyles },
-          shapeStyles: { ...d.shapeStyles, ...i.shapeStyles },
+          plotStyles: { ...d.plotStyles, ...upgradeColors('plot', i.plotStyles, meta.plots, done) },
+          shapeStyles: { ...d.shapeStyles, ...upgradeColors('shape', i.shapeStyles, meta.shapes, done) },
           groupVisible: { ...d.groupVisible, ...i.groupVisible },
           upgradedDefaults: [...new Set([...done, ...replacedDefaultKeys(meta)])],
         }

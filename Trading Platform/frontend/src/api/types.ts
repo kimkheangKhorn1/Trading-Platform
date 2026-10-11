@@ -90,6 +90,7 @@ export interface PlotSpec {
   linestyle: LineStyle
   pane: 'overlay' | 'separate'
   visible: boolean
+  replaced_colors?: string[] | null // earlier default colors: a saved style still at one moves to `color` once
 }
 
 export interface ShapeSpec {
@@ -102,6 +103,7 @@ export interface ShapeSpec {
   textcolor: string
   size: string
   visible: boolean
+  replaced_colors?: string[] | null
 }
 
 export interface StrategySpec {

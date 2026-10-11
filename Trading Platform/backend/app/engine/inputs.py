@@ -110,6 +110,7 @@ class PlotSpec:
     linestyle: Literal["solid", "dashed", "dotted"] = "solid"
     pane: Literal["overlay", "separate"] = "overlay"
     visible: bool = True
+    replaced_colors: tuple | None = None  # earlier default colors: a saved style still at one moves to `color` once
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -129,6 +130,7 @@ class ShapeSpec:
     textcolor: str = "#FFFFFFFF"
     size: Literal["tiny", "small", "normal", "large", "huge", "auto"] = "small"
     visible: bool = True
+    replaced_colors: tuple | None = None  # earlier default colors: a saved style still at one moves to `color` once
 
     def to_dict(self) -> dict:
         return asdict(self)

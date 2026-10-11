@@ -39,3 +39,32 @@ describe('saved indicator settings after a default changed', () => {
     expect(sync(saved({ mult: 0.5, len: 25 }, ['mult=0.5'])).inputs.mult).toBe(0.5)
   })
 })
+
+describe('saved plot and shape colors after a default color changed', () => {
+  const colored = {
+    ...meta,
+    plots: [{ id: 'sma', title: 'SMA', color: '#5B8CFFFF', linewidth: 1, style: 'line', linestyle: 'solid', pane: 'overlay', visible: true, replaced_colors: ['#2962FFFF'] }],
+    shapes: [{ id: 'up', title: 'Up', shape: 'arrowup', location: 'belowbar', color: '#FF8A3DE6', text: '', textcolor: '#FFFFFFFF', size: 'small', visible: true, replaced_colors: ['#FF6D00BF'] }],
+  } as unknown as ScriptMeta
+  const styled = (sma: string, up: string, upgradedDefaults?: string[]): IndicatorInstance => ({
+    ...saved({ mult: 1.0, len: 25 }, upgradedDefaults),
+    plotStyles: { sma: { visible: true, color: sma, linewidth: 2, linestyle: 'solid' } },
+    shapeStyles: { up: { visible: true, color: up } },
+  })
+  const syncColored = (inst: IndicatorInstance) => {
+    useIndicators.setState({ instances: [inst] })
+    useIndicators.getState().syncWithMeta([colored])
+    return useIndicators.getState().instances[0]
+  }
+
+  it('moves colors still at the old default to the new ones, keeping the rest of the style', () => {
+    const after = syncColored(styled('#2962FFFF', '#FF6D00BF'))
+    expect(after.plotStyles.sma).toEqual({ visible: true, color: '#5B8CFFFF', linewidth: 2, linestyle: 'solid' })
+    expect(after.shapeStyles.up.color).toBe('#FF8A3DE6')
+  })
+
+  it('keeps a color the user chose, and never resets one picked again after the upgrade', () => {
+    expect(syncColored(styled('#ABCDEFFF', '#FF6D00BF', ['shape:up.color=#FF6D00BF'])).plotStyles.sma.color).toBe('#ABCDEFFF')
+    expect(syncColored(styled('#ABCDEFFF', '#FF6D00BF', ['shape:up.color=#FF6D00BF'])).shapeStyles.up.color).toBe('#FF6D00BF')
+  })
+})

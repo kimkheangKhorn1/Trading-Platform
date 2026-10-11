@@ -16,6 +16,8 @@ from .technical import EMA, Mean, RSI, TSI, DMI, SAR, pivot, div, NAN
 PINE_TF={'1':'M1','5':'M5','15':'M15','30':'M30','60':'H1','240':'H4','D':'D'}
 TRANSPARENT='#FFFFFF00'
 # Label precedence when one candle matches several patterns: two-candle patterns, then the most specific single ones.
+# White text needs a dark enough fill: the former bright green (#00E676) gave 1.7:1; these give 3.6-4.9:1.
+DASH_BUY,DASH_SELL,DASH_WAIT='#089981FF','#F23645FF','#2962FFFF'
 PATTERN_PRIORITY=['BE','P','TB','HW','H','DD','LLS','D','ST']
 
 @dataclass
@@ -414,7 +416,7 @@ class SmcMaster(Script):
         by_id={v[0]:v for v in values}
         for key in order:
             _,title,state,tag,val=by_id[key]
-            cells[p[key+'Order']]=dict(id=key,title=title,direction=state,tag=tag,value=val if math.isfinite(val) else None,color='#00E676FF' if state=='buy' else '#FF5252FF' if state=='sell' else '#2196F3FF',visible=p[key+'On'])
+            cells[p[key+'Order']]=dict(id=key,title=title,direction=state,tag=tag,value=val if math.isfinite(val) else None,color=DASH_BUY if state=='buy' else DASH_SELL if state=='sell' else DASH_WAIT,visible=p[key+'On'])
         self.tables=[dict(id='directions',title='direction',position=p['itablePosition'],rows=[cells[i] for i in sorted(cells) if cells[i]['visible']])] if p['directions'] and p['infoDataTableOn'] else []
         if all(v[2]=='buy' for v in values): self.emit(ctx,'All Bullish Indicators Alert','dashboard')
         if all(v[2]=='sell' for v in values): self.emit(ctx,'All Bearish Indicators Alert','dashboard')
@@ -427,7 +429,7 @@ class SmcMaster(Script):
         buy=self.bulb_state==1 and os if moving else ctx.is_confirmed and rsi>p['rsiOvesold'] and prev<=p['rsiOvesold'] and (not p['bulbAlternate'] or self.bulb_state!=2)
         for a,bull,cond in [(0,False,sell),(1,True,buy)]:
             if not cond: continue
-            label=self.label(ctx,ctx.time,ctx.low if bull else ctx.high,'buy' if bull else 'sell','#FFFFFFFF','bulb',bull,'normal','#22E139FF' if bull else '#F70700FF',tooltip='BULB reversal extreme'+(' · Moving: label follows swing' if moving else ' · Fixed: confirmed RSI threshold exit'))
+            label=self.label(ctx,ctx.time,ctx.low if bull else ctx.high,'buy' if bull else 'sell','#FFFFFFFF','bulb',bull,'normal',DASH_BUY if bull else DASH_SELL,tooltip='BULB reversal extreme'+(' · Moving: label follows swing' if moving else ' · Fixed: confirmed RSI threshold exit'))
             self.bulb_label[a]=label
             if bull: self.bulb_low=ctx.low
             else: self.bulb_high=ctx.high

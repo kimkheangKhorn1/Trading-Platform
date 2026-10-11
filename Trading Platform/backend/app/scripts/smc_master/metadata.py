@@ -23,6 +23,19 @@ TUNED_DEFAULTS={
     'resPush':False,
     'curl':False,
 }
+# Colors for the dark chart (#090d14): order blocks, red elements, previous D/W/M lines and pattern box borders were
+# near the background (contrast 1.04-1.6:1 blended over it, D/W/M lines 3.5:1). Hues keep their meaning; lightness
+# and opacity rose so zones read as fills (1.4-1.9:1) and lines, arrows and text as foreground (4-12:1).
+DARK_COLORS={
+    'ibull_ob_css':'#4A90FF40','ibear_ob_css':'#FF7A8540','bull_ob_css':'#2F6BFF59','bear_ob_css':'#FF3B4B4D',
+    'bear_fvg_css':'#FF525259','pdhl_css':'#5B9CFFFF','pwhl_css':'#5B9CFFFF','pmhl_css':'#5B9CFFFF',
+    'supply_bord_col':'#FF4D4DCC','supply_bg_col':'#FF5C5C33','bullBgCol':'#64B5F61A','bearBgCol':'#FFEB3B1A',
+    'upCol':'#FF8A3DE6','dnCol':'#FF5CFFE6','supCol':'#17FF00E6','resCol':'#FF4D4DE6','fBull':'#17FF00E6','fBear':'#FF4D4DE6',
+    'moveBullCol':'#A78BFFFF','curlBullCol':'#17FF00CC','curlBearCol':'#F3FF00CC',
+    'patBullBg':'#17FF0026','patNeutBg':'#B2B5BE26','patBearBg':'#FF4D4D26','patBullBo':'#17FF0080','patNeutBo':'#B2B5BE80','patBearBo':'#FF6B6BA6',
+    'textBearCol':'#FF5C5CFF','labBullCol':'#17FF0040','labNeutCol':'#B2B5BE40','labBearCol':'#FF4D4D40',
+}
+TUNED_DEFAULTS.update(DARK_COLORS)
 INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is not None else None,
                      'title':HELP.get(s['id'],{}).get('label',s['title']),
                      'help':HELP.get(s['id'],{}).get('about'), 'example':HELP.get(s['id'],{}).get('example')})
@@ -42,12 +55,13 @@ SHAPES=[
     ('tsi_bear','Bearish TSI curl','triangledown','abovebar','curlBearCol'),
 ]
 DEFAULTS={x.id:x.default for x in INPUTS}
+REPLACED={x.id:x.replaced_defaults for x in INPUTS}
 STRATEGY_ID='smc_master'
 META=ScriptMeta(id='smc_ict_scalping_master',name='SMC & ICT & Indicators + Scalping Master',short_name='SMC & ICT & Indicators + Scalping Master',category='Custom',
     description='Python port of the supplied Pine indicator; separate structure, OB, Demand/Supply, pivot S/R, FVG, dashboard, BULB and ATR systems. Indicator and strategy: trade signals come from SmcMaster.strategy().',
     inputs=INPUTS,
-    plots=[PlotSpec('sma','Simple Moving Average','#2962FFFF'),PlotSpec('upper','High Envelope','#FF5252FF'),PlotSpec('lower','Low Envelope','#4CAF50FF')],
-    shapes=[ShapeSpec(s,t,sh,loc,DEFAULTS[col]) for s,t,sh,loc,col in SHAPES],
+    plots=[PlotSpec('sma','Simple Moving Average','#5B8CFFFF',replaced_colors=('#2962FFFF',)),PlotSpec('upper','High Envelope','#FF5252FF'),PlotSpec('lower','Low Envelope','#4CAF50FF')],
+    shapes=[ShapeSpec(s,t,sh,loc,DEFAULTS[col],replaced_colors=REPLACED[col]) for s,t,sh,loc,col in SHAPES],
     # The script is both the chart indicator and the Strategy Tester strategy. Signals are emitted under this id.
     strategies=[StrategySpec(STRATEGY_ID,'SMC Master','Trades the signals emitted by SmcMaster.strategy() (none until its entry rules are added).')],
     drawing_groups=[DrawingGroup(k,t) for k,t in [('internal_structure','Internal BOS / CHoCH'),('swing_structure','Swing BOS / CHoCH'),('swing_points','HH / LH / HL / LL'),('strong_weak','Strong / Weak High / Low'),('internal_ob','SMC Internal Order Blocks'),('swing_ob','SMC Swing Order Blocks'),('liquidity','EQH / EQL liquidity levels'),('fvg','Fair Value Gaps'),('mtf','Previous D / W / M levels'),('premium_discount','Premium / Equilibrium / Discount'),('demand_supply','Demand / Supply'),('pivot_sr','Pivot Support / Resistance'),('patterns','Candle patterns'),('bulb','BULB reversal extremes')]])

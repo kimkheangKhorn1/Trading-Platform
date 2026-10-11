@@ -61,7 +61,10 @@ The original Pine file at the repository root is kept unchanged as the reference
   candle by candle on the chart: an engulfing candle must now be larger than the previous body and than the
   average body (as in TradingView's built-in pattern), piercing / dark cloud no longer needs a price gap
   (gold trades around the clock), and a candle matching several patterns gets one label, the most specific,
-  with the others in its tooltip (all of them still alert). Event history, plots and markers before any bar are identical with or
+  with the others in its tooltip (all of them still alert). Default colors are tuned for the dark chart:
+  order blocks, red elements, previous D/W/M lines, pattern box borders and the dashboard cells were raised
+  to clear contrast against the background (see `DARK_COLORS` in `metadata.py`); saved charts still using
+  an old default color switch once, colors you picked yourself are kept. Event history, plots and markers before any bar are identical with or
   without later data (no repainting or lookahead).
 - **Not verified:** no TradingView-exported comparison data exists yet, so bar-by-bar parity with the
   Pine original (structure, zones, patterns, dashboard values) is unconfirmed. Weekly/monthly candles
