@@ -52,7 +52,12 @@ The original Pine file at the repository root is kept unchanged as the reference
   wide (was 0.5) and demand/supply zones need a 1.5 ATR departure (was 2.0); both roughly doubled how much
   better than random the zones held. Internal structure, swing length, pivot lookbacks and BULB showed
   no consistent improvement in either direction, so they keep the Pine defaults. BULB defaults to
-  Fixed (non-repainting) mode. Event history, plots and markers before any bar are identical with or
+  Fixed (non-repainting) mode. Re-checked on the current market (5m/15m, Aug – Oct 2026, tuned on Aug – mid
+  Sep, confirmed on mid Sep – Oct) with a risk-adjusted score (stop beyond the zone counted): the current zone
+  width, demand/supply departure and order-block displacement scored best, so they stay. The "move off
+  support/resistance" and TSI curl triangles scored no better than random in every period and timeframe
+  and now default to off. The dashboard values match textbook RSI, MACD, ADX, Momentum, Vortex, MFI and
+  Stoch RSI exactly, and PSAR matches TradingView's reference algorithm. Event history, plots and markers before any bar are identical with or
   without later data (no repainting or lookahead).
 - **Not verified:** no TradingView-exported comparison data exists yet, so bar-by-bar parity with the
   Pine original (structure, zones, patterns, dashboard values) is unconfirmed. Weekly/monthly candles

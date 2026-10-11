@@ -16,6 +16,12 @@ TUNED_DEFAULTS={
     'mult':1.0,
     # demand/supply: 1.5 ATR departure (was 2.0): edge +5/+5 -> +12/+10 (2025), +2/+5 -> +11/+11 (2026), ~1.8x the zones.
     'ds_min_atr':1.5,
+    # Reaction-from-S/R triangles and TSI curls scored ~0 against the same direction at random bars on 1H/4H 2025 and
+    # 2026 and on 5m/15m Jan and Aug-Oct 2026 (e.g. 5m Aug-Oct: -0.7/+0.8 and -0.5/-3.3 pts over ~1,700 signals), at
+    # about 20 per day on 5m. Off by default as noise; nothing else depends on them and they can be switched back on.
+    'supPush':False,
+    'resPush':False,
+    'curl':False,
 }
 INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is not None else None,
                      'title':HELP.get(s['id'],{}).get('label',s['title']),
