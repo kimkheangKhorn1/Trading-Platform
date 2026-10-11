@@ -104,7 +104,8 @@ export function ChartView() {
 
   // ---------------------------------------------------------------- indicator runs
   const firstTime = ctrl && ctrl.bars.length ? ctrl.bars[0][0] : null
-  const replayEnd = replayMode === 'active' ? cursorTime : null
+  // also while picking another start bar mid-replay: the bars after the cursor stay hidden until a bar is picked
+  const replayEnd = replayMode !== 'off' ? cursorTime : null
   // saved instances of scripts that no longer exist are pruned by syncWithMeta; never request them
   const known = useMemo(() => new Set(scripts.map((s) => s.id)), [scripts])
   useEffect(() => {
@@ -159,7 +160,7 @@ export function ChartView() {
     const matches = result && result.request.feed_id === feedId && result.request.timeframe === tf
     if (!matches) return ctrl.setTrades(null)
     let trades: TradeDto[] = result.trades
-    if (replayMode === 'active' && cursorTime !== null) {
+    if (replayMode !== 'off' && cursorTime !== null) {
       // never reveal fills that happen after the replay cursor
       trades = trades
         .filter((t) => t.entry_time <= cursorTime)

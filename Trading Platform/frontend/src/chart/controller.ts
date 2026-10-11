@@ -125,7 +125,10 @@ export class ChartController {
     })
     this.chart.subscribeClick((p) => {
       const info = p.point ? this.overlay.hit(p.point.x, p.point.y) : null
-      const time = typeof p.time === 'number' ? (p.time as number) : null
+      // right of the last shown bar (e.g. past the replay cursor) a click means that last bar
+      const last = this.shownBars.length - 1
+      const time = typeof p.time === 'number' ? (p.time as number)
+        : p.logical !== undefined && p.logical > last && last >= 0 ? this.shownBars[last][0] : null
       this.ev.onClick(info, time)
     })
     this.chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {

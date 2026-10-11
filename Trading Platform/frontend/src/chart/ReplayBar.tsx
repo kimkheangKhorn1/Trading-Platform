@@ -62,14 +62,21 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [mode, ctrl, set])
 
+  // leaving replay from any mode (e.g. the toolbar Replay button while picking) shows the latest data again
+  useEffect(() => {
+    if (mode === 'off' && ctrl.replayIndex !== null) ctrl.stopReplay()
+  }, [mode, ctrl])
+
   // picking: Esc cancels; a cut line follows the mouse and shades the bars that will be hidden
   useEffect(() => {
     if (mode !== 'picking') return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && set({ mode: 'off' })
+    // Esc while picking from a running replay goes back to it, as on TradingView; otherwise it leaves replay
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && set({ mode: ctrl.replayIndex === null ? 'off' : 'active' })
     const ts = ctrl.chart.timeScale()
     const onMove = (p: MouseEventParams<Time>) => {
       if (!p.point || p.logical === undefined) return setCut(null)
-      const x = ts.logicalToCoordinate(Math.round(p.logical) as never)
+      // only shown bars can be picked: past the replay cursor the line stays on the last one
+      const x = ts.logicalToCoordinate(Math.min(Math.round(p.logical), ctrl.shownBars.length - 1) as never)
       if (x === null) return setCut(null)
       const half = ts.options().barSpacing / 2
       setCut({ x: x + half, width: ts.width(), height: ctrl.chart.paneSize(0).height })
@@ -127,8 +134,8 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
       </span>
       <span className="replay-sep" />
       <button className="btn ghost sm" title="Pick another start bar" onClick={() => {
-        ctrl.stopReplay() // show full history again so any bar can be picked
-        set({ mode: 'picking', playing: false, cursorTime: null })
+        // like TradingView: the chart stays where it is and later bars stay hidden, so an earlier bar can be picked
+        set({ mode: 'picking', playing: false })
       }}>Select bar</button>
       <button className="btn ghost sm" title="Leave replay and go back to the latest data" onClick={() => {
         ctrl.stopReplay()
