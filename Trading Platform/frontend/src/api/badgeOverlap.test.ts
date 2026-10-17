@@ -37,3 +37,22 @@ describe('overlap display precision', () => {
     expect(label?.text).not.toContain('8 timeframes')
   })
 })
+
+it('keeps locked bounds and captured strength even when another lock has a higher count', () => {
+  const locked = {...result.overlaps[0], locked_at: 800, lock_id: 'immutable'}
+  const data = {...result, lock_mode: true, overlaps: [locked, result.overlaps[1]]}
+  const drawings = badgeOverlapDrawings(data, 900, 60, 3, true)
+  const [box] = drawings.filter(d => d.kind === 'box')
+  expect(box).toMatchObject({bottom: 100, top: 100.25, created_at: 800})
+  const labels = drawings.filter(d => d.kind === 'label')
+  expect(labels).toHaveLength(2)
+  expect(labels[0].text).toContain('Locked Demand · 2 timeframes')
+  expect(labels[0].tooltip).toContain('Timeframe count and source zones are frozen at locking')
+})
+
+it('does not display a stale locked snapshot while a possible touch is being calculated', () => {
+  const locked = {...result, lock_mode: true}
+  expect(usableOverlapClock(locked, 1001, false)).toBe(false)
+  expect(usableOverlapClock(locked, 999, true)).toBe(false)
+  expect(usableOverlapClock(locked, 1001, true)).toBe(true)
+})

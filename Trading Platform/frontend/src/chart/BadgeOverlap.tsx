@@ -21,9 +21,9 @@ export function BadgeOverlapControl({ inst, update }: {
     <button className="icon-btn sm" aria-label="Fresh badge overlap settings" aria-expanded={open}
       onClick={() => setOpen(!open)}>⌄</button>
     {open && <div className="badge-overlap-settings" role="group" aria-label="Fresh badge overlap settings">
-      <strong>Fresh badge overlaps</strong>
-      <span>Uses current red/green D/S price badges only.</span>
-      <span>Follows “Hide Zones Farther Than” and the indicator’s D/S display settings on each source timeframe.</span>
+      <strong>Locked D/S overlaps</strong>
+      <span>Finds candidates from displayed fresh D/S badges, then locks their range and timeframe count.</span>
+      <span>After locking: first touch of the overlap deletes it. “Hide Zones Farther Than” uses the current chart’s recent range to hide/show it without deletion.</span>
       <div className="badge-overlap-tfs">{BADGE_TFS.map(tf => <label key={tf}>
         <input type="checkbox" checked={c.timeframes.includes(tf)} onChange={e => change({timeframes: e.target.checked
           ? BADGE_TFS.filter(t => t === tf || c.timeframes.includes(t)) : c.timeframes.filter(t => t !== tf)})} />{TF_LABELS[tf]}
@@ -32,9 +32,9 @@ export function BadgeOverlapControl({ inst, update }: {
         options={[2,3,4,5,6].map(n => ({value:n,label:String(n)}))}
         onChange={minTimeframes => change({minTimeframes})} /></label>
       <label><input type="checkbox" checked={c.strongestOnly ?? false}
-        onChange={e => change({strongestOnly: e.target.checked})} />Only highest count per side</label>
-      <span>★ marks the highest timeframe count for Demand and Supply separately. Ties stay visible.</span>
-      <span>Only the exact shared price band is shaded. Each timeframe counts once, even with several badges. More timeframes does not mean a confirmed trade.</span>
+        onChange={e => change({strongestOnly: e.target.checked})} />Only highest count for new locks</label>
+      <span>★ highlights captured timeframe counts. Existing locks never shrink when a source badge disappears.</span>
+      <span>Locks are saved across reloads and chart timeframe changes. Touches are tracked even while hidden. Replay only shows locks known by its clock. Counts are from locking, not live trade confidence.</span>
       <button onClick={() => setOpen(false)}>Close</button>
     </div>}
   </span>

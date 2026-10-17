@@ -15,11 +15,11 @@ export function useBadgeOverlaps(instances: IndicatorInstance[], feedId: string 
       || inst.groupVisible.demand_supply === false) return []
     return [{uid: inst.uid, body: {feed_id: feedId, inputs: inst.inputs, as_of: asOf,
       timeframes: c.timeframes.filter(t => inst.timeframes.includes(t)),
-      min_timeframes: c.minTimeframes, max_ranges: 8}}]
+      min_timeframes: c.minTimeframes, max_ranges: 8, lock_id: inst.uid, chart_timeframe: tf, strongest_only: c.strongestOnly ?? false}}]
   }) : []
   const key = JSON.stringify({tf, jobs})
-  // Everything except the clock: results from an earlier clock in the same scope stay on screen until the
-  // next calculation lands, so the zones don't vanish and reappear on every replay step.
+  // Everything except the clock identifies an analysis scope. Locked results are displayed only
+  // for their completed current request, so a pending first-touch deletion cannot look current.
   const scope = JSON.stringify({tf, jobs: jobs.map(j => ({uid: j.uid, body: {...j.body, as_of: null}}))})
   const current = useRef(scope)
   const pending = useRef<{key: string; scope: string; jobs: Job[]} | null>(null)
@@ -61,10 +61,11 @@ export function useBadgeOverlaps(instances: IndicatorInstance[], feedId: string 
     const out: Record<string, DrawingObj[]> = {}
     const strongest = JSON.parse(strongestKey) as Record<string, boolean>
     if (sameScope && displayTime !== null) for (const [uid, data] of Object.entries(state.results))
-      if (usableOverlapClock(data, asOf))
+      if (usableOverlapClock(data, asOf, valid))
         out[uid] = badgeOverlapDrawings(data, displayTime, step, precision, strongest[uid], timezone)
     return out
-  }, [state, sameScope, displayTime, step, precision, asOf, strongestKey, timezone])
-  return {drawings, displayedBands: Object.values(drawings).reduce((n, ds) => n + ds.filter(d => d.kind === 'box').length, 0), enabled: jobs.length > 0, loading: !valid || state.loading, error: valid ? state.error : null,
+  }, [state, sameScope, displayTime, step, precision, asOf, strongestKey, timezone, valid])
+  const hiddenLocks = valid ? Object.values(state.results).reduce((n, d) => n + (d.hidden_locks ?? 0), 0) : 0
+  return {drawings, hiddenLocks, displayedBands: Object.values(drawings).reduce((n, ds) => n + ds.filter(d => d.kind === 'box').length, 0), enabled: jobs.length > 0, loading: !valid || state.loading, error: valid ? state.error : null,
     warnings: valid ? Object.values(state.results).flatMap(d => d.warnings) : []}
 }

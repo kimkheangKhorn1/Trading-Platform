@@ -282,8 +282,8 @@ export function ChartView() {
       {badgeOverlap.enabled && <div className="overlap-status" role="status">
         {badgeOverlap.error ? `D/S overlap unavailable: ${badgeOverlap.error}`
           : badgeOverlap.loading ? 'D/S overlap · updating snapshot…'
-          : badgeOverlap.displayedBands ? `${badgeOverlap.displayedBands} fresh D/S overlap bands · ★ highest timeframe count per side`
-          : 'No fresh D/S overlaps meet the selected timeframe and display settings'}
+          : badgeOverlap.displayedBands ? `${badgeOverlap.displayedBands} locked D/S overlaps · ${badgeOverlap.hiddenLocks} hidden · counts frozen at locking`
+          : `No visible locked overlaps · ${badgeOverlap.hiddenLocks} hidden by display settings`}
         {!!badgeOverlap.warnings.length && <span>{badgeOverlap.warnings.join(' · ')}</span>}
       </div>}
       {notice ? (

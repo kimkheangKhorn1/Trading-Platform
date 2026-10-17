@@ -17,8 +17,12 @@ export interface BadgeZone {
 }
 export interface BadgeOverlapResult {
   as_of: number
+  lock_mode?: boolean
+  active_locks?: number
+  hidden_locks?: number
+  deleted_locks?: number
   overlaps: { side: 'demand' | 'supply'; bottom: number; top: number; strength: number; timeframes: string[];
-    zone_count: number; badges: BadgeZone[] }[]
+    zone_count: number; badges: BadgeZone[]; lock_id?: string; locked_at?: number }[]
   badges: BadgeZone[]
   sources: {timeframe: string; last_bar: number; badges: number}[]
   total_overlaps: number
@@ -26,7 +30,7 @@ export interface BadgeOverlapResult {
 }
 export interface BadgeOverlapRequest {
   feed_id: string; inputs: Record<string, InputValue>; as_of: number; timeframes: TimeframeCode[];
-  min_timeframes: number; max_ranges: number
+  min_timeframes: number; max_ranges: number; lock_id?: string; chart_timeframe?: TimeframeCode; strongest_only?: boolean
 }
 export async function fetchBadgeOverlaps(body: BadgeOverlapRequest): Promise<BadgeOverlapResult> {
   const res = await fetch('/api/badge-overlaps', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
@@ -44,8 +48,8 @@ export interface OverlapHover {
 }
 
 /** Never show a future snapshot after rewinding, including while an older request is in flight. */
-export function usableOverlapClock(result: BadgeOverlapResult, asOf: number | null): boolean {
-  return asOf !== null && result.as_of <= asOf
+export function usableOverlapClock(result: BadgeOverlapResult, asOf: number | null, currentRequest = true): boolean {
+  return asOf !== null && result.as_of <= asOf && (!result.lock_mode || currentRequest)
 }
 
 export function badgeOverlapDrawings(data: BadgeOverlapResult, time: number, step: number, precision: number,
@@ -54,12 +58,13 @@ export function badgeOverlapDrawings(data: BadgeOverlapResult, time: number, ste
   for (const b of data.overlaps) peaks[b.side] = Math.max(peaks[b.side], b.strength)
   return data.overlaps.flatMap((b, i): DrawingObj[] => {
     const strongest = b.strength === peaks[b.side]
-    if (strongestOnly && !strongest) return []
+    if (strongestOnly && !strongest && b.locked_at === undefined) return []
     const col = b.side === 'demand' ? '#22D3A5' : '#FF6B81'
     const f = (p: number) => p.toFixed(precision)
-    const title = `${strongest ? '★ ' : ''}${b.side === 'demand' ? 'Demand' : 'Supply'} · ${b.strength} timeframes · ${f(b.bottom)}–${f(b.top)}`
+    const title = `${strongest ? '★ ' : ''}${b.locked_at !== undefined ? 'Locked ' : ''}${b.side === 'demand' ? 'Demand' : 'Supply'} · ${b.strength} timeframes · ${f(b.bottom)}–${f(b.top)}`
     const tip = `${b.side === 'demand' ? 'Demand' : 'Supply'} overlap · Fresh at snapshot\nShared price range: ${f(b.bottom)} – ${f(b.top)}\n${b.strength} different timeframes cover this entire band: ${b.timeframes.map(t => BADGE_TF_LABELS[t] ?? t).join(', ')}.\nWidth: ${f(b.top - b.bottom)} price units.\nFresh means the source indicator has not marked the zone touched at its proximal level.\nSnapshot: ${fmtDateTime(data.as_of, timezone)} (${timezone === 'local' ? 'Local' : timezone})\nDemand/Supply confluence only; this is not an entry confirmation.`
-    const common = {group: 'badge_overlap', created_at: data.as_of, tooltip: tip,
+    const lockTip = b.locked_at === undefined ? tip : `${title}\nLocked range: ${f(b.bottom)} – ${f(b.top)}\nLocked at: ${fmtDateTime(b.locked_at, timezone)}\nTimeframe count and source zones are frozen at locking.\nFirst touch of THIS overlap deletes it. Distance only hides it temporarily.`
+    const common = {group: 'badge_overlap', created_at: b.locked_at ?? data.as_of, tooltip: lockTip,
       overlap: {band: b, asOf: data.as_of, precision, strongest}}
     return [
       {...common, kind: 'box', id: -10000 - i * 2, left: time, right: time + 8 * step, top: b.top, bottom: b.bottom,

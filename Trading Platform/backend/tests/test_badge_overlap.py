@@ -133,3 +133,28 @@ def test_distance_setting_changes_badges_at_same_observation_time(market):
         # The overlay must receive exactly the badges the original renderer displays with this setting.
         drawings,_=svc.source_drawings(feed,tf,clock,{**base,'aoi_max_dist':.5})
         assert len(rendered_badges(drawings,tf,clock))==sum(z['timeframe']==tf for z in limited['badges'])
+
+
+def test_locked_service_keeps_original_band_after_source_loss_distance_change_and_tf_switch(market,monkeypatch):
+    store,feed,m=market;svc=BadgeOverlapService(store)
+    clock=int(m.time[-100])+60
+    source={'M1':[badge_label(bottom=100,top=110,origin=clock-3600)],
+            'M5':[badge_label(bottom=104,top=108,origin=clock-3600)]}
+    monkeypatch.setattr(svc,'source_drawings',lambda feed,tf,as_of,inputs:(source[tf],as_of-60))
+    base=dict(feed_id=feed.id,inputs={'aoi_max_dist':0.},timeframes=['M1','M5'],lock_id='chart-instance')
+    initial=svc.run(**base,as_of=clock)
+    [locked]=initial['overlaps']
+    assert initial['lock_mode'] and (locked['bottom'],locked['top'],locked['strength'])==(104,108,2)
+    source['M1']=[]
+    assert svc.run(**base,as_of=clock+60)['overlaps']==[locked]
+    hidden=svc.run(**{**base,'inputs':{'aoi_max_dist':.5}},as_of=clock+60)
+    assert hidden['overlaps']==[] and hidden['hidden_locks']==1
+    assert svc.run(**base,as_of=clock+60,chart_timeframe='M15')['overlaps']==[locked]
+    # A later observed minute touches the locked band itself, including after source loss.
+    s=store.get_series(feed.id,'M1');t=clock+60
+    store.upsert_candles(s.id,[(t,112,113,107,112,1,1)])
+    consumed=svc.run(**base,as_of=t+60)
+    assert consumed['overlaps']==[] and consumed['deleted_locks']==1
+    # Even if source eligibility later supplies the original badge group again, no resurrection.
+    source['M1']=[badge_label(bottom=100,top=110,origin=clock-3600)]
+    assert svc.run(**base,as_of=t+120)['overlaps']==[]
