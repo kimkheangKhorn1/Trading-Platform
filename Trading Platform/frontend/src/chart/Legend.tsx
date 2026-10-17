@@ -4,6 +4,7 @@ import { fmtPrice } from '../lib/format'
 import { currentFeed, TF_LABELS, useApp } from '../state/app'
 import { useIndicators } from '../state/indicators'
 import type { ChartController } from './controller'
+import { BadgeOverlapControl } from './BadgeOverlap'
 
 function fmtVolume(v: number): string {
   if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`
@@ -23,6 +24,7 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
   const remove = useIndicators((s) => s.remove)
   const [collapsed, setCollapsed] = useState(false)
   const feed = currentFeed()
+  const archiveSnapshot = feed?.provider === 'exness_archive' && ctrl.replayIndex === null
   const bars = ctrl.shownBars
   const n = bars.length
   const idx = hoverIdx !== null && hoverIdx >= 0 && hoverIdx < n ? hoverIdx : n - 1
@@ -40,7 +42,8 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
         <span className="legend-dot">·</span>
         <span>{TF_LABELS[tf]}</span>
         <span className="legend-dot">·</span>
-        <span className="muted">{feed ? (feed.provider === 'oanda' ? 'OANDA' : `CSV ${feed.id.split('-').slice(2).join('-')}`) : ''}</span>
+        <span className="muted">{feed ? (feed.provider === 'csv' ? `CSV ${feed.id.split('-').slice(2).join('-')}`
+          : feed.provider === 'exness_archive' ? 'EXNESS HISTORY' : feed.provider.toUpperCase()) : ''}</span>
         {bar ? (
           <span className="legend-ohlc">
             <span>O<b className={cls}>{fmtPrice(bar[1], p)}</b></span>
@@ -53,7 +56,9 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
               </b>
             ) : null}
             <span>Vol<b className="muted-strong">{fmtVolume(bar[5])}</b></span>
-            {bar[6] === 0 ? <span className="pill-live">forming</span> : null}
+            {bar[6] === 0 ? <span className="pill-live" title={archiveSnapshot
+              ? 'The archive ends partway through this candle. It updates when new archive data is imported.'
+              : 'This candle has not closed yet.'}>{archiveSnapshot ? 'partial snapshot' : 'forming'}</span> : null}
           </span>
         ) : null}
       </div>
@@ -79,6 +84,7 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
                       {meta.short_name} <span className="muted">{args.join(' ')}</span>
                     </span>
                     <span className="legend-actions">
+                      {inst.scriptId === 'smc_ict_scalping_master' ? <BadgeOverlapControl inst={inst} update={update} /> : null}
                       <button className="icon-btn sm" title={inst.visible ? 'Hide' : 'Show'} onClick={() => update(inst.uid, { visible: !inst.visible })}>
                         <Icon name={inst.visible ? 'eye' : 'eyeOff'} size={14} />
                       </button>

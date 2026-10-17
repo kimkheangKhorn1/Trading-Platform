@@ -98,7 +98,9 @@ export default function App() {
             <div className="first-run">
               <h2>No market data yet</h2>
               <p>
-                {health.oanda.enabled
+                {health.market_data_provider === 'exness'
+                  ? (health.exness?.last_error ?? 'Exness API access needs setup. Open Data for connection status, or import a CSV while credentials are being prepared.')
+                  : health.oanda.enabled
                   ? 'OANDA is configured but no feed could be initialised - check the API token and network, then reload.'
                   : 'OANDA credentials are not configured. Import XAUUSD candles from a CSV file to get started, or add OANDA_API_TOKEN to backend/.env and restart the backend.'}
               </p>

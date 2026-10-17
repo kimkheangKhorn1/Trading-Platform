@@ -1,0 +1,26 @@
+{
+  "backend/app/scripts/smc_master/__init__.py": {
+    "before": "59f093403dd410301ac3b75b84ca32291469e53464dbed0a91b9ed404a3f7b54",
+    "after": "59f093403dd410301ac3b75b84ca32291469e53464dbed0a91b9ed404a3f7b54"
+  },
+  "backend/app/scripts/smc_master/help.json": {
+    "before": "74dc448ad527ec8a130d15bf0495b7b8f96f28f10af4f0bc0f8d7e120e365f50",
+    "after": "74dc448ad527ec8a130d15bf0495b7b8f96f28f10af4f0bc0f8d7e120e365f50"
+  },
+  "backend/app/scripts/smc_master/indicator.py": {
+    "before": "133d12d1f96583b5879d8d5824375ec2ef5fa3f284272f0bfcae2bb8982914c6",
+    "after": "133d12d1f96583b5879d8d5824375ec2ef5fa3f284272f0bfcae2bb8982914c6"
+  },
+  "backend/app/scripts/smc_master/inputs.json": {
+    "before": "4cdf0cad7c8b045da80b3d740e9b3e4a9ae070d086aed714047824e2212de0ff",
+    "after": "4cdf0cad7c8b045da80b3d740e9b3e4a9ae070d086aed714047824e2212de0ff"
+  },
+  "backend/app/scripts/smc_master/metadata.py": {
+    "before": "4a7a77dd9da3e3a07350f3a130b3dcdc98bd52b0f724a9a70cc9f012c11b71d7",
+    "after": "4a7a77dd9da3e3a07350f3a130b3dcdc98bd52b0f724a9a70cc9f012c11b71d7"
+  },
+  "backend/app/scripts/smc_master/technical.py": {
+    "before": "f3b6ccdf6ff43f406d0b2519d0e281d0074d2703a083d42d9cd2016cdf51bbf0",
+    "after": "f3b6ccdf6ff43f406d0b2519d0e281d0074d2703a083d42d9cd2016cdf51bbf0"
+  }
+}

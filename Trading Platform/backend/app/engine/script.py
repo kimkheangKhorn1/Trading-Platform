@@ -136,6 +136,11 @@ class Context:
         return self._r.tf
 
     @property
+    def alignment(self) -> str:
+        """Session alignment of the feed's candles ("ny17" or "utc")."""
+        return self._r.alignment
+
+    @property
     def precision(self) -> int:
         """Price decimals of the symbol (``syminfo.mintick == 10 ** -precision``)."""
         return self._r.precision
@@ -170,6 +175,33 @@ class Context:
                          offset: int = 0, allow_future_leak: bool = False) -> SecurityHandle:
         """Register a higher-timeframe expression (call from ``setup`` only)."""
         return self._r.register_security(timeframe, expr, lookahead, offset, allow_future_leak)
+
+    def history_before_start(self, start: int, timeframe: str | None = None) -> "Bars":
+        """Stored, confirmed candles of the chart timeframe (or of ``timeframe``) with open times from ``start``
+        up to (not including) the first bar this run was given - for state that must start at a fixed date
+        whatever part of the chart is loaded. Only candles that ended before every bar of the run are returned
+        (no lookahead, and no overlap with the run's bars); empty without a data provider."""
+        from ..market.timeframes import bucket_end, get_timeframe
+        from .bars import Bars
+
+        r = self._r
+        if r.htf_provider is None or r.n == 0:
+            return Bars.empty()
+        first = int(r.buf_time[0])
+        if first <= start:
+            return Bars.empty()
+        tf = r.tf if timeframe is None else get_timeframe(timeframe)
+        load = getattr(r.htf_provider, "load_stored", None)
+        bars = load(tf.code, start, first - 1) if load is not None else r.htf_provider.load(tf.code, start, first - 1, 0)
+        if len(bars) == 0:
+            return bars
+        keep = (bars.time >= start) & (bars.time < first) & bars.complete
+        if timeframe is not None:  # a longer candle must have ended before the run's first bar
+            keep &= np.array([bucket_end(int(t), tf, r.alignment) <= first for t in bars.time], dtype=bool)
+        if keep.all():
+            return bars
+        return Bars(bars.time[keep], bars.open[keep], bars.high[keep], bars.low[keep], bars.close[keep],
+                    bars.volume[keep], bars.complete[keep])
 
     def security(self, handle: SecurityHandle) -> float:
         values = self._r.security_values[handle.index]

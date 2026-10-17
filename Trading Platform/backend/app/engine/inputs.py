@@ -176,6 +176,8 @@ class ScriptMeta:
     shapes: list[ShapeSpec] = field(default_factory=list)
     strategies: list[StrategySpec] = field(default_factory=list)
     drawing_groups: list[DrawingGroup] = field(default_factory=list)
+    # drawing groups with their own object quota, e.g. {"trades": {"box": 5000, "line": 5000, "label": 5000}}
+    group_limits: dict[str, dict[str, int]] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {

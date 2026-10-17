@@ -19,6 +19,11 @@ export class AnnotationLayout {
     this.height = height
   }
 
+  /** Mark space as taken without searching, e.g. for rects already placed by packRow. */
+  reserve(rect: AnnotationRect) {
+    this.occupied.push(rect)
+  }
+
   place(rect: AnnotationRect, direction: -1 | 1): AnnotationRect {
     const maxX = Math.max(EDGE, this.width - EDGE - rect.width)
     const x = Math.max(EDGE, Math.min(maxX, rect.x))
@@ -59,6 +64,36 @@ export class AnnotationLayout {
     this.occupied.push(best)
     return best
   }
+}
+
+/**
+ * Lay out price badges that point sideways at a level. Each keeps its price; badges whose rows collide are lined
+ * up left to right in order of their own x. A run that would leave the pane on the right slides left as a group.
+ * Returns null for a badge that still can't fit in its row, so the caller can fall back to the vertical search.
+ */
+export function packRow(rects: AnnotationRect[], width: number, height: number): (AnnotationRect | null)[] {
+  const out = rects.map((r) => ({ ...r, x: Math.max(EDGE, r.x),
+    y: Math.max(EDGE, Math.min(height - EDGE - r.height, r.y)) }))
+  const sameRow = (a: AnnotationRect, b: AnnotationRect) => a.y < b.y + b.height + GAP && a.y + a.height + GAP > b.y
+  const order = out.map((_, i) => i).sort((i, j) => out[i].x - out[j].x || out[i].y - out[j].y)
+  const done: number[] = []
+  for (const i of order) {
+    for (const j of done) if (sameRow(out[i], out[j])) out[i].x = Math.max(out[i].x, out[j].x + out[j].width + GAP)
+    done.push(i)
+  }
+  // Badges linked by shared rows move together, so sliding a group can't run into a badge outside it.
+  const group = out.map((_, i) => i)
+  const root = (i: number): number => (group[i] === i ? i : (group[i] = root(group[i])))
+  for (let i = 0; i < out.length; i++) for (let j = i + 1; j < out.length; j++)
+    if (sameRow(out[i], out[j])) group[root(i)] = root(j)
+  const members = new Map<number, number[]>()
+  out.forEach((_, i) => members.set(root(i), [...(members.get(root(i)) ?? []), i]))
+  for (const ids of members.values()) {
+    const over = Math.max(...ids.map((i) => out[i].x + out[i].width)) - (width - EDGE)
+    const shift = Math.min(over, Math.min(...ids.map((i) => out[i].x)) - EDGE)
+    if (shift > 0) for (const i of ids) out[i].x -= shift
+  }
+  return out.map((r) => (r.x + r.width <= width - EDGE ? r : null))
 }
 
 function overlaps(a: AnnotationRect, b: AnnotationRect): boolean {

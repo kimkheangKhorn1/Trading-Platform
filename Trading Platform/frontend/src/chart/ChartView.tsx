@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LiveSocket } from '../api/live'
+import { LiveSocket, nonStreamingStatus } from '../api/live'
 import type { IndicatorOutput, IndicatorTable, TradeDto } from '../api/types'
 import { Icon, Spinner } from '../components/common/Icon'
-import { useApp } from '../state/app'
+import { TF_SECONDS, useApp } from '../state/app'
 import { useIndicators } from '../state/indicators'
 import { useReplay } from '../state/replay'
 import { useScale } from '../state/scale'
@@ -11,9 +11,13 @@ import { ChartController } from './controller'
 import { Legend } from './Legend'
 import type { HitInfo } from './overlay'
 import { ReplayBar } from './ReplayBar'
+import { Ruler } from './Ruler'
 import { IndicatorScheduler } from './scheduler'
 import { IndicatorTables } from './Tables'
 import { indexAtOrBefore } from './timeIndex'
+import { useBadgeOverlaps } from './useBadgeOverlaps'
+import { ChartTooltip } from './OverlapTooltip'
+import { barCloseTime } from './replayTime'
 
 const LIVE_REFRESH_MS = 3000
 
@@ -21,15 +25,16 @@ export function ChartView() {
   const host = useRef<HTMLDivElement>(null)
   const ctrlRef = useRef<ChartController | null>(null)
   const sched = useRef(new IndicatorScheduler())
+  const runScope = useRef('')
   const [ctrl, setCtrl] = useState<ChartController | null>(null)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
-  const [tip, setTip] = useState<{ info: HitInfo; x: number; y: number } | null>(null)
+  const [tip, setTip] = useState<{ info: HitInfo; x: number; y: number; pinned?: boolean } | null>(null)
   const [version, setVersion] = useState(0)
   const [liveTick, setLiveTick] = useState(0)
   const lastLiveRefresh = useRef(0)
-  const liveRef = useRef<LiveSocket | null>(null)
 
   const feedId = useApp((s) => s.feedId)
+  const feed = useApp((s) => s.feeds.find((f) => f.id === feedId))
   const tf = useApp((s) => s.timeframe)
   const tz = useApp((s) => s.timezone)
   const focus = useApp((s) => s.focus)
@@ -50,17 +55,22 @@ export function ChartView() {
   useEffect(() => {
     const c = new ChartController(host.current!, {
       onCrosshair: (i) => setHoverIdx(i),
-      onHover: (info, x, y) => setTip(info ? { info, x, y } : null),
+      onHover: (info, x, y) => setTip(current => current?.pinned ? current : info ? { info, x, y } : null),
       onClick: (info, time) => {
         const rp = useReplay.getState()
         if (rp.mode === 'picking' && time !== null) {
           const idx = indexAtOrBefore(c.bars.map((b) => b[0]), time)
           if (idx >= 0) {
             c.startReplay(idx)
-            rp.set({ mode: 'active', playing: false, cursorTime: c.bars[idx][0] })
+            rp.set({ mode: 'active', playing: false, cursorTime: c.bars[idx][0], cutoffTime: c.replayCutoffTime() })
           }
           return
         }
+        if (info?.overlap) {
+          setTip(current => ({info, x: current?.x ?? 16, y: current?.y ?? 110, pinned: true}))
+          return
+        }
+        setTip(null)
         if (info?.tradeId) {
           const t = useTester.getState().result?.trades.find((x) => x.id === info.tradeId)
           if (t) useTester.getState().selectTrade(t)
@@ -72,32 +82,53 @@ export function ChartView() {
     ctrlRef.current = c
     setCtrl(c)
     if (import.meta.env.DEV) (window as unknown as { __ctrl: ChartController }).__ctrl = c // debugging aid
-    const live = new LiveSocket()
-    live.onStatus = (state, msg) => useApp.getState().setLive(state, msg)
-    live.onBars = (fid, t, rows) => {
-      if (fid !== c.feedId || t !== c.tf) return
-      const structural = c.applyLive(rows)
-      const now = Date.now()
-      if (structural || now - lastLiveRefresh.current > LIVE_REFRESH_MS) {
-        lastLiveRefresh.current = now
-        setLiveTick((k) => k + 1)
-      }
-    }
-    live.connect()
-    liveRef.current = live
     return () => {
-      live.close()
       c.dispose()
       ctrlRef.current = null
     }
   }, [])
 
   useEffect(() => {
+    if (!ctrl || !feedId || !feed) return
+    const stored = nonStreamingStatus(feed)
+    if (stored) {
+      useApp.getState().setLive(stored.state, stored.message)
+      return
+    }
+    useApp.getState().setLive('connecting', 'Connecting to live market data')
+    const live = new LiveSocket()
+    live.onStatus = (state, msg) => useApp.getState().setLive(state, msg)
+    live.onBars = (fid, t, rows) => {
+      if (fid !== ctrl.feedId || t !== ctrl.tf) return
+      const structural = ctrl.applyLive(rows)
+      const now = Date.now()
+      if (structural || now - lastLiveRefresh.current > LIVE_REFRESH_MS) {
+        lastLiveRefresh.current = now
+        setLiveTick((k) => k + 1)
+      }
+    }
+    live.subscribe(feedId, tf)
+    live.connect()
+    return () => live.close()
+    // Feed objects can refresh while their streaming capability stays the same.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctrl, feedId, tf, feed?.provider, feed?.live])
+
+  useEffect(() => {
     if (!ctrl || !feedId) return
-    useReplay.getState().set({ mode: 'off', playing: false, cursorTime: null })
+    const rp = useReplay.getState()
+    const sameFeed = ctrl.feedId === feedId
+    const cutoff = sameFeed && rp.mode !== 'off' ? rp.cutoffTime : null
+    if (!sameFeed) rp.set({ mode: 'off', playing: false, cursorTime: null, cutoffTime: null })
+    else rp.set({ playing: false })
+    for (const inst of useIndicators.getState().instances) sched.current.forget(inst.uid)
     useIndicators.setState({ outputs: {} }) // outputs belong to the previous feed/timeframe
-    void ctrl.load(feedId, tf)
-    liveRef.current?.subscribe(feedId, tf)
+    void ctrl.load(feedId, tf, cutoff).then((loaded) => {
+      const current = useReplay.getState()
+      if (loaded && cutoff !== null && current.mode !== 'off' && current.cutoffTime === cutoff) {
+        current.set({ cursorTime: ctrl.replayCursorTime() })
+      }
+    })
   }, [ctrl, feedId, tf])
 
   useEffect(() => ctrl?.setTimezone(tz), [ctrl, tz])
@@ -105,27 +136,33 @@ export function ChartView() {
   // ---------------------------------------------------------------- indicator runs
   const firstTime = ctrl && ctrl.bars.length ? ctrl.bars[0][0] : null
   // also while picking another start bar mid-replay: the bars after the cursor stay hidden until a bar is picked
-  const replayEnd = replayMode !== 'off' ? cursorTime : null
+  const replayEnd = replayMode !== 'off' ? ctrl?.replayCursorTime() ?? null : null
+  // A historical navigation window must not calculate millions of later bars.
+  const indicatorEnd = replayEnd ?? (ctrl?.hasNewer ? ctrl.bars.at(-1)?.[0] ?? null : null)
   // saved instances of scripts that no longer exist are pruned by syncWithMeta; never request them
   const known = useMemo(() => new Set(scripts.map((s) => s.id)), [scripts])
   useEffect(() => {
     // only once the controller holds candles of this feed/timeframe (a switch is still loading otherwise)
-    if (!ctrl || !feedId || firstTime === null || ctrl.feedId !== feedId || ctrl.tf !== tf || !ctrl.bars.length) return
+    if (!ctrl || ctrl.loading || !feedId || firstTime === null || ctrl.feedId !== feedId || ctrl.tf !== tf || !ctrl.bars.length) return
+    if (replayMode !== 'off' && replayEnd === null) return
+    const scope = JSON.stringify({feedId, tf, firstTime})
+    const changedChart = runScope.current !== scope
+    runScope.current = scope
     for (const inst of instances) {
       if (!inst.visible || !inst.timeframes.includes(tf) || !known.has(inst.scriptId)) continue
       sched.current.request(inst.uid, {
-        feedId, tf, scriptId: inst.scriptId, inputs: inst.inputs, start: firstTime, end: replayEnd,
-      }, replayEnd !== null ? 0 : 250)
+        feedId, tf, scriptId: inst.scriptId, inputs: inst.inputs, start: firstTime, end: indicatorEnd,
+      }, replayEnd !== null || changedChart ? 0 : 250)
     }
-  }, [ctrl, feedId, tf, firstTime, replayEnd, instances, known])
+  }, [ctrl, feedId, tf, firstTime, replayEnd, indicatorEnd, replayMode, cursorTime, instances, known, version])
 
   useEffect(() => {
-    if (!ctrl || !feedId || firstTime === null || liveTick === 0 || replayEnd !== null) return
+    if (!ctrl || ctrl.loading || !feedId || firstTime === null || liveTick === 0 || replayMode !== 'off') return
     if (ctrl.feedId !== feedId || ctrl.tf !== tf || !ctrl.bars.length) return
     for (const inst of instances) {
       if (!inst.visible || !inst.timeframes.includes(tf) || !known.has(inst.scriptId)) continue
       sched.current.request(inst.uid, {
-        feedId, tf, scriptId: inst.scriptId, inputs: inst.inputs, start: firstTime, end: null,
+        feedId, tf, scriptId: inst.scriptId, inputs: inst.inputs, start: firstTime, end: indicatorEnd,
       }, 0, true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,11 +174,26 @@ export function ChartView() {
   }, [instances, outputs])
 
   // ----------------------------------------------------------- render outputs/trades
+  const badgeTip = ctrl?.shownBars.at(-1)
+  const badgeReady = !!ctrl && !ctrl.loading && ctrl.feedId === feedId && ctrl.tf === tf
+  const badgeClock = badgeTip ? (replayMode !== 'off' ? ctrl?.replayCutoffTime() ?? null
+    : badgeTip[6] ? barCloseTime(badgeTip[0], tf, feed?.alignment)
+    : Math.min(Math.floor(Date.now() / 60000) * 60, barCloseTime(badgeTip[0], tf, feed?.alignment))) : null
+  const badgeOverlap = useBadgeOverlaps(instances, feedId, tf, badgeClock, badgeTip?.[0] ?? null,
+    TF_SECONDS[tf], ctrl?.precision ?? 3, badgeReady, tz)
+  useEffect(() => { setTip(null) }, [badgeClock, feedId, tf, instances])
+  useEffect(() => {
+    if (!tip?.pinned) return
+    const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setTip(null) }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [tip?.pinned])
   const outData = useMemo(() => {
     const o: Record<string, IndicatorOutput | null> = {}
-    for (const [uid, st] of Object.entries(outputs)) o[uid] = st.data
+    for (const [uid, st] of Object.entries(outputs)) o[uid] = st.data && badgeOverlap.drawings[uid]?.length
+      ? {...st.data, drawings: [...st.data.drawings, ...badgeOverlap.drawings[uid]]} : st.data
     return o
-  }, [outputs])
+  }, [outputs, badgeOverlap.drawings])
 
   useEffect(() => {
     if (ctrl) ctrl.setIndicators(instances, outData, scripts)
@@ -226,12 +278,14 @@ export function ChartView() {
       <div ref={host} className="chart-host" />
       {ctrl ? <Legend ctrl={ctrl} hoverIdx={hoverIdx} version={version} /> : null}
       {ctrl ? <IndicatorTables ctrl={ctrl} tables={tables} version={version} /> : null}
-      {tip ? (
-        <div className="chart-tip" style={{ left: tip.x + 14, top: tip.y + 14 }}>
-          <div className="chart-tip-title">{tip.info.title}</div>
-          {tip.info.body ? <div className="chart-tip-body">{tip.info.body}</div> : null}
-        </div>
-      ) : null}
+      {tip ? <ChartTooltip info={tip.info} x={tip.x} y={tip.y} pinned={tip.pinned} onClose={() => setTip(null)} /> : null}
+      {badgeOverlap.enabled && <div className="overlap-status" role="status">
+        {badgeOverlap.error ? `D/S overlap unavailable: ${badgeOverlap.error}`
+          : badgeOverlap.loading ? 'D/S overlap · updating snapshot…'
+          : badgeOverlap.displayedBands ? `${badgeOverlap.displayedBands} fresh D/S overlap bands · ★ highest timeframe count per side`
+          : 'No fresh D/S overlaps meet the selected timeframe and display settings'}
+        {!!badgeOverlap.warnings.length && <span>{badgeOverlap.warnings.join(' · ')}</span>}
+      </div>}
       {notice ? (
         <div className="chart-notice">
           <Icon name="info" size={14} /> {notice}
@@ -240,6 +294,7 @@ export function ChartView() {
       {picking ? <div className="replay-hint">Click a bar to start replay from it · Esc to cancel</div> : null}
       {loadingAny ? <div className="chart-busy"><Spinner size={12} /> calculating</div> : null}
       {ctrl ? <ReplayBar ctrl={ctrl} /> : null}
+      {ctrl ? <Ruler ctrl={ctrl} /> : null}
     </div>
   )
 }

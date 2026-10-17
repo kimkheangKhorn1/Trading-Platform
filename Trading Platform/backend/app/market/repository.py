@@ -178,6 +178,7 @@ class MarketStore:
         start: int | None = None,
         end: int | None = None,
         before: int | None = None,
+        after: int | None = None,
         limit: int | None = None,
         complete_only: bool = False,
     ) -> Bars:
@@ -185,6 +186,7 @@ class MarketStore:
 
         ``start``/``end`` are inclusive open-time bounds; ``before`` is exclusive. With ``limit`` the
         *latest* ``limit`` matching candles are returned (useful for paging backwards).
+        With ``after`` (exclusive), return the earliest matching candles for forward replay paging.
         """
         where = ["series_id=?"]
         params: list = [series_id]
@@ -197,11 +199,15 @@ class MarketStore:
         if before is not None:
             where.append("t<?")
             params.append(int(before))
+        if after is not None:
+            where.append("t>?")
+            params.append(int(after))
         if complete_only:
             where.append("complete=1")
         sql = f"SELECT t,o,h,l,c,v,complete FROM candles WHERE {' AND '.join(where)}"
         if limit is not None:
-            sql = f"SELECT * FROM ({sql} ORDER BY t DESC LIMIT ?) ORDER BY t ASC"
+            direction = "ASC" if after is not None else "DESC"
+            sql = f"SELECT * FROM ({sql} ORDER BY t {direction} LIMIT ?) ORDER BY t ASC"
             params.append(int(limit))
         else:
             sql += " ORDER BY t ASC"

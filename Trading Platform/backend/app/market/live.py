@@ -26,6 +26,8 @@ class LiveHub:
     def __init__(self, store: MarketStore, sync: OandaSync | None, poll_seconds: float = 2.0):
         self.store = store
         self.sync = sync
+        self.provider = getattr(sync, "provider", "oanda")
+        self.provider_label = "OANDA" if self.provider == "oanda" else "Exness"
         self.poll_seconds = poll_seconds
         self.subs: dict[tuple[str, str], set[WebSocket]] = defaultdict(set)
         self.status: dict[tuple[str, str], dict] = {}
@@ -51,16 +53,17 @@ class LiveHub:
             await self._send(ws, {"type": "status", "feed": feed_id, "tf": tf, "state": "error",
                                   "message": "unknown feed"})
             return
-        if feed.provider != "oanda":
+        if feed.provider in ("csv", "exness_archive"):
             await self._send(ws, {"type": "status", "feed": feed_id, "tf": tf, "state": "static",
-                                  "message": "Imported data - no live updates"})
-        elif self.sync is None:
+                                  "message": ("Exness archive history - updated by the history pipeline"
+                                              if feed.provider == "exness_archive" else "Imported data - no live updates")})
+        elif self.sync is None or not self.sync.owns(feed):
             await self._send(ws, {"type": "status", "feed": feed_id, "tf": tf, "state": "offline",
-                                  "message": "OANDA credentials not configured"})
+                                  "message": f"{feed.provider.upper()} credentials not configured"})
         else:
             self._next_poll[key] = 0.0  # poll immediately
             await self._send(ws, {"type": "status", "feed": feed_id, "tf": tf,
-                                  **self.status.get(key, {"state": "connecting", "message": "Connecting to OANDA"})})
+                                  **self.status.get(key, {"state": "connecting", "message": f"Connecting to {self.provider_label}"})})
 
     def unsubscribe(self, ws: WebSocket) -> None:
         for key in list(self.subs):
@@ -104,7 +107,7 @@ class LiveHub:
             if now < self._next_poll.get(key, 0.0):
                 continue
             feed = self.store.get_feed(key[0])
-            if feed is None or feed.provider != "oanda":
+            if feed is None or not self.sync.owns(feed):
                 self._next_poll[key] = now + 3600
                 continue
             try:
@@ -112,7 +115,7 @@ class LiveHub:
                 rows = await asyncio.to_thread(self.sync.sync_forward, feed, key[1], max_retries=0)
                 self._failures[key] = 0
                 self._next_poll[key] = time.monotonic() + self.poll_seconds
-                await self._set_status(key, "live", "Live · OANDA")
+                await self._set_status(key, "live", f"Live · {self.provider_label}")
                 if rows:
                     await self._broadcast(key, {
                         "type": "bars", "feed": key[0], "tf": key[1],

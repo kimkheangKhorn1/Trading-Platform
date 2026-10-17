@@ -27,7 +27,7 @@ if [ ! -x "$BACKEND/.venv/bin/python" ]; then
   python3 -m venv "$BACKEND/.venv"
   "$BACKEND/.venv/bin/pip" install --upgrade pip >/dev/null
 fi
-if ! "$BACKEND/.venv/bin/python" -c "import fastapi, uvicorn, numpy, pandas, httpx, multipart, dotenv" 2>/dev/null; then
+if ! "$BACKEND/.venv/bin/python" -c "import fastapi, uvicorn, numpy, pandas, httpx, multipart, dotenv, cryptography, websockets, pyarrow, duckdb" 2>/dev/null; then
   echo "Installing backend dependencies…"
   "$BACKEND/.venv/bin/pip" install -r "$BACKEND/requirements.txt"
 fi
@@ -35,7 +35,7 @@ if [ ! -d "$FRONTEND/node_modules" ]; then
   echo "Installing frontend dependencies…"
   (cd "$FRONTEND" && npm install)
 fi
-[ -f "$BACKEND/.env" ] || echo "note: backend/.env not found - OANDA is disabled until you create it from backend/.env.example"
+[ -f "$BACKEND/.env" ] || echo "note: backend/.env not found - configure the market-data API using backend/.env.example"
 
 case "$MODE" in
   test)

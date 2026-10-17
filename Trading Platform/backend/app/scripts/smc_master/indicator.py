@@ -2,6 +2,7 @@
 # Port of the user's SMC & ICT & Indicators + Scalping Master. Pine source remains authoritative.
 from __future__ import annotations
 import math
+import copy
 from bisect import bisect_left
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
@@ -40,6 +41,23 @@ class Zone:
 
 class SmcMaster(Script):
     meta=META
+
+    # These lists contain only numbers or immutable OHLCV tuples. Copy the containers so
+    # provisional appends roll back, but avoid recursively visiting every historical scalar.
+    # All mutable zone state, drawing references and other fields still use the shared deepcopy memo.
+    _SCALAR_HISTORY = frozenset(('rows', 'thresholds', 'disp_atrs', 'zone_atrs',
+                                 'src_high', 'src_low', 'body_avgs', 'rsi_hist'))
+
+    def __deepcopy__(self, memo):
+        clone = type(self).__new__(type(self))
+        memo[id(self)] = clone
+        for name in self._SCALAR_HISTORY:
+            if name in self.__dict__:
+                history = self.__dict__[name]
+                memo[id(history)] = history.copy()
+        clone.__dict__.update((name, copy.deepcopy(value, memo)) for name, value in self.__dict__.items())
+        return clone
+
     def required_warmup(self):
         p=self.p
         return max(1000,3*max(p['macdSlow'],p['fisherLength'],p['vortexLength'],p['mal'],p['atrl'],p['atrLen'],p['rsiLength'],p['rsiLength1'],p['lengthRSI']))

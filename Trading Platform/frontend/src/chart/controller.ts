@@ -17,11 +17,12 @@ import {
 import { api } from '../api/client'
 import type { BarRow, IndicatorOutput, ScriptMeta, TimeframeCode } from '../api/types'
 import { cssColor, THEME } from '../lib/colors'
-import { fmtCrosshair, fmtTick, tradingDate, type TimezoneId } from '../lib/format'
+import { fmtCrosshair, fmtDateTime, fmtTick, tradingDate, type TimezoneId } from '../lib/format'
 import { TF_SECONDS, useApp } from '../state/app'
 import type { IndicatorInstance } from '../state/indicators'
 import { OverlayPrimitive, type HitInfo, type OverlayLayer, type TradeOverlay } from './overlay'
 import { indexAtOrBefore } from './timeIndex'
+import { barCloseTime, completedReplayIndex } from './replayTime'
 
 export interface ControllerEvents {
   onCrosshair: (index: number | null) => void
@@ -55,6 +56,10 @@ export class ChartController {
   hasMore = false
   version = 0
   replayIndex: number | null = null
+  loading = false
+  hasNewer = false
+  private replayCutoff: number | null = null
+  private loadingForward: Promise<void> | null = null
   /** Replay candle being built from lower-timeframe data (TradingView-style movement); ticks[k] is shown. */
   private forming: { ticks: BarRow[]; k: number } | null = null
   /** Lower-timeframe candles for replay movement, covering [from, to). */
@@ -63,6 +68,7 @@ export class ChartController {
   private lastIndicatorKey: unknown[] | null = null
   private loadingMore: Promise<void> | null = null
   private loadSeq = 0
+  private focusSeq = 0
   private tz: TimezoneId = 'UTC'
   private disposed = false
   private ev: ControllerEvents
@@ -132,7 +138,8 @@ export class ChartController {
       this.ev.onClick(info, time)
     })
     this.chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
-      if (r && r.from < 30 && this.hasMore && !this.loadingMore) void this.loadMore()
+      if (r && r.from < 30 && this.hasMore && !this.loadingMore && !this.loading) void this.loadMore()
+      if (r && r.to > this.bars.length - 30 && this.hasNewer && this.replayIndex === null && !this.loading) void this.loadForward()
       if (this.scaleKind === 'percent') this.updatePctBase()
     })
   }
@@ -178,30 +185,63 @@ export class ChartController {
     return this.replayIndex === null ? this.bars : this.bars.slice(0, this.replayIndex + 1)
   }
 
-  async load(feedId: string, tf: TimeframeCode): Promise<void> {
+  async load(feedId: string, tf: TimeframeCode, replayCutoff: number | null = null, anchor: number | null = null): Promise<boolean> {
     const seq = ++this.loadSeq
+    this.loading = true
     this.feedId = feedId
     this.tf = tf
-    this.replayIndex = null
+    this.forming = null
+    this.sub = null
+    this.subLoading = null
+    this.replayCutoff = replayCutoff
+    this.replayIndex = replayCutoff === null ? null : -1
     this.bars = []
     this.hasMore = false
+    this.hasNewer = false
     this.loadingMore = null
+    this.loadingForward = null
     this.applyFormatters()
     this.render()
     this.ev.onNotice('Loading candles…')
     try {
-      const res = await api.candles(feedId, tf, { limit: PAGE })
-      if (seq !== this.loadSeq || this.disposed) return
-      this.bars = res.bars
+      // Fetch around the historical clock directly, rather than loading today's chart then walking back.
+      const around = replayCutoff ?? anchor
+      const [res, ahead] = around === null
+        ? [await api.candles(feedId, tf, { limit: PAGE }), null]
+        : await Promise.all([
+          api.candles(feedId, tf, { before: around + 1, limit: PAGE }),
+          api.candles(feedId, tf, { after: around, limit: PAGE }),
+        ])
+      if (seq !== this.loadSeq || this.disposed) return false
+      this.bars = [...res.bars, ...(ahead?.bars ?? [])]
       this.hasMore = res.has_more
+      this.hasNewer = ahead ? ahead.has_newer : res.has_newer
       this.precision = res.precision
+      if (replayCutoff !== null) {
+        const alignment = useApp.getState().feeds.find((f) => f.id === feedId)?.alignment
+        this.replayIndex = completedReplayIndex(this.bars, tf, replayCutoff, alignment)
+      }
       this.applyPriceFormat()
       this.render()
-      const n = this.bars.length
-      this.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 160), to: n + 8 })
-      this.ev.onNotice(res.warning ?? (n === 0 ? 'No candles stored for this timeframe yet.' : null))
+      const n = this.shownBars.length
+      const at = anchor === null ? n - 80 : Math.max(0, indexAtOrBefore(this.times, anchor))
+      this.chart.timeScale().setVisibleLogicalRange(anchor === null
+        ? { from: Math.max(0, n - 160), to: n + 8 } : { from: at - 80, to: at + 80 })
+      // Installing a new window can emit intermediate range callbacks. Settle
+      // its viewport before enabling edge paging or indicator calculations.
+      this.loading = false
+      this.ev.onNotice(res.warning ?? (n === 0 ? (replayCutoff === null
+        ? 'No candles stored for this timeframe yet.' : 'No completed candles before this replay time on this timeframe.') : null))
+      if (this.replayIndex !== null) void this.prefetchSub(this.replayIndex + 1)
+      return true
     } catch (e) {
       if (seq === this.loadSeq) this.ev.onNotice(e instanceof Error ? e.message : String(e))
+      return false
+    } finally {
+      if (seq === this.loadSeq) {
+        this.loading = false
+        this.ev.onData()
+      }
     }
   }
 
@@ -227,15 +267,39 @@ export class ChartController {
       } catch (e) {
         this.ev.onNotice(e instanceof Error ? e.message : String(e))
       } finally {
-        this.loadingMore = null
+        if (seq === this.loadSeq) this.loadingMore = null
       }
     })()
     return this.loadingMore
   }
 
+  /** Fetch the next page when historical replay reaches the edge of its loaded window. */
+  private loadForward(): Promise<void> {
+    if (this.loadingForward) return this.loadingForward
+    if (!this.hasNewer || !this.feedId || !this.bars.length) return Promise.resolve()
+    const seq = this.loadSeq
+    const after = this.bars[this.bars.length - 1][0]
+    this.loadingForward = api.candles(this.feedId, this.tf, { after, limit: PAGE }).then((res) => {
+      if (seq !== this.loadSeq || this.disposed) return
+      const next = res.bars.filter((b) => b[0] > after)
+      this.hasNewer = res.has_newer && next.length > 0
+      this.bars.push(...next)
+      if (this.replayIndex === null) {
+        const scale = this.chart.timeScale()
+        const range = scale.getVisibleLogicalRange()
+        this.render()
+        if (range) scale.setVisibleLogicalRange(range)
+      } else this.ev.onData()
+    }).catch((e) => {
+      if (seq === this.loadSeq) this.ev.onNotice(e instanceof Error ? e.message : String(e))
+    }).finally(() => { if (seq === this.loadSeq) this.loadingForward = null })
+    return this.loadingForward
+  }
+
   /** Merge live candles; returns true if a bar was completed or added (indicators should refresh). */
   applyLive(rows: BarRow[]): boolean {
     if (!rows.length || !this.bars.length) return false
+    if (this.hasNewer) return false // don't append today's bar across an unloaded historical gap
     let structural = false
     let needsFull = false
     for (const row of rows) {
@@ -252,6 +316,12 @@ export class ChartController {
         if (i >= 0 && this.bars[i][0] === row[0]) {
           this.bars[i] = row
           needsFull = true
+        } else {
+          // Native history reconciliation can fill a bar missed while the tick stream was disconnected.
+          this.bars.splice(i + 1, 0, row)
+          if (this.replayIndex !== null && i + 1 <= this.replayIndex) this.replayIndex++
+          needsFull = true
+          structural = true
         }
       }
     }
@@ -406,12 +476,34 @@ export class ChartController {
 
   // --------------------------------------------------------------- navigation
   async focusRange(from: number, to: number): Promise<void> {
-    for (let k = 0; k < 200 && this.bars.length && this.bars[0][0] > from - 40 * TF_SECONDS[this.tf] && this.hasMore; k++) {
-      await this.loadMore()
+    if (!this.feedId || !Number.isFinite(from) || !Number.isFinite(to)) return
+    const focus = ++this.focusSeq
+    const feedId = this.feedId
+    const tf = this.tf
+    const cutoff = this.replayCutoffTime()
+    if (cutoff !== null && from > cutoff) {
+      this.ev.onNotice('The requested time is after the replay cursor. Exit replay to view it.')
+      return
     }
+    if (this.loading || !this.bars.length || from < this.bars[0][0] + 40 * TF_SECONDS[tf]
+        || to > this.bars[this.bars.length - 1][0]) {
+      const loaded = await this.load(feedId, tf, cutoff, from)
+      if (!loaded) return
+    }
+    if (focus !== this.focusSeq || this.feedId !== feedId || this.tf !== tf || this.disposed) return
     const times = this.times
     if (!times.length) return
-    const a = Math.max(0, indexAtOrBefore(times, from))
+    const previous = indexAtOrBefore(times, from)
+    let a = Math.max(0, previous)
+    if (previous < 0 || from >= times[a] + TF_SECONDS[tf]) {
+      const next = previous + 1
+      if (next < times.length) {
+        a = next
+        this.ev.onNotice(`No candle at ${fmtDateTime(from, 'UTC')} UTC. Showing the next available candle: ${fmtDateTime(times[a], 'UTC')} UTC.`)
+      } else {
+        this.ev.onNotice(`No candle at ${fmtDateTime(from, 'UTC')} UTC. Showing the last available candle: ${fmtDateTime(times[a], 'UTC')} UTC.`)
+      }
+    } else this.ev.onNotice(null)
     const b = Math.max(a, indexAtOrBefore(times, to))
     const pad = Math.max(25, Math.round((b - a) * 0.6))
     this.chart.timeScale().setVisibleLogicalRange({ from: a - pad, to: b + pad })
@@ -422,6 +514,7 @@ export class ChartController {
     const range = this.chart.timeScale().getVisibleLogicalRange()
     this.forming = null
     this.replayIndex = Math.max(0, Math.min(index, this.bars.length - 1))
+    this.updateReplayCutoff()
     void this.prefetchSub(this.replayIndex + 1)
     this.render()
     // keep the picked bar where it was; upcoming replay bars fill the empty space to its right
@@ -429,10 +522,13 @@ export class ChartController {
   }
 
   stepReplay(): boolean {
-    if (this.replayIndex === null || this.replayIndex >= this.bars.length - 1) return false
+    if (this.loading || this.replayIndex === null) return false
+    if (this.replayIndex >= this.bars.length - 1) { void this.loadForward(); return false }
     if (!this.forming) this.followNewBar()
     this.forming = null // the full bar replaces any partly formed one (same time)
     this.replayIndex++
+    this.updateReplayCutoff()
+    if (this.replayIndex >= this.bars.length - 30) void this.loadForward()
     const row = this.bars[this.replayIndex]
     this.candles.update(this.toCandle(row))
     this.syncOverlayBars()
@@ -443,11 +539,12 @@ export class ChartController {
 
   /** One bar back: candles can only be appended in place, so the shown range is redrawn. */
   stepBackReplay(): boolean {
-    if (this.replayIndex === null) return false
+    if (this.loading || this.replayIndex === null) return false
     const range = this.chart.timeScale().getVisibleLogicalRange()
     if (this.forming) this.forming = null // back to the last completed bar
     else if (this.replayIndex > 0) this.replayIndex--
     else return false
+    this.updateReplayCutoff()
     this.render()
     if (range) this.chart.timeScale().setVisibleLogicalRange(range)
     return true
@@ -455,8 +552,13 @@ export class ChartController {
 
   stopReplay(): void {
     this.chart.timeScale().applyOptions({ shiftVisibleRangeOnNewBar: true })
+    if ((this.hasNewer || this.loading) && this.feedId) {
+      void this.load(this.feedId, this.tf)
+      return
+    }
     this.forming = null
     this.replayIndex = null
+    this.replayCutoff = null
     this.render()
     this.chart.timeScale().scrollToRealTime()
   }
@@ -478,6 +580,14 @@ export class ChartController {
     return this.replayIndex === null ? null : this.bars[this.replayIndex]?.[0] ?? null
   }
 
+  replayCutoffTime(): number | null { return this.replayCutoff }
+
+  private updateReplayCutoff(): void {
+    const time = this.replayCursorTime()
+    const alignment = useApp.getState().feeds.find((f) => f.id === this.feedId)?.alignment
+    this.replayCutoff = time === null ? null : barCloseTime(time, this.tf, alignment)
+  }
+
   /** Ticks the current (or next) replay candle forms in; play speed spreads one bar's time over them. */
   replayTickCount(): number {
     return this.forming?.ticks.length ?? 1
@@ -488,8 +598,13 @@ export class ChartController {
    * high/low stretch and the close moves) before it completes. maxTicks caps the steps per candle (1 = whole bars).
    * Returns 'tick' for a partial update, 'bar' when a candle completed, 'end' at the last bar.
    */
-  advanceReplay(maxTicks: number): 'tick' | 'bar' | 'end' {
-    if (this.replayIndex === null || this.replayIndex >= this.bars.length - 1) return 'end'
+  advanceReplay(maxTicks: number): 'tick' | 'bar' | 'end' | 'loading' {
+    if (this.loading) return 'loading'
+    if (this.replayIndex === null) return 'end'
+    if (this.replayIndex >= this.bars.length - 1) {
+      if (this.hasNewer) { void this.loadForward(); return 'loading' }
+      return 'end'
+    }
     if (maxTicks <= 1 && !this.forming) return this.stepReplay() ? 'bar' : 'end'
     if (!this.forming) {
       const next = this.replayIndex + 1
@@ -527,18 +642,19 @@ export class ChartController {
     if (!tf || !this.feedId || index >= this.bars.length || this.subLoading) return this.subLoading ?? Promise.resolve()
     const feedId = this.feedId
     const chartTf = this.tf
+    const seq = this.loadSeq
     const span = TF_SECONDS[chartTf]
     const from = this.bars[index][0]
     const last = Math.min(this.bars.length - 1, index + 99)
     const to = this.bars[last][0] + span
     const limit = Math.min(20000, Math.ceil((to - from) / TF_SECONDS[tf]) + 2)
     this.subLoading = api.candles(feedId, tf, { before: to, limit }).then((res) => {
-      if (this.feedId !== feedId || this.tf !== chartTf) return
+      if (seq !== this.loadSeq || this.feedId !== feedId || this.tf !== chartTf) return
       const rows = res.bars.filter((r) => r[0] >= from && r[0] < to && r[6] !== 0)
       // a full page may not reach back to ``from``: then coverage starts at its first candle
       const start = res.bars.length >= limit && rows.length ? rows[0][0] : from
       this.sub = { feedId, tf, chartTf, from: start, to, rows }
-    }).catch(() => { /* movement falls back to the candle's own OHLC path */ }).finally(() => { this.subLoading = null })
+    }).catch(() => { /* movement falls back to the candle's own OHLC path */ }).finally(() => { if (seq === this.loadSeq) this.subLoading = null })
     return this.subLoading
   }
 

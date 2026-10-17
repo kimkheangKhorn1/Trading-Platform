@@ -60,6 +60,20 @@ def test_feeds_and_paged_candles(client, feed_id):
     assert r.status_code == 404
 
 
+def test_forward_candle_paging_starts_at_the_next_bar_without_skipping_to_the_present(client, feed_id):
+    query = {"feed_id": feed_id, "timeframe": "M5", "limit": 3000}
+    all_bars = client.get("/api/candles", params=query).json()["bars"]
+    cutoff = all_bars[199][0]
+    first = client.get("/api/candles", params={**query, "after": cutoff, "limit": 50}).json()
+    assert first["bars"] == all_bars[200:250]
+    assert first["has_newer"]
+    second = client.get("/api/candles", params={**query, "after": first["bars"][-1][0], "limit": 50}).json()
+    assert second["bars"] == all_bars[250:300]
+    tail = client.get("/api/candles", params={**query, "after": all_bars[-6][0], "limit": 50}).json()
+    assert tail["bars"] == all_bars[-5:]
+    assert not tail["has_newer"]
+
+
 def test_smc_master_runs_through_api(client, feed_id):
     assert any(s["id"] == "smc_ict_scalping_master" for s in client.get("/api/scripts").json())
     candles = client.get("/api/candles", params={"feed_id": feed_id, "timeframe": "M5", "limit": 1500}).json()

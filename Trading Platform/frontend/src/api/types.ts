@@ -1,3 +1,4 @@
+import type { OverlapHover } from './badgeOverlap'
 // Types mirroring the FastAPI responses. Times are UTC unix seconds (candle open time).
 
 export type TimeframeCode = 'M1' | 'M5' | 'M15' | 'M30' | 'H1' | 'H4' | 'D'
@@ -11,6 +12,9 @@ export interface TimeframeInfo {
 export interface Health {
   status: string
   time: number
+  market_data_provider: 'exness' | 'oanda'
+  exness: { enabled: boolean; ready: boolean; missing: string[]; instruments: string[];
+    price_type: 'bid' | 'ask'; alignment: 'utc' | 'ny17'; last_error: string | null }
   oanda: {
     enabled: boolean
     environment: string
@@ -23,16 +27,32 @@ export interface Health {
 
 export interface SeriesSummary {
   timeframe: TimeframeCode
-  origin: 'native' | 'resampled'
+  origin: 'native' | 'resampled' | 'tick_derived'
   oldest_reached: boolean
   count: number
   first: number | null
   last: number | null
 }
 
+export interface ExnessHistoryStatus {
+  status: 'not_downloaded' | 'downloading' | 'processing' | 'attention' | 'ready'
+  symbol: string
+  archives_total: number
+  archives_downloaded: number
+  archives_processed: number
+  ticks: number
+  M1: number
+  M5: number
+  first_tick_utc: string | null
+  last_tick_utc: string | null
+  errors: string[]
+  missing_weekdays?: string[]
+  verification?: string
+}
+
 export interface Feed {
   id: string
-  provider: 'oanda' | 'csv'
+  provider: 'exness' | 'exness_archive' | 'oanda' | 'csv'
   symbol: string
   instrument: string | null
   price_type: 'mid' | 'bid' | 'ask'
@@ -54,6 +74,7 @@ export interface CandlesResponse {
   precision: number
   bars: BarRow[]
   has_more: boolean
+  has_newer: boolean
   warning: string | null
 }
 
@@ -153,6 +174,7 @@ export interface BoxObj {
   tooltip: string
   group: string
   created_at: number
+  overlap?: OverlapHover
 }
 
 export interface LineObj {
@@ -169,6 +191,7 @@ export interface LineObj {
   tooltip: string
   group: string
   created_at: number
+  overlap?: OverlapHover
 }
 
 export interface LabelObj {
@@ -185,6 +208,7 @@ export interface LabelObj {
   tooltip: string
   group: string
   created_at: number
+  overlap?: OverlapHover
 }
 
 export type DrawingObj = BoxObj | LineObj | LabelObj
@@ -323,6 +347,8 @@ export interface TradeDto {
   mfe_r: number | null
   bars_held: number | null
   ambiguous: boolean
+  tps_hit?: number
+  outcome?: 'win' | 'loss' | 'open' | 'none'
 }
 
 export interface TradeStats {
@@ -351,6 +377,13 @@ export interface TradeStats {
   avg_bars_in_trade: number | null
   commission_paid: number
   ambiguous_trades: number
+  // target-based outcome: any TP filled = win, SL before any TP = loss
+  tp_wins?: number
+  sl_losses?: number
+  tp_win_rate?: number | null
+  tp1_hits?: number
+  tp2_hits?: number
+  tp3_hits?: number
   // only on "all"
   max_drawdown?: number
   max_drawdown_pct?: number

@@ -1,0 +1,44 @@
+# Reviewer status: source-read leads, independently checked below
+
+This is Claude's source-read review, preserved for traceability. Its numbered statements are leads, not all confirmed defects. In particular, the research runner uses abs(actual_fill - SL), so finding 1's negative-denominator claim does not describe the runner. See Codex's validation document for verified dispositions.
+
+# Execution review — `sim.py` and `engine.py` (2026-10-17)
+
+Source-read audit only. No production file was edited. Baseline is the freeze in `claude-overlap-2026-10-17/baseline-freeze.json` (HEAD `40df803`, working tree).
+
+## Confirmed defects
+
+**1. R denominator can reach zero or go negative on gap-improved limit fills.** A long limit at L fills at `min(L, open + spread)` (`sim.py:223`). On a gap down the fill is the gapped open, so the actual-fill-to-original-SL risk shrinks toward zero and |R| explodes. If `open + spread < SL0` — reachable on weekend gold gaps larger than a ~1×ATR(1H) stop — the long fills *below* its own stop, `_settle` stops it out in the same candle, and the denominator is **negative**, so a losing trade reports a positive R. `_order` validates `risk > 0` only against the *planned* entry (`engine.py:509-511`), never against the fill, so nothing upstream blocks it. `tp1_rr` is likewise measured in planned-risk units (`engine.py:512`), so planned and realized R diverge on exactly these trades. Needs an explicit floor and a separate cohort.
+
+**2. The shipped engine resolves fills on strategy-timeframe candles; at the default `strategy_tf=1H` there is no M1 or even chart-timeframe resolution.** In `chart.py:85-94`, when `strategy_tf` exceeds the chart timeframe, `eng.feed()` runs only on completed strategy candles and there is **no** forming-candle `book.process` call — contrast the `agg is None` branch at `chart.py:95-104`, which does preview fills intrabar. So every stop and target on the default config is decided by the two-path OHLC/OLHC heuristic over a 1H bar, keeping the worse-equity path (`sim.py:107-122`). This is the mechanism by which the +0.17R, t=1.26 headline in `docs/mtf-confluence-strategy-notes.md` §10 was produced. The notes' claim that "1-minute replays gave the same results" was made about the earlier 5m work, not this 1H variant. Treat §10 as unvalidated at execution resolution until the M1 replay reports its disagreement rate.
+
+**3. The `ambiguous` flag under-reports.** `sim.py:118-122` sets it only for trades appearing in the *chosen* path's events. A trade that fires in the rejected path and not the chosen one is never flagged. `broker.py:447-452` has the same structure, so this is parity-consistent rather than a sim-only bug — but the engine's ambiguity count is a floor, not a measure.
+
+**4. `SimTrade` identity is not stable across candles.** `TradeBook.process` replaces `self.active` with `copy.deepcopy` on every candle where any trigger can fire (`sim.py:113-124`). The TP1 emission and the later SL emission for one trade are distinct objects carrying cumulative `cash` and a growing `fills` list. Appending every `changed` row double-counts partially-exited trades; holding a reference yields a frozen snapshot. Ledgers must key by `tr.id` and keep the last emission.
+
+**5. The engine retains no trade history.** Closed trades are dropped from `active` (`sim.py:124`) and `open_signals` is popped (`engine.py:196-197`). The single `changed` emission on the closing candle is the only record a trade ever gets.
+
+**6. Withdrawn and replaced resting orders never appear in `changed`.** `_withdraw` calls `book.cancel` — which removes the trade from `active` (`sim.py:92-94`) — and keeps only the id in `engine.withdrawn` (`engine.py:405-411`), reset each candle at `engine.py:192`. Orders invalidated by their stop trading first *do* surface in `changed` (`sim.py:226-228`). Codex's required "replaced/cancelled/resting" rows are therefore only obtainable from `engine.withdrawn`, read every candle.
+
+**7. `SimTrade.outcome` mislabels cancelled orders as `'open'`** (`sim.py:63-67`), because only `status == 'closed'` is special-cased. Grouping a ledger by `outcome` silently merges cancelled orders with live ones.
+
+**8. ATR warm-up produces `min_sl` stops at the engine anchor.** ATR(14) is NaN for the first 14 strategy candles; `_stop` substitutes `0.0` (`engine.py:539`), so both ATR-buffer modes collapse to the zone's distal edge with no buffer, then clamp to `min_sl` (`engine.py:555-557`) — near-certain stop-outs with a tiny risk denominator, compounding finding 1. `gap` is also 0 over that window (`engine.py:202`), so clustering is overlap-only. Bounded to ~14 hours at 1H, but the research window opens at 2015-08-10, exactly there.
+
+**9. `touch_key` is an unsound cache.** `engine.py:462-464` includes the close `c` in the key *only when both sides are allowed*, so with the MA filter on (one side, the default) the close is excluded — yet `_nearest_entry` under the default `entry_pick='Strongest nearby'` branches on the close (`engine.py:428`). Correctness currently rests on ATR jitter invalidating the key every candle. A run with the cache disabled, diffed against the ledger, closes this.
+
+**10. Two different "busy" predicates.** `engine.py:201` uses `book.busy()`, which counts resting orders (`sim.py:79-80`); `engine.py:458` uses `book.has_open()`, which does not (`sim.py:82-83`). So a resting order blocks new signals in the CHoCH and Rejection paths but not in Zone touch. Defensible given that Zone touch tracks a single order through `self.resting`, but it is an undocumented asymmetry in how `one_at_a_time` throttles trade count.
+
+**11. `feed` silently drops non-monotonic candles.** `engine.py:171-172` returns early on `t <= last_time` with no warning or counter. One out-of-order timestamp in an M1→H1 reconstruction drops a whole decision candle invisibly. Given Codex's finding that `Data._series()` loads without a completeness filter, the runner should count skips and assert zero.
+
+## Known assumptions, not defects
+
+- **No look-ahead in the decision chain.** Verified in `feed` (`engine.py:169-255`): `book.process` at `engine.py:193` evaluates only orders placed on earlier closes, so an order placed at the close of candle *i* is live from *i+1*; ATR (`engine.py:181`), the MA (`engine.py:183-189`, higher-timeframe values taken only from aggregator-completed candles) and the CHoCH highs/lows (`engine.py:190-191`) all update from candle *i* before a close-of-*i* decision; targets and stops read only zones fresh at that close.
+- **The runner's rollback is genuinely deep.** `runner.py:180` deep-copies `self.script`, which contains `SmcMaster.mtf.engine.book`, so forming-bar previews cannot accumulate into committed state. This is the mechanism Codex's earlier fix #1 depends on, and it holds.
+- **A zone is not freshness-tested against its own confirming candle.** `_touch` runs before the new zones are added (`engine.py:204-208`), so a zone whose confirming candle wicked into it stays fresh and can immediately host a resting limit order. This matches the indicator's Fresh definition and introduces no look-ahead, since the order is live only from the next candle.
+- **`SimTrade` is a one-unit price abstraction.** `sim.py:171` fixes `units_open = 1.0`; `sim.py:253` accumulates `cash` in price units. The broker instead sizes by risk (`broker.py:290`) and can decline an order for minimum size or max open trades (`broker.py:287-298`), and charges commission (`broker.py:202`). So the engine never declines a trade the real broker would, and no money-denominated equity curve or drawdown can be derived from `cash` — only R-denominated ones. (Commission and swap absence is already Codex §19.)
+- **Partial-exit and final-target remainder logic matches the broker** (`sim.py:240-242` vs `broker.py:264-268`), as do all trigger levels, bid/ask sides, market and limit fill prices, gap handling, trigger priority ordering and the conservative worse-path rule with its heuristic tie-break.
+- **Path choice is comparison-equivalent to the broker's** despite `sim._mtm` (`sim.py:127-134`) summing only active trades while `broker._mtm` (`broker.py:406-411`) starts from account cash: the omitted prior-trade cash is an identical constant in both branches.
+
+## The interpretive guard that matters most
+
+"Any TP hit = win" (`sim.py:63-67`), combined with equal thirds by default (`engine.py:669-672`) and a stop that does not move unless `breakeven` is on, means the headline win rate is close to decoupled from money. TP1 at ~1R then a stop at the original SL realizes `+1/3 − 2/3 = −1/3R` — the same arithmetic as Codex's `-1/3R` example. A 70% TP-based win rate is fully compatible with negative expectancy, and the chart's own `WIN`/`LOSS` labels (`chart.py:245-247`) are target-based, so the labels the user judges the strategy by will read `WIN` on cash-losing trades.

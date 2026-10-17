@@ -28,6 +28,7 @@ def display_symbol(instrument: str) -> str:
 
 
 class OandaSync:
+    provider = "oanda"
     def __init__(self, store: MarketStore, client: OandaClient, *, price: str = "M",
                  account_id: str | None = None):
         self.store = store
@@ -40,6 +41,9 @@ class OandaSync:
     def _lock(self, feed_id: str, tf: str) -> threading.Lock:
         with self._locks_guard:
             return self._locks[(feed_id, tf)]
+
+    def owns(self, feed: Feed) -> bool:
+        return feed.provider == "oanda" and feed.instrument is not None and feed.id == oanda_feed_id(feed.instrument, self.price)
 
     def ensure_feed(self, instrument: str) -> Feed:
         feed_id = oanda_feed_id(instrument, self.price)

@@ -3,6 +3,7 @@ import type {
   BacktestRequest,
   CandlesResponse,
   DownloadJob,
+  ExnessHistoryStatus,
   Feed,
   Health,
   ImportReport,
@@ -48,11 +49,13 @@ const json = (body: unknown): RequestInit => ({
 
 export const api = {
   health: () => request<Health>('/api/health'),
+  exnessHistory: () => request<ExnessHistoryStatus>('/api/exness/history'),
   feeds: () => request<Feed[]>('/api/feeds'),
   deleteFeed: (id: string) => request<{ deleted: string }>(`/api/feeds/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  candles: (feedId: string, tf: TimeframeCode, opts: { before?: number; limit?: number } = {}) => {
+  candles: (feedId: string, tf: TimeframeCode, opts: { before?: number; after?: number; limit?: number } = {}) => {
     const q = new URLSearchParams({ feed_id: feedId, timeframe: tf, limit: String(opts.limit ?? 2000) })
     if (opts.before !== undefined) q.set('before', String(opts.before))
+    if (opts.after !== undefined) q.set('after', String(opts.after))
     return request<CandlesResponse>(`/api/candles?${q}`)
   },
   importCsv: (form: FormData) =>

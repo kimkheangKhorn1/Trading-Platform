@@ -73,8 +73,11 @@ export const useApp = create<AppState>((set, get) => ({
       const [health, feeds, scripts] = await Promise.all([api.health(), api.feeds(), api.scripts()])
       set({ health, feeds, scripts, backendError: null })
       const { feedId } = get()
-      if (!feeds.find((f) => f.id === feedId)) {
-        const pick = feeds.find((f) => f.provider === 'oanda') ?? feeds[0]
+      const preferred = feeds.find((f) => f.provider === health.market_data_provider && f.live)
+        ?? (health.market_data_provider === 'exness'
+          ? feeds.find((f) => f.provider === 'exness_archive' && f.price_type === 'bid') : undefined)
+      if (!feeds.find((f) => f.id === feedId) || preferred && feeds.find((f) => f.id === feedId)?.provider !== preferred.provider) {
+        const pick = preferred ?? feeds[0]
         set({ feedId: pick ? pick.id : null })
       }
       get().setTimeframe(get().timeframe) // re-validate against the feed's available timeframes

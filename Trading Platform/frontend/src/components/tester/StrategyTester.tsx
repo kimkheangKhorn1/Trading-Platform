@@ -122,7 +122,7 @@ export function StrategyTester() {
         {res ? (
           <>
             <Select value={t.view} ariaLabel="Results view" width={190}
-              options={[{ value: 'combined', label: res.strategies.length > 1 ? 'All strategies (combined)' : res.strategies[0].title },
+              options={[{ value: 'combined', label: res.strategies.length > 1 ? 'All strategies (combined)' : res.strategies[0]?.title ?? 'Strategy' },
                 ...(res.strategies.length > 1 ? res.strategies.map((s) => ({ value: s.id, label: s.title })) : [])]}
               onChange={(v) => t.set({ view: v, selectedTradeId: null })} />
             <Checkbox checked={t.showTradesOnChart} onChange={(v) => t.set({ showTradesOnChart: v })} label="Trades on chart" />

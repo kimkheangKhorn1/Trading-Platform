@@ -1,3 +1,4 @@
+import type { OverlapHover } from '../api/badgeOverlap'
 /**
  * Custom Lightweight Charts series primitive that renders the indicator engine's drawing objects
  * (Pine box/line/label, plotshape markers) and the Strategy Tester's trade overlays.
@@ -22,7 +23,7 @@ import type {
 import type { DrawingObj, LabelObj, ShapePoint, TradeDto } from '../api/types'
 import { cssColor } from '../lib/colors'
 import { indexAtOrBefore, timeToLogical } from './timeIndex'
-import { AnnotationLayout, type AnnotationRect } from './annotationLayout'
+import { AnnotationLayout, packRow, type AnnotationRect } from './annotationLayout'
 
 export interface ShapeLayer {
   id: string
@@ -54,6 +55,7 @@ export interface HitInfo {
   title: string
   body: string
   tradeId?: string
+  overlap?: OverlapHover
 }
 
 interface HitRegion {
@@ -225,8 +227,10 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       this.regions = []
       const layout = new AnnotationLayout(mediaSize.width, mediaSize.height)
       const annotations: AnnotationPaint[] = []
-      // One layout for all layers, including neighbouring bars. Reserve label text before markers.
-      for (const layer of this.layers) this.drawLabels(ctx, layer, t0, t1, layout, mediaSize.height, annotations)
+      // One layout for all layers, including neighbouring bars. Sideways price badges keep their rows first, then
+      // label text is reserved before markers.
+      const rows = this.packRowLabels(ctx, t0, t1, layout, mediaSize.width, mediaSize.height)
+      for (const layer of this.layers) this.drawLabels(ctx, layer, t0, t1, layout, mediaSize.height, annotations, rows)
       for (const layer of this.layers) this.drawShapes(ctx, layer, t0, t1, layout, mediaSize.height, annotations)
       // Protect every annotation, including transparent text labels, from all connector strokes.
       ctx.save()
@@ -279,8 +283,8 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
         ctx.fillText(d.text, tx, y0 + h / 2)
       }
       if (d.tooltip || d.text) {
-        this.bgRegions.push({ x0, y0, x1: x0 + w, y1: y0 + h, priority: 0,
-          info: { title: layer.name, body: d.tooltip || d.text } })
+        this.bgRegions.push({ x0, y0, x1: x0 + w, y1: y0 + h, priority: d.overlap ? 2 : 0,
+          info: { title: d.overlap ? 'Demand/Supply overlap' : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
       }
     }
   }
@@ -383,15 +387,30 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
   }
 
   private drawLabels(ctx: CanvasRenderingContext2D, layer: OverlayLayer, t0: number, t1: number,
-    layout: AnnotationLayout, height: number, annotations: AnnotationPaint[]) {
+    layout: AnnotationLayout, height: number, annotations: AnnotationPaint[], rows: Map<LabelObj, AnnotationRect>) {
     for (const d of layer.drawings) {
       if (d.kind !== 'label' || d.x < t0 || d.x > t1) continue
-      this.drawLabel(ctx, layer, d, layout, height, annotations)
+      this.drawLabel(ctx, layer, d, layout, height, annotations, rows)
     }
   }
 
-  private drawLabel(ctx: CanvasRenderingContext2D, layer: OverlayLayer, d: LabelObj,
-    layout: AnnotationLayout, height: number, annotations: AnnotationPaint[]) {
+  /** Sideways price badges of every layer are packed along their rows before anything else is placed. */
+  private packRowLabels(ctx: CanvasRenderingContext2D, t0: number, t1: number, layout: AnnotationLayout,
+    width: number, height: number) {
+    const found: { d: LabelObj; rect: AnnotationRect }[] = []
+    for (const layer of this.layers) for (const d of layer.drawings) {
+      if (d.kind !== 'label' || d.x < t0 || d.x > t1 || !inRow(d)) continue
+      const g = this.labelGeometry(ctx, d, height)
+      if (g) found.push({ d, rect: g.original })
+    }
+    const rows = new Map<LabelObj, AnnotationRect>()
+    packRow(found.map((f) => f.rect), width, height).forEach((rect, i) => {
+      if (rect) { layout.reserve(rect); rows.set(found[i].d, rect) }
+    })
+    return rows
+  }
+
+  private labelGeometry(ctx: CanvasRenderingContext2D, d: LabelObj, height: number) {
     const x = this.x(d.x)
     if (x === null || x < 0 || x > this.chart!.timeScale().width()) return
     const idx = this.barIndex(d.x)
@@ -431,8 +450,17 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
         width: Math.max(bx + w, textOnly ? bx + w : x + ptr) - Math.min(bx, textOnly ? bx : x - ptr),
         height: Math.max(by + h, textOnly ? by + h : y) - Math.min(by, textOnly ? by : y) }
     }
+    return { x, y, fpx, lines, lh, w, h, ptr, bx, by, st, textOnly, shapeStyle, glyph, original }
+  }
+
+  private drawLabel(ctx: CanvasRenderingContext2D, layer: OverlayLayer, d: LabelObj,
+    layout: AnnotationLayout, height: number, annotations: AnnotationPaint[], rows: Map<LabelObj, AnnotationRect>) {
+    const g = this.labelGeometry(ctx, d, height)
+    if (!g) return
+    const { x, y, fpx, lines, lh, w, h, ptr, st, textOnly, shapeStyle, glyph, original } = g
+    let { bx, by } = g
     const direction = d.yloc === 'belowbar' || st === 'label_up' ? 1 : -1
-    const placed = layout.place(original, direction)
+    const placed = rows.get(d) ?? layout.place(original, direction)
     const dx = placed.x - original.x
     const dy = placed.y - original.y
     const px = x + dx
@@ -470,7 +498,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
     } })
     if (d.tooltip || d.text) {
       this.regions.push({ x0: placed.x, y0: placed.y, x1: placed.x + placed.width, y1: placed.y + placed.height, priority: 3,
-        info: { title: layer.name, body: d.tooltip || d.text } })
+        info: { title: d.overlap ? 'Demand/Supply overlap' : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
     }
   }
 
@@ -617,6 +645,11 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
 }
 
 // ---------------------------------------------------------------------- helpers
+/** A label pointing sideways at a price level; it should stay on that price when crowded. */
+function inRow(d: LabelObj): boolean {
+  return (d.style === 'label_left' || d.style === 'label_right') && d.yloc !== 'abovebar' && d.yloc !== 'belowbar'
+}
+
 function lowerBound(pts: ShapePoint[], t: number): number {
   let lo = 0
   let hi = pts.length

@@ -82,39 +82,59 @@ Drawing = Box | Line | Label
 
 
 class DrawingStore:
-    def __init__(self, max_boxes: int = 500, max_lines: int = 500, max_labels: int = 500):
+    def __init__(self, max_boxes: int = 500, max_lines: int = 500, max_labels: int = 500,
+                 group_limits: dict[str, dict[str, int]] | None = None):
         self.limits = {"box": max_boxes, "line": max_lines, "label": max_labels}
         self.live: dict[str, OrderedDict[int, Drawing]] = {k: OrderedDict() for k in self.limits}
+        # Groups with their own quota (``ScriptMeta.group_limits``): their objects never count towards, nor
+        # push out, the script's other drawings, and are listed after them.
+        self.group_limits = {g: dict(lim) for g, lim in (group_limits or {}).items()}
+        self.group_live: dict[str, dict[str, OrderedDict[int, Drawing]]] = {
+            g: {k: OrderedDict() for k in self.limits} for g in self.group_limits}
         self.next_id = 1
+        self.next_group_id = 1_000_000_001  # own id range, so the other drawings keep their ids
+
+    def _new_id(self, group: str) -> int:
+        if group in self.group_live:
+            self.next_group_id += 1
+            return self.next_group_id - 1
+        self.next_id += 1
+        return self.next_id - 1
+
+    def _bucket(self, obj: Drawing) -> tuple[OrderedDict, int]:
+        own = self.group_live.get(obj.group)
+        if own is not None:
+            return own[obj.kind], self.group_limits[obj.group].get(obj.kind, self.limits[obj.kind])
+        return self.live[obj.kind], self.limits[obj.kind]
 
     def _add(self, obj: Drawing) -> Drawing:
-        bucket = self.live[obj.kind]
+        bucket, limit = self._bucket(obj)
         bucket[obj.id] = obj
-        while len(bucket) > self.limits[obj.kind]:
+        while len(bucket) > limit:
             bucket.popitem(last=False)  # Pine deletes the oldest object
         return obj
 
     def new_box(self, **kw) -> Box:
-        obj = Box(id=self.next_id, **kw)
-        self.next_id += 1
+        obj = Box(id=self._new_id(kw.get("group", "")), **kw)
         return self._add(obj)  # type: ignore[return-value]
 
     def new_line(self, **kw) -> Line:
-        obj = Line(id=self.next_id, **kw)
-        self.next_id += 1
+        obj = Line(id=self._new_id(kw.get("group", "")), **kw)
         return self._add(obj)  # type: ignore[return-value]
 
     def new_label(self, **kw) -> Label:
-        obj = Label(id=self.next_id, **kw)
-        self.next_id += 1
+        obj = Label(id=self._new_id(kw.get("group", "")), **kw)
         return self._add(obj)  # type: ignore[return-value]
 
     def delete(self, obj: Drawing | None) -> None:
         if obj is not None:
-            self.live[obj.kind].pop(obj.id, None)
+            self._bucket(obj)[0].pop(obj.id, None)
 
     def all(self) -> list[Drawing]:
-        return [o for k in ("box", "line", "label") for o in self.live[k].values()]
+        out = [o for k in ("box", "line", "label") for o in self.live[k].values()]
+        for own in self.group_live.values():
+            out.extend(o for k in ("box", "line", "label") for o in own[k].values())
+        return out
 
     def to_json(self) -> list[dict]:
         return [asdict(o) for o in self.all()]

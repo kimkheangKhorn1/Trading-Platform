@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { MouseEventParams, Time } from 'lightweight-charts'
 import { Select } from '../components/common/Fields'
 import { Icon } from '../components/common/Icon'
@@ -19,12 +19,12 @@ function isTyping(t: EventTarget | null): boolean {
  * backend with ``end_time = cursor`` - later candles are never sent to the engine.
  */
 export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
-  const { mode, playing, speed, smooth, cursorTime, set } = useReplay()
+  const { mode, playing, speed, smooth, cursorTime, cutoffTime, set } = useReplay()
   const tz = useApp((s) => s.timezone)
   const [cut, setCut] = useState<{ x: number; width: number; height: number } | null>(null)
 
   // indicators run up to the last completed bar, never the candle that is still forming
-  const sync = () => set({ cursorTime: ctrl.replayCursorTime() })
+  const sync = useCallback(() => set({ cursorTime: ctrl.replayCursorTime(), cutoffTime: ctrl.replayCutoffTime() }), [ctrl, set])
   const step = () => { if (ctrl.stepReplay()) sync() }
   const back = () => { if (ctrl.stepBackReplay()) sync() }
 
@@ -37,8 +37,8 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
     const tick = () => {
       const r = ctrl.advanceReplay(maxTicks)
       if (r === 'end') return set({ playing: false })
-      if (r === 'bar') set({ cursorTime: ctrl.replayCursorTime() })
-      timer = setTimeout(tick, maxTicks > 1 ? barMs / ctrl.replayTickCount() : barMs)
+      if (r === 'bar') set({ cursorTime: ctrl.replayCursorTime(), cutoffTime: ctrl.replayCutoffTime() })
+      timer = setTimeout(tick, r === 'loading' ? 100 : maxTicks > 1 ? barMs / ctrl.replayTickCount() : barMs)
     }
     timer = setTimeout(tick, maxTicks > 1 ? barMs / maxTicks : barMs)
     return () => clearTimeout(timer)
@@ -50,9 +50,10 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
     const onKey = (e: KeyboardEvent) => {
       if (!e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || isTyping(e.target)) return
       const st = useReplay.getState()
+      if (ctrl.loading) return
       if (e.key === 'ArrowDown') set({ playing: !st.playing })
-      else if (e.key === 'ArrowRight') { set({ playing: false }); if (ctrl.stepReplay()) set({ cursorTime: ctrl.replayCursorTime() }) }
-      else if (e.key === 'ArrowLeft') { set({ playing: false }); if (ctrl.stepBackReplay()) set({ cursorTime: ctrl.replayCursorTime() }) }
+      else if (e.key === 'ArrowRight') { set({ playing: false }); if (ctrl.stepReplay()) sync() }
+      else if (e.key === 'ArrowLeft') { set({ playing: false }); if (ctrl.stepBackReplay()) sync() }
       else return
       // capture phase + stop: a focused control (e.g. the speed dropdown) must not also react to the arrow
       e.preventDefault()
@@ -60,7 +61,7 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [mode, ctrl, set])
+  }, [mode, ctrl, set, sync])
 
   // leaving replay from any mode (e.g. the toolbar Replay button while picking) shows the latest data again
   useEffect(() => {
@@ -107,18 +108,18 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
   if (mode !== 'active') return null
   const idx = ctrl.replayIndex ?? 0
   const total = ctrl.bars.length
-  const atEnd = idx >= total - 1
+  const atEnd = idx >= total - 1 && !ctrl.hasNewer
   return (
     <div className="replay-bar" role="toolbar" aria-label="Replay controls">
       <span className="replay-tag">REPLAY</span>
-      <button className="icon-btn" title="Step back one bar (Shift+←)" aria-label="Step back" disabled={idx <= 0 && ctrl.shownBars.length === 1} onClick={() => { set({ playing: false }); back() }}>
+      <button className="icon-btn" title="Step back one bar (Shift+←)" aria-label="Step back" disabled={ctrl.loading || idx <= 0} onClick={() => { set({ playing: false }); back() }}>
         <Icon name="step" className="flip-x" />
       </button>
-      <button className="icon-btn play" title={`${playing ? 'Pause' : 'Play'} (Shift+↓)`} aria-label={playing ? 'Pause' : 'Play'} disabled={atEnd}
+      <button className="icon-btn play" title={`${playing ? 'Pause' : 'Play'} (Shift+↓)`} aria-label={playing ? 'Pause' : 'Play'} disabled={ctrl.loading || atEnd}
         onClick={() => set({ playing: !playing })}>
         <Icon name={playing ? 'pause' : 'play'} />
       </button>
-      <button className="icon-btn" title="Step forward one bar (Shift+→)" aria-label="Step forward" disabled={atEnd} onClick={() => { set({ playing: false }); step() }}>
+      <button className="icon-btn" title="Step forward one bar (Shift+→)" aria-label="Step forward" disabled={ctrl.loading || atEnd} onClick={() => { set({ playing: false }); step() }}>
         <Icon name="step" />
       </button>
       <Select<number> className="replay-speed" value={speed} ariaLabel="Replay speed" width={96}
@@ -129,7 +130,7 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
         onClick={() => set({ smooth: !smooth })}>{smooth ? 'Live candles' : 'Whole bars'}</button>
       <span className="replay-sep" />
       <span className="replay-time">
-        <span className="mono">{fmtDateTime(cursorTime, tz)}</span>
+        <span className="mono" title="Replay time; candles closing after this time stay hidden">{fmtDateTime(cutoffTime ?? cursorTime, tz)}</span>
         <span className="muted small">{atEnd ? 'end of data' : `bar ${idx + 1} of ${total}`}</span>
       </span>
       <span className="replay-sep" />
@@ -139,7 +140,7 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
       }}>Select bar</button>
       <button className="btn ghost sm" title="Leave replay and go back to the latest data" onClick={() => {
         ctrl.stopReplay()
-        set({ mode: 'off', playing: false, cursorTime: null })
+        set({ mode: 'off', playing: false, cursorTime: null, cutoffTime: null })
       }}>Exit replay</button>
     </div>
   )

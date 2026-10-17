@@ -73,6 +73,9 @@ export function TradesTable({ trades, titles, precision, tz, selectedId, onSelec
       <span title={t.final_stop !== t.stop_loss ? `moved to ${p(t.final_stop)}` : undefined}>{p(t.stop_loss)}{t.final_stop !== t.stop_loss ? '*' : ''}</span>) },
     { key: 'tp1', label: 'TP1', width: 84, num: true, render: (t) => p(t.tp1) },
     { key: 'tp2', label: 'TP2', width: 84, num: true, render: (t) => p(t.tp2) },
+    { key: 'tp3', label: 'TP3', width: 84, num: true, render: (t) => p(t.take_profits[2] ?? null) },
+    { key: 'outcome', label: 'Result', width: 84, render: (t) => (
+      t.outcome === 'win' ? <span className="up">WIN TP{t.tps_hit}</span> : t.outcome === 'loss' ? <span className="down">LOSS SL</span> : (t.outcome ?? '—')) },
     { key: 'exit_time', label: 'Exit time', width: 128, sort: 'exit_time', render: (t) => fmtDateTime(t.exit_time, tz) },
     { key: 'exit', label: 'Exit (avg)', width: 84, num: true, render: (t) => p(t.exit_price) },
     { key: 'units', label: 'Units', width: 62, num: true, render: (t) => fmtNum(t.units, 0) },

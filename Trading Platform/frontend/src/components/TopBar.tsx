@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ALL_TFS, currentFeed, TF_LABELS, useApp } from '../state/app'
 import { useReplay } from '../state/replay'
+import { useRuler } from '../state/ruler'
 import { Icon } from './common/Icon'
 
 const LIVE_LABEL: Record<string, string> = {
@@ -19,6 +20,7 @@ export function TopBar() {
   const liveMessage = useApp((s) => s.liveMessage)
   const replayMode = useReplay((s) => s.mode)
   const setReplay = useReplay((s) => s.set)
+  const rulerOn = useRuler((s) => s.enabled)
   const [menu, setMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const feed = currentFeed()
@@ -42,13 +44,13 @@ export function TopBar() {
         <button className="symbol-btn" onClick={() => setMenu(!menu)} aria-haspopup="listbox" aria-expanded={menu}>
           <Icon name="search" size={16} />
           <span className="sym">{feed?.symbol ?? 'No data'}</span>
-          {feed ? <span className={`src-badge ${feed.provider}`}>{feed.provider === 'oanda' ? 'OANDA' : 'CSV'}</span> : null}
+          {feed ? <span className={`src-badge ${feed.provider}`}>{feed.provider === 'exness_archive' ? 'EXNESS HISTORY' : feed.provider.toUpperCase()}</span> : null}
           <Icon name="chevronDown" size={14} />
         </button>
         {menu ? (
           <div className="menu" role="listbox">
             <div className="menu-head">Data feeds</div>
-            {feeds.length === 0 ? <div className="menu-empty">No data yet — import a CSV or configure OANDA.</div> : null}
+            {feeds.length === 0 ? <div className="menu-empty">No data yet — download Exness archive history or import a CSV.</div> : null}
             {feeds.map((f) => (
               <button key={f.id} role="option" aria-selected={f.id === feedId} className={`menu-item ${f.id === feedId ? 'sel' : ''}`}
                 onClick={() => { setFeed(f.id); setMenu(false) }}>
@@ -84,9 +86,20 @@ export function TopBar() {
         <span className="fx">ƒx</span> Indicators
       </button>
       <button className={`tb-btn ${replayMode !== 'off' ? 'on' : ''}`} title="Bar replay"
-        onClick={() => setReplay({ mode: replayMode === 'off' ? 'picking' : 'off', playing: false })}
+        onClick={() => {
+          useRuler.getState().setEnabled(false)
+          setReplay(replayMode === 'off' ? { mode: 'picking', playing: false }
+            : { mode: 'off', playing: false, cursorTime: null, cutoffTime: null })
+        }}
         disabled={replayMode === 'active'}>
         <Icon name="replay" size={17} /> Replay
+      </button>
+      <button className={`tb-btn ${rulerOn ? 'on' : ''}`} aria-label="Ruler" aria-pressed={rulerOn}
+        title="Measure price and time (or hold Shift and drag)" onClick={() => {
+          if (replayMode === 'picking') setReplay({ mode: useReplay.getState().cutoffTime === null ? 'off' : 'active' })
+          useRuler.getState().setEnabled(!rulerOn)
+        }}>
+        <Icon name="ruler" size={17} /> Ruler
       </button>
       <button className="tb-btn" title="Go to date" onClick={() => openDialog({ type: 'goto' })}>
         <Icon name="calendar" size={17} />

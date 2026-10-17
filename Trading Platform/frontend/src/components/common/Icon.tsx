@@ -11,6 +11,7 @@ const PATHS: Record<string, string> = {
   pause: 'M6 4v10M12 4v10',
   step: 'M5 4v10l7-5ZM14 4v10',
   replay: 'M3 9a6 6 0 1 0 2-4.5M3 3v3.5h3.5',
+  ruler: 'M2 6h14v6H2ZM5 6v3M8 6v2M11 6v3M14 6v2',
   database: 'M3 4.5C3 3.1 5.7 2 9 2s6 1.1 6 2.5S12.3 7 9 7 3 5.9 3 4.5Zm0 0v9C3 14.9 5.7 16 9 16s6-1.1 6-2.5v-9M3 9c0 1.4 2.7 2.5 6 2.5S15 10.4 15 9',
   search: 'M8 13A5 5 0 1 0 8 3a5 5 0 0 0 0 10Zm3.5-1.5L15 15',
   calendar: 'M3 5h12v10H3ZM3 8h12M6 3v3M12 3v3',

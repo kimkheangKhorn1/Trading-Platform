@@ -42,10 +42,30 @@ class Settings:
     backtest_workers: int
     cors_origins: tuple[str, ...] = field(default_factory=tuple)
     oanda_base_url_override: str | None = None  # testing/proxy only; normally derived from the environment
+    market_data_provider: str = "oanda"
+    exness_api_key: str | None = field(default=None, repr=False)
+    exness_private_key: str | None = field(default=None, repr=False)
+    exness_private_key_file: Path | None = field(default=None, repr=False)
+    exness_account_id: str | None = field(default=None, repr=False)
+    exness_base_url: str | None = None
+    exness_price_type: str = "bid"
+    exness_alignment: str = "utc"
+    exness_instruments: tuple[str, ...] = ("XAUUSD",)
+
+    @property
+    def exness_missing(self) -> list[str]:
+        values = {"EXN_API_KEY": self.exness_api_key, "EXN_ACCOUNT_ID": self.exness_account_id,
+                  "EXN_API_BASE_URL": self.exness_base_url,
+                  "EXN_PRIVATE_KEY_FILE or EXN_PRIVATE_KEY": self.exness_private_key_file or self.exness_private_key}
+        return [key for key, value in values.items() if not value]
+
+    @property
+    def exness_enabled(self) -> bool:
+        return self.market_data_provider == "exness" and not self.exness_missing
 
     @property
     def oanda_enabled(self) -> bool:
-        return bool(self.oanda_token)
+        return self.market_data_provider == "oanda" and bool(self.oanda_token)
 
     @property
     def oanda_base_url(self) -> str:
@@ -53,6 +73,19 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    provider = os.getenv("MARKET_DATA_PROVIDER", "exness").strip().lower()
+    if provider not in ("exness", "oanda"):
+        raise ValueError("MARKET_DATA_PROVIDER must be exness or oanda")
+    exness_price = os.getenv("EXNESS_PRICE_TYPE", "bid").strip().lower()
+    if exness_price not in ("bid", "ask"):
+        raise ValueError("EXNESS_PRICE_TYPE must be bid or ask (no synthetic midpoint)")
+    alignment = os.getenv("EXNESS_ALIGNMENT", "utc").strip().lower()
+    if alignment not in ("utc", "ny17"):
+        raise ValueError("EXNESS_ALIGNMENT must match native candles: utc or ny17")
+    key_file = os.getenv("EXN_PRIVATE_KEY_FILE")
+    private_path = Path(key_file).expanduser() if key_file else None
+    if private_path is not None and not private_path.is_absolute():
+        private_path = BACKEND_DIR / private_path
     env = os.getenv("OANDA_ENVIRONMENT", "practice").strip().lower()
     if env not in OANDA_HOSTS:
         raise ValueError(f"OANDA_ENVIRONMENT must be one of {sorted(OANDA_HOSTS)}, got {env!r}")
@@ -82,4 +115,13 @@ def load_settings() -> Settings:
         backtest_workers=_env_int("BACKTEST_WORKERS", 2),
         cors_origins=origins,
         oanda_base_url_override=os.getenv("OANDA_BASE_URL") or None,
+        market_data_provider=provider,
+        exness_api_key=os.getenv("EXN_API_KEY") or None,
+        exness_private_key=os.getenv("EXN_PRIVATE_KEY") or None,
+        exness_private_key_file=private_path,
+        exness_account_id=os.getenv("EXN_ACCOUNT_ID") or None,
+        exness_base_url=os.getenv("EXN_API_BASE_URL") or None,
+        exness_price_type=exness_price,
+        exness_alignment=alignment,
+        exness_instruments=tuple(s.strip() for s in os.getenv("EXNESS_INSTRUMENTS", "XAUUSD").split(",") if s.strip()),
     )

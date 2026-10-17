@@ -35,7 +35,15 @@ def trade_stats(trades: list[dict], initial_capital: float) -> dict:
     signs = [1 if p > 0 else (-1 if p < 0 else 0) for p in pnl.tolist()]
     avg_win = float(wins.mean()) if wins.size else None
     avg_loss = float(losses.mean()) if losses.size else None
+    tp_wins = sum(1 for t in closed if t.get("outcome") == "win")
+    sl_losses = sum(1 for t in closed if t.get("outcome") == "loss")
     return {
+        "tp_wins": tp_wins,
+        "sl_losses": sl_losses,
+        "tp_win_rate": _f(tp_wins / (tp_wins + sl_losses) * 100.0) if tp_wins + sl_losses else None,
+        "tp1_hits": tp_wins,
+        "tp2_hits": sum(1 for t in closed if t.get("tps_hit", 0) >= 2),
+        "tp3_hits": sum(1 for t in closed if t.get("tps_hit", 0) >= 3),
         "total_trades": n,
         "open_trades": len(trades) - n,
         "winning_trades": int(wins.size),

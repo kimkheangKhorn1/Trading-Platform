@@ -538,6 +538,10 @@ def trade_to_dict(tr: Trade) -> dict:
         "mfe_r": (tr.mfe / risk_per_unit) if risk_per_unit > 0 else None,
         "bars_held": (tr.exit_index - tr.entry_index) if tr.exit_index is not None else None,
         "ambiguous": tr.ambiguous,
+        # Target-based outcome: any take-profit filled = win; stopped out (SL) before any TP = loss.
+        "tps_hit": sum(1 for k in kinds if k.startswith("TP")),
+        "outcome": ("win" if any(k.startswith("TP") for k in kinds) else "loss" if "SL" in kinds
+                    else "open" if not closed else "none"),
     }
 
 

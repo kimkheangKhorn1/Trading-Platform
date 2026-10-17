@@ -153,15 +153,18 @@ export const useTester = create<TesterState>((set, get) => ({
     }
   },
 
-  /** Show the most recent completed backtest after a page reload (results are stored by the backend). */
+  /** Show the most recent completed backtest after a page reload (results are stored by the backend).
+   *  Skips runs of scripts that no longer exist (e.g. the removed scalping engine): their stored
+   *  results name no strategy the tester can show. */
   restoreLatest: async () => {
     if (get().result || get().running) return
     try {
+      const known = new Set(useApp.getState().scripts.map((s) => s.id))
       const jobs = await api.backtests()
-      const last = jobs.find((j) => j.status === 'done')
+      const last = jobs.find((j) => j.status === 'done' && known.has(j.request.script_id))
       if (!last) return
       const job = await api.backtest(last.id)
-      if (job.result && !get().result && !get().running) set({ result: job.result, jobId: job.id })
+      if (job.result?.strategies.length && !get().result && !get().running) set({ result: job.result, jobId: job.id })
     } catch {
       /* nothing to restore */
     }

@@ -10,6 +10,8 @@ from .oanda import OandaClient
 from .repository import Feed, MarketStore
 from .resample import resample
 from .sync import OandaSync
+from .exness import ExnessClient, ExnessError
+from .exness_sync import ExnessSync
 from .timeframes import REFERENCE_TIMEFRAMES, TIMEFRAMES, bucket_start
 
 
@@ -19,6 +21,23 @@ def make_oanda_sync(settings: Settings, store: MarketStore) -> OandaSync | None:
     client = OandaClient(settings.oanda_base_url, settings.oanda_token or "",
                          max_requests_per_second=settings.oanda_max_requests_per_second)
     return OandaSync(store, client, price=settings.oanda_price_component, account_id=settings.oanda_account_id)
+
+
+MarketSync = OandaSync | ExnessSync
+
+
+def make_market_sync(settings: Settings, store: MarketStore) -> MarketSync | None:
+    if settings.market_data_provider == "oanda":
+        return make_oanda_sync(settings, store)
+    if not settings.exness_enabled:
+        return None
+    try:
+        key = settings.exness_private_key_file.read_bytes() if settings.exness_private_key_file else settings.exness_private_key.encode()
+    except OSError as exc:
+        raise ExnessError("Cannot read EXN_PRIVATE_KEY_FILE; check its local path and permissions.", "LOCAL_KEY_FILE") from exc
+    client = ExnessClient(settings.exness_base_url, settings.exness_api_key, key, settings.exness_account_id,
+                          alignment=settings.exness_alignment, price=settings.exness_price_type)
+    return ExnessSync(store, client)
 
 
 _last_sync: dict[tuple[str, str], float] = {}
@@ -32,7 +51,7 @@ class StoreHtfProvider:
     backtests so they never run on stale higher-timeframe data)."""
 
     def __init__(self, store: MarketStore, feed: Feed, *, complete_only: bool = False,
-                 sync: OandaSync | None = None, sync_interval: float = 0.0):
+                 sync: MarketSync | None = None, sync_interval: float = 0.0):
         self.store = store
         self.feed = feed
         self.complete_only = complete_only
@@ -40,9 +59,9 @@ class StoreHtfProvider:
         self.sync_interval = sync_interval
 
     def load(self, timeframe: str, start: int, end: int, warmup_bars: int) -> Bars:
-        if timeframe in REFERENCE_TIMEFRAMES:
+        if timeframe in REFERENCE_TIMEFRAMES and self.feed.provider != "exness":
             return self._load_calendar(REFERENCE_TIMEFRAMES[timeframe], start, end, warmup_bars)
-        if self.sync is not None and self.feed.provider == "oanda":
+        if self.sync is not None and self.sync.owns(self.feed):
             key = (self.feed.id, timeframe)
             now = time.monotonic()
             with _last_sync_lock:
@@ -58,6 +77,13 @@ class StoreHtfProvider:
         pre = self.store.load_bars(series.id, before=start, limit=warmup_bars, complete_only=self.complete_only)
         main = self.store.load_bars(series.id, start=start, end=end, complete_only=self.complete_only)
         return concat_bars(pre, main)
+
+    def load_stored(self, timeframe: str, start: int, end: int) -> Bars:
+        """Complete candles already in the database with open times in [start, end] (no provider sync)."""
+        series = self.store.get_series(self.feed.id, timeframe)
+        if series is None:
+            return Bars.empty()
+        return self.store.load_bars(series.id, start=start, end=end, complete_only=True)
 
     def _load_calendar(self, tf, start: int, end: int, warmup_bars: int) -> Bars:
         """Weekly/monthly candles built from the feed's daily candles (same session alignment)."""

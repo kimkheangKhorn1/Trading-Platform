@@ -15,7 +15,7 @@ from ..config import Settings, load_settings
 from ..engine.bars import concat_bars
 from ..engine.inputs import InputError
 from ..engine.registry import get_script
-from ..market.providers import StoreHtfProvider, make_oanda_sync
+from ..market.providers import StoreHtfProvider, make_market_sync
 from ..market.repository import MarketStore
 from ..market.timeframes import get_timeframe
 from .config import ExecutionConfig
@@ -86,7 +86,10 @@ def execute_backtest(request: dict, store: MarketStore, settings: Settings) -> d
     script = script_cls(req.inputs)
     warmup = req.warmup_bars if req.warmup_bars is not None else script.required_warmup()
     cfg = ExecutionConfig.from_dict(req.execution)
-    sync = make_oanda_sync(settings, store) if feed.provider == "oanda" else None
+    sync = make_market_sync(settings, store) if feed.provider == settings.market_data_provider else None
+    if sync is not None and not sync.owns(feed):
+        sync.client.close()
+        sync = None
     if sync is not None:
         sync.sync_forward(feed, tf.code)
         sync.backfill(feed, tf.code, until=req.start)
@@ -180,9 +183,16 @@ class BacktestJobs:
         row = self.store.conn.execute("SELECT * FROM backtests WHERE id=?", (job_id,)).fetchone()
         if row is None:
             return None
+        interrupted = False
+        if row["status"] == "running" and job_id not in self._running:
+            # Completion commits the final row before removing the future. A poll
+            # can read the old row just before that removal; refresh before claiming
+            # a restart. Read membership once so completion cannot race a later check.
+            row = self.store.conn.execute("SELECT * FROM backtests WHERE id=?", (job_id,)).fetchone()
+            interrupted = row["status"] == "running"
         out = {"id": row["id"], "status": row["status"], "created_at": row["created_at"],
                "request": json.loads(row["request"]), "error": row["error"]}
-        if row["status"] == "running" and job_id not in self._running:
+        if interrupted:
             out["status"] = "error"
             out["error"] = "interrupted (the server restarted while this backtest was running)"
         if row["result"] is not None:

@@ -17,6 +17,7 @@ import time
 from typing import Callable
 
 import httpx
+from .errors import MarketDataError
 
 MAX_CANDLES_PER_REQUEST = 5000
 RETRY_STATUS = {429, 500, 502, 503, 504}
@@ -24,7 +25,7 @@ RETRY_STATUS = {429, 500, 502, 503, 504}
 PRICE_KEYS = {"M": "mid", "B": "bid", "A": "ask"}
 
 
-class OandaError(RuntimeError):
+class OandaError(MarketDataError):
     def __init__(self, message: str, status: int | None = None):
         super().__init__(message)
         self.status = status

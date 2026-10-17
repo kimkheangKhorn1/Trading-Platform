@@ -48,6 +48,8 @@ code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); pa
 .chart-area { flex: 1; display: flex; flex-direction: column; min-height: 120px; background: var(--bg); }
 
 /* ------------------------------------------------------------------ top bar */
+.src-badge.exness { color: #ffdc32; background: #ffdc321a; }
+.src-badge.exness_archive { color: #ffdc32; background: #ffdc321a; }
 .topbar {
   height: 42px; display: flex; align-items: center; gap: 2px; padding: 0 8px;
   background: var(--bg); flex-shrink: 0;
@@ -124,6 +126,14 @@ code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); pa
 .legend-row.ind.dim .legend-name { opacity: 0.45; }
 .legend-name { cursor: default; }
 .legend-actions { display: inline-flex; align-items: center; gap: 2px; }
+.legend-signals {
+  display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 5px; margin-right: 3px;
+  border: 1px solid var(--border-2); border-radius: 3px; background: var(--panel); color: var(--text); cursor: pointer;
+  font-size: 11px;
+}
+.legend-signals:hover { background: var(--hover); color: var(--text-strong); }
+.legend-signals:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.legend-signals[aria-pressed="false"] { color: var(--accent); }
 .legend-actions .icon-btn { width: 20px; height: 20px; flex-shrink: 0; color: var(--muted); }
 .legend-actions .icon-btn:hover, .legend-actions .icon-btn:focus-visible { color: var(--text-strong); }
 .legend-actions .icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -165,6 +175,15 @@ code { font-family: var(--mono); font-size: 12px; background: var(--panel-2); pa
   position: absolute; top: 40px; left: 50%; transform: translateX(-50%); z-index: 5;
   background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 4px; font-size: 12px;
 }
+.ruler-surface { position: absolute; top: 0; left: 0; z-index: 5; cursor: crosshair; touch-action: none; }
+.ruler-result { position: absolute; z-index: 7; pointer-events: none; width: 244px; padding: 9px 10px;
+  color: #fff; border-radius: 4px; text-align: center; display: flex; flex-direction: column; gap: 5px;
+  box-shadow: 0 3px 12px #0005; font-size: 11px; }
+.ruler-result strong { font-size: 13px; }
+.ruler-prices { opacity: 0.85; }
+.ruler-hint { position: absolute; top: 42px; left: 50%; transform: translateX(-50%); z-index: 7;
+  pointer-events: none; color: var(--text); background: var(--panel); border: 1px solid var(--border-2);
+  padding: 5px 12px; border-radius: 4px; font-size: 11px; white-space: nowrap; }
 .replay-bar {
   position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%); z-index: 6;
   display: flex; gap: 6px; align-items: center; padding: 5px 10px;
@@ -577,3 +596,42 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
 .scale-btn:hover { background: var(--hover); color: var(--text-strong); }
 .scale-btn.on { color: var(--accent); }
 .scale-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Optional, separate from the original indicator's settings and drawings. */
+.badge-overlap-control { display: inline-flex; align-items: center; position: relative; }
+.badge-overlap-settings {
+  position: absolute; left: 0; top: 25px; z-index: 30; width: 280px; padding: 12px; display: flex; gap: 10px;
+  flex-direction: column; white-space: normal; background: var(--panel); border: 1px solid var(--border-2);
+  border-radius: 6px; box-shadow: 0 6px 24px #0008; color: var(--text); pointer-events: auto;
+}
+.badge-overlap-settings > span { color: var(--muted); font-size: 11px; }
+.badge-overlap-settings label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.badge-overlap-tfs { display: flex; flex-wrap: wrap; gap: 8px; }
+.badge-overlap-tfs label { justify-content: flex-start; gap: 3px; }
+.badge-overlap-settings > button { align-self: flex-end; cursor: pointer; background: var(--hover); border: 1px solid var(--border-2); border-radius: 3px; }
+
+/* Readable overlap provenance; measured and clamped by ChartTooltip. */
+.chart-tip { max-width: min(390px, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: hidden; box-sizing: border-box; }
+.overlap-tip { width: 380px; padding: 14px 16px; border-top: 3px solid #22d3a5; font-family: var(--font); line-height: 1.4; }
+.overlap-tip.supply { border-top-color: #ff6b81; }
+.overlap-tip-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.overlap-tip-heading strong { color: var(--text-strong); font-size: 14px; }
+.overlap-tip-heading > span { color: #22d3a5; font-size: 10px; }
+.overlap-tip.supply .overlap-tip-heading > span { color: #ff9aaa; }
+.overlap-tip-range { margin: 10px 0 4px; font-family: var(--mono); font-size: 19px; color: var(--text-strong); }
+.overlap-tip-range > span { color: var(--muted); }
+.overlap-tip-count { font-weight: 600; color: var(--text-strong); }
+.overlap-tip p { margin: 6px 0; }
+.overlap-tip-peak { color: #f4ca64; }
+.overlap-tip-sources { margin: 10px 0; padding: 9px 0; border-top: 1px solid var(--border-2); border-bottom: 1px solid var(--border-2); }
+.overlap-tip-source { display: grid; grid-template-columns: 32px 1fr; gap: 10px; margin-top: 6px; }
+.overlap-tip-source > span { font-family: var(--mono); }
+.overlap-tip-source > span > span { display: block; }
+.overlap-tip-source small { display: block; font-family: var(--font); color: var(--muted); font-size: 10px; }
+.overlap-tip-note, .overlap-tip footer { color: var(--muted); font-size: 10px; }
+.overlap-tip footer { border-top: 1px solid var(--border-2); margin-top: 9px; padding-top: 8px; }
+.overlap-status { position: absolute; bottom: 42px; left: 12px; max-width: calc(100% - 24px); pointer-events: none; font-size: 11px; color: var(--muted); background: rgba(9, 13, 20, .9); padding: 4px 7px; border-radius: 4px; }
+.overlap-status > span { display: block; color: var(--warn); }
+.overlap-tip.pinned { pointer-events: auto; overflow: auto; }
+.overlap-tip.pinned .overlap-tip-heading { padding-right: 18px; }
+.overlap-tip-close { position: absolute; right: 7px; top: 7px; color: var(--text); border: 0; background: transparent; cursor: pointer; font-size: 18px; }

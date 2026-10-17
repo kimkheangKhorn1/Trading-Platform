@@ -75,6 +75,8 @@ export function Overview({ result, view, tz }: { result: BacktestResult; view: s
         <Kpi label="Gross loss" value={fmtMoney(m.gross_loss)} tone={m.gross_loss < 0 ? 'down' : ''} />
         <Kpi label="Total trades" value={String(m.total_trades)} sub={m.open_trades ? `${m.open_trades} open` : `${m.winning_trades} W · ${m.losing_trades} L · ${m.breakeven_trades} BE`} />
         <Kpi label="Win rate" value={fmtPct(m.win_rate)} sub={`${m.winning_trades} / ${m.total_trades}`} />
+        <Kpi label="TP win rate" value={fmtPct(m.tp_win_rate ?? null)} sub={`${m.tp_wins ?? 0} TP · ${m.sl_losses ?? 0} SL`}
+          title="Win = any take-profit hit (TP1, TP2 or TP3). Loss = stop-loss hit before any take-profit." />
         <Kpi label="Profit factor" value={m.profit_factor === null ? '—' : fmtNum(m.profit_factor, 3)}
           title={m.profit_factor === null ? 'Undefined (no losing trades)' : 'Gross profit / |gross loss|'} />
         <Kpi label="Max drawdown" value={fmtMoney(m.max_drawdown ?? 0)} sub={fmtPct(m.max_drawdown_pct ?? 0)} tone={(m.max_drawdown ?? 0) > 0 ? 'down' : ''}

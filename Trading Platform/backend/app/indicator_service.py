@@ -13,9 +13,8 @@ from collections import OrderedDict
 from .engine.bars import concat_bars
 from .engine.registry import get_script
 from .engine.runner import DataRevisionError, ScriptRunner
-from .market.providers import StoreHtfProvider
+from .market.providers import MarketSync, StoreHtfProvider
 from .market.repository import MarketStore
-from .market.sync import OandaSync
 from .market.timeframes import get_timeframe
 
 
@@ -24,7 +23,7 @@ class IndicatorRequestError(ValueError):
 
 
 class IndicatorService:
-    def __init__(self, store: MarketStore, sync: OandaSync | None = None, max_runners: int = 24):
+    def __init__(self, store: MarketStore, sync: MarketSync | None = None, max_runners: int = 24):
         self.store = store
         self.sync = sync
         self.max_runners = max_runners

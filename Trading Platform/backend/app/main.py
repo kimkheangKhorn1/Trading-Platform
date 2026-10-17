@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,17 +19,20 @@ from .config import BACKEND_DIR, load_settings
 from .engine.inputs import InputError
 from .engine.registry import list_scripts
 from .indicator_service import IndicatorRequestError, IndicatorService
+from .badge_overlap import BadgeOverlapService
 from .market.csv_import import CsvImportError
 from .market.importer import import_csv
 from .market.live import LiveHub
-from .market.oanda import OandaError
-from .market.providers import make_oanda_sync
+from .market.exness_live import ExnessLiveHub
+from .market.errors import MarketDataError
+from .market.providers import make_market_sync
 from .market.repository import MarketStore
 from .market.sync import HistoryDownloadJobs
 from .market.timeframes import TIMEFRAMES, get_timeframe
 
 log = logging.getLogger("app")
 FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
+EXNESS_ARCHIVE_ROOT = BACKEND_DIR / 'data/exness/XAUUSDm'
 
 
 @asynccontextmanager
@@ -36,25 +40,39 @@ async def lifespan(app: FastAPI):
     settings = load_settings()
     store = MarketStore(settings.database_path)
     store.list_feeds()  # creates the schema
-    sync = make_oanda_sync(settings, store)
+    error = None
+    sync = None
+    try:
+        sync = make_market_sync(settings, store)
+    except MarketDataError as exc:
+        error = str(exc)
+    initialised = False
     if sync is not None:
-        for inst in settings.oanda_instruments:
+        instruments = settings.exness_instruments if sync.provider == "exness" else settings.oanda_instruments
+        for inst in instruments:
             try:
                 sync.ensure_feed(inst)
+                initialised = True
             except Exception as exc:  # network/auth problems are reported via /api/health
-                log.warning("could not initialise OANDA feed %s: %s", inst, exc)
+                error = str(exc)
+                log.warning("could not initialise market-data feed %s: %s", inst, error)
     app.state.settings = settings
     app.state.store = store
     app.state.sync = sync
     app.state.indicators = IndicatorService(store, sync)
+    app.state.badge_overlaps = BadgeOverlapService(store)
     app.state.backtests = BacktestJobs(store, settings)
     app.state.downloads = HistoryDownloadJobs(sync) if sync else None
-    app.state.live = LiveHub(store, sync, settings.live_poll_seconds)
+    app.state.live = (ExnessLiveHub if sync is not None and sync.provider == "exness" else LiveHub)(store, sync, settings.live_poll_seconds)
     app.state.live.start()
     app.state.oanda_error = None
+    app.state.market_error = error
+    app.state.market_ready = initialised
     yield
     await app.state.live.stop()
     app.state.backtests.shutdown()
+    if sync is not None:
+        sync.client.close()
 
 
 app = FastAPI(title="XAUUSD Trading Platform", version="0.1.0", lifespan=lifespan)
@@ -77,14 +95,88 @@ def health():
     return {
         "status": "ok",
         "time": int(time.time()),
+        "market_data_provider": s.market_data_provider,
+        "exness": {"enabled": s.exness_enabled, "ready": app.state.market_ready if s.market_data_provider == "exness" else False,
+                   "missing": s.exness_missing, "instruments": list(s.exness_instruments),
+                   "price_type": s.exness_price_type, "alignment": s.exness_alignment,
+                   "last_error": app.state.market_error if s.market_data_provider == "exness" else None},
         "oanda": {"enabled": s.oanda_enabled, "environment": s.oanda_environment,
                   "instruments": list(s.oanda_instruments), "price_component": s.oanda_price_component,
-                  "last_error": app.state.oanda_error},
+                  "last_error": app.state.oanda_error or (app.state.market_error if s.market_data_provider == "oanda" else None)},
         "timeframes": [{"code": tf.code, "label": tf.label, "seconds": tf.seconds} for tf in TIMEFRAMES.values()],
     }
 
 
 # -------------------------------------------------------------------------- feeds
+@app.get('/api/exness/history')
+def exness_history_status():
+    """Published archive progress is separate from authenticated/live API readiness."""
+    path = BACKEND_DIR / 'data/exness/XAUUSDm/manifest.json'
+    if not path.exists():
+        return {'status':'not_downloaded','symbol':'XAUUSDm','archives_total':0,
+                'archives_downloaded':0,'archives_processed':0,'ticks':0,'M1':0,'M5':0,
+                'first_tick_utc':None,'last_tick_utc':None,'errors':[]}
+    manifest = json.loads(path.read_text())
+    entries = list(manifest['archives'].values())
+    months = list(manifest.get('months',{}).values())
+    total = len(manifest.get('inventory',[]))
+    downloaded = sum(e.get('status') == 'downloaded' for e in entries)
+    processed = sum('sha256' in e and e.get('processed_sha256') == e['sha256'] for e in entries)
+    errors = [f'{e["period"]}: {e.get("processing_error",e.get("error"))}' for e in entries
+              if e.get('processing_error') or e.get('error')]
+    status = 'attention' if errors else 'downloading' if downloaded<total else 'processing' if processed<total else 'ready'
+    verification_path = path.parent/'reports/verification.json'
+    verification = json.loads(verification_path.read_text()) if verification_path.exists() else {}
+    audit_matches = all(verification.get('archive_hashes',{}).get(e['filename']) == e.get('sha256')
+                        and e.get('processed_sha256') == e.get('sha256')
+                        for e in entries) and len(entries) == total
+    repair_path = path.parent/'reports/source_order_repair.json'
+    repair = json.loads(repair_path.read_text()) if repair_path.exists() else {}
+    if repair.get('status') == 'running' or repair.get('finished_at','') > verification.get('verified_at',''):
+        audit_matches = False
+    accuracy_path = path.parent/'reports/accuracy_check.json'
+    accuracy = json.loads(accuracy_path.read_text()) if accuracy_path.exists() else {}
+    accuracy_current = accuracy.get('started_at','') >= repair.get('finished_at',repair.get('started_at',''))
+    if accuracy_current and accuracy.get('status') in ('running','failed'):
+        verification['status'] = 'pending' if accuracy['status'] == 'running' else 'failed'
+    from datetime import datetime, timezone
+    def stamp(ns):
+        return datetime.fromtimestamp(ns/1e9,timezone.utc).isoformat() if ns is not None else None
+    return {'status':status,'symbol':'XAUUSDm','archives_total':total,'archives_downloaded':downloaded,
+            'archives_processed':processed,'ticks':sum(m['ticks'] for m in months),
+            'M1':sum(m['M1'] for m in months),'M5':sum(m['M5'] for m in months),
+            'first_tick_utc':stamp(min((m['first_timestamp_ns'] for m in months),default=None)),
+            'last_tick_utc':stamp(max((m['last_timestamp_ns'] for m in months),default=None)),
+            'errors':errors,'missing_weekdays':manifest.get('coverage',{}).get('missing_weekdays_requiring_calendar_review',[]),
+            'verification':verification.get('status','pending') if audit_matches else 'pending'}
+
+
+@app.get('/api/exness/history/coverage')
+def exness_history_coverage():
+    path = BACKEND_DIR/'data/exness/XAUUSDm/reports/coverage.json'
+    if not path.exists():
+        raise HTTPException(404,'The archive coverage report is not available yet')
+    return FileResponse(path,media_type='application/json',filename='exness-xauusdm-coverage.json')
+
+
+@app.get('/api/exness/history/confirmed-snapshot')
+def exness_confirmed_snapshot(as_of: str, timeframes: str = 'M5,H1'):
+    from .market.confirmed_data import SnapshotError, archive_snapshot
+    try:
+        return archive_snapshot(EXNESS_ARCHIVE_ROOT,as_of,timeframes.split(','),store=_store())
+    except SnapshotError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
+@app.get('/api/exness/history/intrabar')
+def exness_intrabar(start: str, end: str, as_of: str):
+    from .market.confirmed_data import SnapshotError, archive_intrabar
+    try:
+        return archive_intrabar(EXNESS_ARCHIVE_ROOT,start,end,as_of)
+    except SnapshotError as exc:
+        raise HTTPException(exc.status_code,str(exc)) from exc
+
+
 @app.get("/api/feeds")
 def feeds():
     store = _store()
@@ -96,10 +188,12 @@ def feeds():
             series.append({"timeframe": s.timeframe, "origin": s.origin, "oldest_reached": s.oldest_reached,
                            **st})
         available = [s["timeframe"] for s in series]
-        if feed.provider == "oanda":
+        sync = app.state.sync
+        connected = sync is not None and sync.owns(feed) and app.state.market_ready
+        if connected:
             available = list(TIMEFRAMES)
         out.append({**feed.to_dict(), "series": series, "timeframes": available,
-                    "live": feed.provider == "oanda" and app.state.sync is not None})
+                    "live": connected})
     return out
 
 
@@ -117,6 +211,7 @@ def candles(
     feed_id: str,
     timeframe: str,
     before: int | None = None,
+    after: int | None = None,
     limit: int = Query(2000, ge=1, le=20000),
 ):
     store = _store()
@@ -129,7 +224,7 @@ def candles(
         raise HTTPException(400, str(exc)) from exc
     warning = None
     sync = app.state.sync
-    if feed.provider == "oanda" and sync is not None:
+    if sync is not None and sync.owns(feed):
         try:
             if before is None:
                 sync.sync_forward(feed, tf.code)
@@ -139,20 +234,24 @@ def candles(
                     sync.backfill(feed, tf.code, before=last + 1, min_bars=limit)
             else:
                 sync.backfill(feed, tf.code, before=before, min_bars=limit)
-            app.state.oanda_error = None
-        except OandaError as exc:
-            warning = f"OANDA request failed ({exc}); showing locally stored candles"
-            app.state.oanda_error = str(exc)
+            app.state.market_error = None
+        except MarketDataError as exc:
+            warning = f"{feed.provider.upper()} request failed ({exc}); showing locally stored candles"
+            app.state.market_error = str(exc)
+            if feed.provider == "oanda":
+                app.state.oanda_error = str(exc)
     series = store.get_series(feed.id, tf.code)
     if series is None:
         raise HTTPException(404, f"{tf.label} candles are not available for {feed.display_name}")
-    bars = store.load_bars(series.id, before=before, limit=limit)
+    bars = store.load_bars(series.id, before=before, after=after, limit=limit)
     has_more = False
     if len(bars):
         has_more = store.count_before(series.id, int(bars.time[0])) > 0 or (
-            feed.provider == "oanda" and sync is not None and not store.get_series(feed.id, tf.code).oldest_reached)
+            sync is not None and sync.owns(feed) and not store.get_series(feed.id, tf.code).oldest_reached)
     return {"feed_id": feed.id, "timeframe": tf.code, "precision": feed.precision, "bars": bars.to_json_rows(),
-            "has_more": has_more, "warning": warning}
+            "has_more": has_more,
+            "has_newer": bool(len(bars) and (store.latest_time(series.id) or 0) > int(bars.time[-1])),
+            "warning": warning}
 
 
 @app.post("/api/import/csv")
@@ -183,10 +282,10 @@ class DownloadRequest(BaseModel):
 @app.post("/api/feeds/{feed_id}/download")
 def start_download(feed_id: str, req: DownloadRequest):
     feed = _store().get_feed(feed_id)
-    if feed is None or feed.provider != "oanda":
-        raise HTTPException(400, "history downloads are only available for OANDA feeds")
-    if app.state.downloads is None:
-        raise HTTPException(400, "OANDA is not configured")
+    if feed is None or feed.provider not in ("exness", "oanda"):
+        raise HTTPException(400, "history downloads require a broker data feed")
+    if app.state.downloads is None or not app.state.sync.owns(feed):
+        raise HTTPException(400, "The selected provider's API credentials are not configured")
     get_timeframe(req.timeframe)
     return app.state.downloads.start(feed, req.timeframe, req.until)
 
@@ -223,9 +322,20 @@ def run_indicator(req: IndicatorRunRequest):
                                         inputs=req.inputs, start_time=req.start_time, end_time=req.end_time)
     except (InputError, IndicatorRequestError, ValueError) as exc:
         raise HTTPException(400, str(exc)) from exc
+    except MarketDataError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 # ---------------------------------------------------------------------- backtests
+@app.post("/api/badge-overlaps")
+def badge_overlaps(request: dict):
+    """Optional display-only analysis; uses the original indicator's rendered fresh badges."""
+    try:
+        return app.state.badge_overlaps.run(**request)
+    except (ValueError, TypeError, InputError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.post("/api/backtests")
 def submit_backtest(request: dict):
     try:

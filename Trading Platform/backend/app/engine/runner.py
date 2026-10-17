@@ -59,7 +59,8 @@ class ScriptRunner:
         self.htf_provider = htf_provider
         self.htf_warmup_bars = htf_warmup_bars
 
-        self.drawings = DrawingStore(self.meta.max_boxes, self.meta.max_lines, self.meta.max_labels)
+        self.drawings = DrawingStore(self.meta.max_boxes, self.meta.max_lines, self.meta.max_labels,
+                                     self.meta.group_limits)
         self.plots: dict[str, list[float]] = {p.id: [] for p in self.meta.plots}
         self.plot_colors: dict[str, dict[int, str]] = {p.id: {} for p in self.meta.plots}
         self.shapes: dict[str, list[tuple]] = {s.id: [] for s in self.meta.shapes}
@@ -118,6 +119,9 @@ class ScriptRunner:
         if not self.securities or self.n == 0:
             return
         chart = self.bars()
+        # Several expressions (e.g. previous high/low/time) use the same source candles.
+        # Reuse one load within this refresh; never retain market data between observations.
+        htf_cache: dict[str, Bars] = {}
         for k, req in enumerate(self.securities):
             if req.timeframe in ("", self.tf.code):
                 raw = np.asarray(req.expr(chart), dtype=np.float64)
@@ -131,7 +135,10 @@ class ScriptRunner:
             if self.htf_provider is None:
                 raise RuntimeError("script requests another timeframe but no data provider was given")
             htf_tf = get_timeframe(req.timeframe, reference=True)
-            htf = self.htf_provider.load(htf_tf.code, int(chart.time[0]), int(chart.time[-1]), self.htf_warmup_bars)
+            if htf_tf.code not in htf_cache:
+                htf_cache[htf_tf.code] = self.htf_provider.load(
+                    htf_tf.code, int(chart.time[0]), int(chart.time[-1]), self.htf_warmup_bars)
+            htf = htf_cache[htf_tf.code]
             self.security_values[k] = evaluate_security(req, chart, self.tf, htf, htf_tf, self.alignment)
 
     # --------------------------------------------------------------- outputs

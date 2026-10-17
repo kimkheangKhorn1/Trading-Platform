@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
-import type { DownloadJob, ImportReport, TimeframeCode } from '../api/types'
+import type { DownloadJob, ExnessHistoryStatus, ImportReport, TimeframeCode } from '../api/types'
 import { dateToTs, fmtDateTime, tsToDate } from '../lib/format'
 import { ALL_TFS, TF_LABELS, useApp } from '../state/app'
 import { Select } from './common/Fields'
@@ -30,8 +30,24 @@ export function DataDialog() {
   const [file, setFile] = useState<File | null>(null)
   const [form, setForm] = useState({ symbol: 'XAUUSD', dataset: '', price_type: 'bid', timezone: 'UTC', timeframe: '', alignment: 'ny17' })
   const [jobs, setJobs] = useState<DownloadJob[]>([])
+  const [history, setHistory] = useState<ExnessHistoryStatus | null>(null)
   const [dl, setDl] = useState<{ tf: TimeframeCode; until: string }>(() => ({ tf: 'M1', until: tsToDate(Date.now() / 1000 - 365 * 86400) }))
   const oanda = feeds.find((f) => f.provider === 'oanda')
+  const exness = feeds.find((f) => f.provider === 'exness')
+  const downloadFeed = health?.market_data_provider === 'exness' ? exness : oanda
+
+  useEffect(() => {
+    let active = true
+    const poll = async () => {
+      try {
+        const status = await api.exnessHistory()
+        if (active) setHistory(status)
+      } catch { /* connection errors are shown by the existing backend status */ }
+    }
+    void poll()
+    const timer = setInterval(() => void poll(), 6000)
+    return () => { active = false; clearInterval(timer) }
+  }, [])
 
   useEffect(() => {
     let stop = false
@@ -91,10 +107,10 @@ export function DataDialog() {
   }
 
   const startDownload = async () => {
-    if (!oanda) return
+    if (!downloadFeed) return
     setError(null)
     try {
-      const job = await api.startDownload(oanda.id, dl.tf, dateToTs(dl.until))
+      const job = await api.startDownload(downloadFeed.id, dl.tf, dateToTs(dl.until))
       setJobs([job, ...jobs])
       setTimeout(async () => setJobs(await api.downloads()), 1500)
     } catch (e) {
@@ -112,7 +128,7 @@ export function DataDialog() {
           <div key={f.id} className="feed-card">
             <div className="feed-head">
               <span className="sym">{f.symbol}</span>
-              <span className={`src-badge ${f.provider}`}>{f.provider.toUpperCase()}</span>
+              <span className={`src-badge ${f.provider}`}>{f.provider === 'exness_archive' ? 'EXNESS HISTORY' : f.provider.toUpperCase()}</span>
               <span className="muted">{f.display_name}</span>
               <span className="muted small">· {f.price_type} · {f.precision} decimals · {f.alignment === 'ny17' ? 'NY 17:00 sessions' : 'UTC sessions'}</span>
               <div className="grow" />
@@ -136,7 +152,8 @@ export function DataDialog() {
                     <td className="num mono">{s.count.toLocaleString('en-US')}</td>
                     <td className="mono">{fmtDateTime(s.first, tz)}</td>
                     <td className="mono">{fmtDateTime(s.last, tz)}</td>
-                    <td className="muted small">{s.oldest_reached ? 'complete' : f.provider === 'oanda' ? 'more available on scroll' : ''}</td>
+                    <td className="muted small">{f.provider === 'exness_archive' ? 'published archive snapshot'
+                      : s.oldest_reached ? 'complete' : f.provider !== 'csv' ? 'more available on scroll' : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -145,7 +162,60 @@ export function DataDialog() {
         ))}
       </section>
 
+      {feeds.some((f) => f.provider === 'exness_archive') ? <section>
+        <h4 className="group-title">Exness historical tick archive</h4>
+        {history ? <p className="small mono">
+          {history.status} · {history.archives_downloaded}/{history.archives_total} archives downloaded
+          {' · '}{history.archives_processed} processed · {history.ticks.toLocaleString('en-US')} unique ticks
+          <br />{history.M1.toLocaleString('en-US')} M1 · {history.M5.toLocaleString('en-US')} M5 candles
+          <br />Observed coverage: {history.first_tick_utc ?? 'pending'} → {history.last_tick_utc ?? 'pending'}
+        </p> : null}
+        {history?.errors.map((message) => <p key={message} className="warn-text small">{message}</p>)}
+        {history?.missing_weekdays?.length ? <p className="warn-text small">
+          Source calendar gaps: {history.missing_weekdays.length} weekdays have no ticks, including holidays and dates needing review.
+          Ready means downloaded and processed; continuous coverage is not certified.
+        </p> : null}
+        {history ? <p className="muted small">Local data audit: {history.verification ?? 'pending'}.
+          {' '}<a href="/api/exness/history/coverage" download>Download coverage report</a></p> : null}
+        <p className="muted small">Official XAUUSDm Standard-account ticks are stored separately from other providers.
+          M1 and M5 candles contain observed quotes only; Bid and Ask have separate chart feeds.
+          Volume is the deduplicated quote count. Current-day archive candles are excluded by the default ML loader.
+          Archive history does not require Public Trader API credentials.</p>
+        <p className="muted small">Choose XAUUSDm · Exness archive (bid) in the symbol menu.
+          Coverage and missing periods are recorded in the local history report. Terminal parity requires an account-server comparison.</p>
+      </section> : null}
+
       <section>
+        <h4 className="group-title">Exness account API · optional for archive history</h4>
+        {health?.exness?.ready ? <>
+          <p className="muted small">API access verified for {health.exness.instruments.join(', ')} · native {health.exness.price_type} candles.
+            Live quotes connect when this feed is open. The chart status shows whether ticks are arriving.</p>
+          {exness ? <div className="form-row">
+            <span>Download</span>
+            <Select value={dl.tf} options={ALL_TFS.map((t) => ({ value: t, label: TF_LABELS[t] }))} onChange={(tf) => setDl({ ...dl, tf })} />
+            <span>history back to</span>
+            <input className="input" type="date" value={dl.until} onChange={(e) => setDl({ ...dl, until: e.target.value })} />
+            <button className="btn primary sm" onClick={startDownload}>Start</button>
+          </div> : null}
+          {jobs.filter((j) => j.feed_id === exness?.id).map((j) => <div key={j.id} className="job-row small">
+            {j.status === 'running' ? <Spinner size={11} /> : <Icon name={j.status === 'done' ? 'check' : 'warning'} size={14} />}
+            <span>{TF_LABELS[j.timeframe as TimeframeCode]} → {tsToDate(j.until)}</span>
+            <span>{j.added.toLocaleString('en-US')} candles added</span>
+            {j.error ? <span className="warn-text">{j.error}</span> : null}
+          </div>)}
+        </> : <p className="muted small">
+          {health?.exness?.enabled ? 'API configuration is present, but the connection has not been verified.'
+            : 'API access needs setup. Account verification alone does not provide an API key.'}
+          {' '}Exness currently lists API availability only for Vietnam and Thailand; standard MetaTrader accounts cannot connect.
+          {' '}Check <a href="https://get.exness.help/hc/en-us/articles/27866287512476-Exness-API" target="_blank" rel="noopener noreferrer">account eligibility</a> first.
+          {' '}Eligible accounts need the API key, signing key, API-enabled account ID and current host from Exness Key Management.
+          Store them on the backend using <code>backend/.env</code> and restart. Existing CSV data remains available.
+        </p>}
+        {health?.exness?.missing.length ? <p className="muted small">Missing: {health.exness.missing.join(', ')}.</p> : null}
+        {health?.exness?.last_error ? <p className="warn-text small">{health.exness.last_error}</p> : null}
+      </section>
+
+      {health?.market_data_provider === 'oanda' ? <section>
         <h4 className="group-title">OANDA</h4>
         {health?.oanda.enabled ? (
           <>
@@ -179,7 +249,7 @@ export function DataDialog() {
             historical downloads and live candles. Until then, import CSV data below.
           </p>
         )}
-      </section>
+      </section> : null}
 
       <section>
         <h4 className="group-title">Import CSV</h4>
@@ -238,11 +308,11 @@ export function SymbolInfoDialog() {
   const rows: [string, string][] = [
     ['Symbol', f.symbol],
     ['Description', f.symbol === 'XAUUSD' ? 'Gold spot / U.S. dollar' : f.symbol],
-    ['Source', f.provider === 'oanda' ? `OANDA v20 (${f.instrument})` : `CSV import (${(f.meta.files as string[] | undefined)?.filter(Boolean).join(', ') ?? 'file'})`],
+    ['Source', f.provider === 'csv' ? `CSV import (${(f.meta.files as string[] | undefined)?.filter(Boolean).join(', ') ?? 'file'})` : `${f.provider.toUpperCase()} (${f.instrument})`],
     ['Price type', `${f.price_type} prices`],
     ['Price precision', `${f.precision} decimals (tick ${(10 ** -f.precision).toFixed(f.precision)})`],
     ['Session boundaries', f.alignment === 'ny17' ? '17:00 America/New_York (daily and 4H candles)' : '00:00 UTC'],
-    ['Live updates', f.live ? 'yes (polling OANDA candles)' : 'no'],
+    ['Live updates', f.live ? (f.provider === 'exness' ? 'Exness ticks; provisional candles reconciled with native history' : 'OANDA candle polling') : 'no'],
     ['Stored candles', f.series.map((s) => `${TF_LABELS[s.timeframe]} ${s.count.toLocaleString('en-US')}`).join(' · ')],
     ['Stored range', f.series.length ? `${fmtDateTime(Math.min(...f.series.map((s) => s.first ?? Infinity)), tz)} → ${fmtDateTime(Math.max(...f.series.map((s) => s.last ?? 0)), tz)}` : '—'],
   ]
@@ -277,7 +347,7 @@ export function GotoDialog() {
         <input className="input" type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Time (UTC)" />
         <span className="muted small">UTC</span>
       </div>
-      <p className="muted small">Older history is loaded automatically if needed.</p>
+      <p className="muted small">Loads candles directly around this UTC time. If it falls in a data gap, the chart shows the next available candle.</p>
     </Modal>
   )
 }
