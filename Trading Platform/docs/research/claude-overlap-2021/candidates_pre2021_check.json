@@ -1,0 +1,42 @@
+{
+ "base": {},
+ "C9_htf_against": {
+  "_filters": {
+   "htf": "against"
+  }
+ },
+ "U4_entry_early_0.50": {
+  "entry_offset_atr": 0.5
+ },
+ "C4_be_at_1.5R": {
+  "_rules": {
+   "be_at_r": 1.5
+  }
+ },
+ "C8_htf_with": {
+  "_filters": {
+   "htf": "with"
+  }
+ },
+ "K1_against_early0.5": {
+  "entry_offset_atr": 0.5,
+  "_filters": {
+   "htf": "against"
+  }
+ },
+ "K2_against_be1.5": {
+  "_filters": {
+   "htf": "against"
+  },
+  "_rules": {
+   "be_at_r": 1.5
+  }
+ },
+ "K6_against_q0.3f0.2": {
+  "scalp_r": 0.3,
+  "scalp_frac": 0.2,
+  "_filters": {
+   "htf": "against"
+  }
+ }
+}

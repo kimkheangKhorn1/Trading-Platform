@@ -1,0 +1,5 @@
+{
+ "R3_front0.50_be": {"entry_offset_atr": 0.50, "breakeven": true},
+ "R3_front0.50_q0.3f0.2": {"entry_offset_atr": 0.50, "scalp_r": 0.3, "scalp_frac": 0.2},
+ "R3_tp1any_be": {"tp1_kind": "Any zone", "breakeven": true}
+}

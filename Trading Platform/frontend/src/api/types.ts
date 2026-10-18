@@ -152,6 +152,12 @@ export interface ScriptMeta {
   strategies: StrategySpec[]
   drawing_groups: DrawingGroupSpec[]
   default_warmup: number
+  /** Pine indicator(behind_chart): false draws the script's boxes in front of the candles */
+  behind_chart?: boolean
+  /** false: labels and markers stay where the script put them (no collision layout) */
+  label_layout?: boolean
+  /** inputs that only change what is drawn (calculations ignore them) */
+  display_inputs?: string[]
 }
 
 export interface BoxObj {
@@ -245,6 +251,9 @@ export interface TableCell {
   bg_color: string
   text_color: string
   tooltip: string
+  text_size?: string
+  text_halign?: 'left' | 'center' | 'right'
+  text_valign?: 'top' | 'center' | 'bottom'
 }
 
 /** A Pine ``table`` as it stands after the last bar. */
@@ -253,6 +262,12 @@ export interface IndicatorTable {
   position: 'top_left' | 'top_center' | 'top_right' | 'middle_left' | 'middle_center' | 'middle_right'
     | 'bottom_left' | 'bottom_center' | 'bottom_right'
   rows: TableCell[][]
+  /** Pine table.new styling (absent on older tables: plain cells) */
+  bg_color?: string | null
+  frame_color?: string | null
+  frame_width?: number
+  border_color?: string | null
+  border_width?: number
 }
 
 export interface IndicatorOutput {

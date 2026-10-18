@@ -597,23 +597,71 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
 .scale-btn.on { color: var(--accent); }
 .scale-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* Optional, separate from the original indicator's settings and drawings. */
+/* Optional overlap layers (D/S, order blocks), separate from the original indicator's settings and drawings. */
 .badge-overlap-control { display: inline-flex; align-items: center; position: relative; }
-.badge-overlap-settings {
-  position: absolute; left: 0; top: 25px; z-index: 30; width: 280px; padding: 12px; display: flex; gap: 10px;
-  flex-direction: column; white-space: normal; background: var(--panel); border: 1px solid var(--border-2);
-  border-radius: 6px; box-shadow: 0 6px 24px #0008; color: var(--text); pointer-events: auto;
+.ovl-pill {
+  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px 0 5px; margin-right: 1px;
+  border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel); color: var(--muted);
+  cursor: pointer; font-size: 11px;
 }
-.badge-overlap-settings > span { color: var(--muted); font-size: 11px; }
-.badge-overlap-settings label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.badge-overlap-tfs { display: flex; flex-wrap: wrap; gap: 8px; }
-.badge-overlap-tfs label { justify-content: flex-start; gap: 3px; }
-.badge-overlap-settings > button { align-self: flex-end; cursor: pointer; background: var(--hover); border: 1px solid var(--border-2); border-radius: 3px; }
+.ovl-pill i, .ovl-panel header > i {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block;
+}
+.ovl-pill[aria-pressed="false"] i { opacity: .35; filter: grayscale(1); }
+.ovl-pill[aria-pressed="true"] { color: var(--text-strong); border-color: #4a5060; }
+.ovl-pill:hover { background: var(--hover); color: var(--text-strong); }
+.ovl-pill:focus-visible, .ovl-panel button:focus-visible, .ovl-how summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ovl-panel {
+  position: absolute; left: 0; top: 26px; z-index: 30; width: 318px; max-width: calc(100vw - 32px);
+  white-space: normal; background: var(--panel); border: 1px solid var(--border-2); border-radius: 8px;
+  box-shadow: 0 10px 32px #000a; color: var(--text); pointer-events: auto; font-size: 12px; overflow: hidden;
+}
+.ovl-panel header { display: flex; align-items: flex-start; gap: 9px; padding: 12px 12px 10px; border-bottom: 1px solid var(--border); }
+.ovl-panel header > i { margin-top: 4px; }
+.ovl-panel header > div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ovl-panel header strong { color: var(--text-strong); font-size: 13px; }
+.ovl-panel header span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.ovl-close { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 17px; line-height: 1; padding: 0 2px; }
+.ovl-close:hover { color: var(--text-strong); }
+.ovl-panel section { display: flex; flex-direction: column; gap: 10px; padding: 11px 12px; border-bottom: 1px solid var(--border); }
+.ovl-field { display: flex; flex-direction: column; gap: 6px; }
+.ovl-label { color: var(--muted); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.ovl-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ovl-chips button {
+  min-width: 34px; height: 24px; padding: 0 8px; border: 1px solid var(--border-2); border-radius: 4px;
+  background: transparent; color: var(--muted); cursor: pointer; font-size: 11px;
+}
+.ovl-chips button:hover { color: var(--text-strong); background: var(--hover); }
+.ovl-chips button[aria-pressed="true"] { background: rgba(41, 98, 255, .18); border-color: var(--accent); color: var(--text-strong); }
+.ovl-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 0;
+  border: 0; background: transparent; color: var(--text); cursor: pointer; text-align: left; font-size: 12px;
+}
+.ovl-toggle-text { display: flex; flex-direction: column; gap: 1px; }
+.ovl-toggle-text small { color: var(--muted); font-size: 10.5px; }
+.ovl-switch { position: relative; display: block; width: 28px; height: 16px; border-radius: 8px; background: #3a3f4c; flex-shrink: 0; transition: background .15s; }
+.ovl-switch > span { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #c7cad3; transition: transform .15s; }
+[aria-checked="true"] > .ovl-switch, [aria-checked="true"] .ovl-switch { background: var(--accent); }
+[aria-checked="true"] > .ovl-switch > span, [aria-checked="true"] .ovl-switch > span { transform: translateX(12px); background: #fff; }
+.ovl-switch-only { border: 0; background: transparent; padding: 2px 0 0; cursor: pointer; }
+.ovl-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 9px 12px; color: var(--muted); font-size: 10.5px; border-bottom: 1px solid var(--border); }
+.ovl-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.ovl-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.ovl-how { padding: 9px 12px 11px; }
+.ovl-how summary { cursor: pointer; color: var(--text); font-size: 11.5px; }
+.ovl-how ul { margin: 8px 0 0; padding-left: 16px; color: var(--muted); font-size: 11px; line-height: 1.45; display: flex; flex-direction: column; gap: 5px; }
+@media (prefers-reduced-motion: reduce) { .ovl-switch, .ovl-switch > span { transition: none; } }
 
 /* Readable overlap provenance; measured and clamped by ChartTooltip. */
 .chart-tip { max-width: min(390px, calc(100% - 16px)); max-height: calc(100% - 16px); overflow: hidden; box-sizing: border-box; }
 .overlap-tip { width: 380px; padding: 14px 16px; border-top: 3px solid #22d3a5; font-family: var(--font); line-height: 1.4; }
 .overlap-tip.supply { border-top-color: #ff6b81; }
+.overlap-tip.ob { border-top-color: #4f9dff; }
+.overlap-tip.ob.supply { border-top-color: #ffa24c; }
+.overlap-tip.ob .overlap-tip-heading > span { color: #8fc0ff; }
+.overlap-tip.ob.supply .overlap-tip-heading > span { color: #ffc48f; }
+.overlap-tip-source em { font-style: normal; color: var(--muted); font-family: var(--font); font-size: 11px; }
 .overlap-tip-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .overlap-tip-heading strong { color: var(--text-strong); font-size: 14px; }
 .overlap-tip-heading > span { color: #22d3a5; font-size: 10px; }
@@ -630,8 +678,6 @@ input[type='date']::-webkit-calendar-picker-indicator, input[type='time']::-webk
 .overlap-tip-source small { display: block; font-family: var(--font); color: var(--muted); font-size: 10px; }
 .overlap-tip-note, .overlap-tip footer { color: var(--muted); font-size: 10px; }
 .overlap-tip footer { border-top: 1px solid var(--border-2); margin-top: 9px; padding-top: 8px; }
-.overlap-status { position: absolute; bottom: 42px; left: 12px; max-width: calc(100% - 24px); pointer-events: none; font-size: 11px; color: var(--muted); background: rgba(9, 13, 20, .9); padding: 4px 7px; border-radius: 4px; }
-.overlap-status > span { display: block; color: var(--warn); }
 .overlap-tip.pinned { pointer-events: auto; overflow: auto; }
 .overlap-tip.pinned .overlap-tip-heading { padding-right: 18px; }
 .overlap-tip-close { position: absolute; right: 7px; top: 7px; color: var(--text); border: 0; background: transparent; cursor: pointer; font-size: 18px; }

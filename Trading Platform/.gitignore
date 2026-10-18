@@ -21,3 +21,9 @@ frontend/node_modules/.tmp/
 # Tooling
 .playwright-mcp/
 .DS_Store
+
+# Generated research outputs and local run artefacts (large; reproducible from the scripts)
+backend/research/**/out/
+docs/research/claude-overlap-2026-10-17/runs/
+backend/data/*.log
+backend/data/*.json

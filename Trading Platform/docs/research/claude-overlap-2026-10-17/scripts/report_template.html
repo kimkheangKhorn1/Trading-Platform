@@ -1,0 +1,268 @@
+<title>XAUUSD Overlap-Zone Backtest</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;650;750&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~72ch) for findings; data tables break out to a wider track with their own scroll. */
+:root {
+  --bg: #f6f6f3; --surface: #ffffff; --ink: #1d2026; --muted: #5d6370; --line: #dcdcd4;
+  --gold: #9a6d12; --gold-soft: #f3e7c9; --pos: #1d7a52; --neg: #b3362e; --na: #a3a39a;
+  --s1: #1d2026; --s2: #2f6db5; --s3: #b8781a; --s4: #8a4fa8;
+  --display: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15171b; --surface: #1d2025; --ink: #e8e7e1; --muted: #a2a6b0; --line: #33363d;
+  --gold: #e0b45c; --gold-soft: #3a3020; --pos: #5cc796; --neg: #ef7a70; --na: #6b6e75;
+  --s1: #e8e7e1; --s2: #6ea6ee; --s3: #e7aa4a; --s4: #c08ae0; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15171b; --surface: #1d2025; --ink: #e8e7e1; --muted: #a2a6b0; --line: #33363d;
+  --gold: #e0b45c; --gold-soft: #3a3020; --pos: #5cc796; --neg: #ef7a70; --na: #6b6e75;
+  --s1: #e8e7e1; --s2: #6ea6ee; --s3: #e7aa4a; --s4: #c08ae0; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 44px; }
+.col { max-width: 72ch; min-width: 0; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(1.7rem, 3.4vw, 2.4rem); font-weight: 750; line-height: 1.15; }
+h2 { font-size: 1.35rem; font-weight: 650; }
+h3 { font-size: 1.05rem; font-weight: 650; }
+p { margin: 0; }
+.stack { display: grid; gap: 14px; }
+.eyebrow { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
+.lede { font-size: 1.12rem; color: var(--ink); }
+.muted { color: var(--muted); }
+.mono, td, th { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.v { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.v .k { font: 500 0.72rem/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.v .n { font: 600 1.6rem/1.1 var(--mono); }
+.v p { font-size: 0.93rem; color: var(--muted); }
+.pos { color: var(--pos); } .neg { color: var(--neg); }
+ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+th, td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-weight: 500; color: var(--muted); background: var(--surface); position: sticky; top: 0; }
+td:first-child, th:first-child { text-align: left; }
+tr.na td { color: var(--na); }
+tr.grp td { border-top: 2px solid var(--line); }
+tbody tr:hover td { background: var(--gold-soft); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button { font: 500 0.82rem var(--body); color: var(--ink); background: transparent; border: 0; padding: 7px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+select { font: 0.85rem var(--body); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-width: 0; }
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; padding: 4px 4px 8px; }
+.legend span::before { content: ""; display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; background: var(--c); }
+.note { font-size: 0.88rem; color: var(--muted); }
+.def { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 0.93rem; }
+.def dt { font-family: var(--mono); font-size: 0.8rem; color: var(--gold); padding-top: 2px; }
+.def dd { margin: 0; }
+@media (max-width: 560px) { .def { grid-template-columns: 1fr; } .def dd { margin-bottom: 6px; } }
+</style>
+
+<div class="wrap">
+  <header class="col stack">
+    <div class="eyebrow">Exness XAUUSDm · MTF confluence strategy · 1H · 2015-09 to 2026-10-13</div>
+    <h1>Can the overlap-zone signals reach a 70% win rate and still make money?</h1>
+    <p class="lede">The 70% TP-hit win rate is reachable with a quick first target, but those trades do not make money. None of the 38 changes tested beat the current defaults on unseen years, so the indicator's defaults stay as they are.</p>
+    <p class="muted">All numbers are in R: the result divided by the risk from the actual fill to the original stop. A trade counts as a <b>TP-hit win</b> when TP1 or TP2 is reached, even if the rest of the position later stops out. <b>Cash-positive</b> means the trade made money overall.</p>
+  </header>
+
+  <section class="verdict" aria-label="Key results">
+    <div class="v"><span class="k">Current defaults, all years</span><span class="n" id="k-base"></span><p id="k-base-sub"></p></div>
+    <div class="v"><span class="k">70% rule version, unseen 2023–26</span><span class="n" id="k-w"></span><p id="k-w-sub"></p></div>
+    <div class="v"><span class="k">72% really profitable trades, all years</span><span class="n" id="k-h"></span><p id="k-h-sub"></p></div>
+    <div class="v"><span class="k">Re-optimised every year, 2019–26</span><span class="n" id="k-wf"></span><p id="k-wf-sub"></p></div>
+  </section>
+
+  <section class="stack">
+    <div class="col stack">
+      <h2>Cumulative result</h2>
+      <p class="muted">Cumulative R by exit date. The dashed line marks the start of the holdout years (2023 on), which were not used to choose the finalists.</p>
+    </div>
+    <div class="chart"><div class="legend" id="legend"></div><svg id="eq" viewBox="0 0 1000 360" role="img" aria-label="Cumulative R of the four strategies, 2015 to 2026"></svg></div>
+  </section>
+
+  <section class="stack">
+    <div class="col stack">
+      <h2>The four finalists</h2>
+      <p class="muted">Development is 2015-09 to 2022, where the changes were designed and chosen. Holdout is 2023-01 to 2026-10-13, run once after the finalists were frozen. Fills are replayed on M1 with that minute's opening spread and 0.1 slippage. No swap or commission is included.</p>
+    </div>
+    <div class="tablebox"><table id="fin"></table></div>
+  </section>
+
+  <section class="col stack">
+    <h2>What the 50 charts and the numbers showed</h2>
+    <dl class="def">
+      <dt>Problem A<br>missed entries</dt>
+      <dd>Price turned within 0.10 ATR of the limit <b>19 times in 11 years</b>: 13 would have won, 4 would have lost, and 2 never resolved. Placing the limit earlier catches these, but it also moves every other entry. With 0.05 to 0.25 ATR the results were the same or worse. With 0.5 ATR they looked better on 2015–2022 (+0.23R per trade) but came out at −0.02R on 2023–2026.</dd>
+      <dt>Problem B<br>almost at TP</dt>
+      <dd>Only 4% of losses reached 75% of the way to TP1, because TP1 is usually far away (median 3.9R). The charts showed three real habits. TP1 sits right at the opposite zone's edge. The TP1 rule skips nearer overlapped zones, where price often turned. And after TP1 the rest of the position often rides back to the original stop. The fixes for each of these did not hold up on unseen years: earlier targets, a TP1 at any nearer zone, a stop moved to entry after TP1, and a stop moved to TP1 after TP2. The stop to entry after TP1 came closest, at +0.08R on 2023–2026 against the baseline's +0.15R.</dd>
+      <dt>Problem C<br>losing trades</dt>
+      <dd>On the charts, losers often looked like a steady push or a spike through the zone, a stop taken by a wick just before the turn, or a news or weekend gap. In the numbers, none of these separated winners from losers. On 2015–2022, the chance of +1R before −1R stayed between 42% and 56% (noise level) for approach momentum, trend slope, distance from the SMA, zone size, age, strength, hour and waiting time. Wider and tighter stops both did worse.</dd>
+      <dt>Why the win rate<br>cannot simply rise</dt>
+      <dd>After the fill, price reached +0.3R before the stop 72% of the time (a random walk gives 77%), +1R 48% of the time (50%) and +3R 25% of the time (25%). The zone touch has no measurable direction edge, so a closer target raises the hit rate only by shrinking the payoff by the same amount. The baseline's small profit comes from rare far-zone winners, which average 3.9R.</dd>
+    </dl>
+  </section>
+
+  <section class="stack">
+    <div class="col stack">
+      <h2>Year by year</h2>
+      <p class="muted">2015 starts in September. 2026 runs to October 13. All years count trades by entry date.</p>
+    </div>
+    <div class="controls"><span class="seg" id="seg-y" role="group" aria-label="Strategy for the yearly table"></span></div>
+    <div class="tablebox"><table id="years"></table></div>
+  </section>
+
+  <section class="stack">
+    <div class="col stack">
+      <h2>Month by month, 2014 to 2026</h2>
+      <p class="muted">"No data" months come before the Exness archive starts (2015-08-10) or after the cutoff; they are not zero-trade months. August 2015 is the engine's warm-up and is not evaluated. "R by entry" adds each trade's full result to the month it was entered. "R by exit" dates each partial exit by when it filled. Missed setups are orders that never filled although price came within 0.10 ATR of the limit, counted once per zone. Their columns show what would have hit first from that point: TP1, or the stop.</p>
+    </div>
+    <div class="controls"><span class="seg" id="seg-m" role="group" aria-label="Strategy for the monthly table"></span>
+      <label for="yr" class="muted">Year</label><select id="yr"></select></div>
+    <div class="tablebox"><table id="months"></table></div>
+  </section>
+
+  <section class="stack">
+    <div class="col stack">
+      <h2>Every variant tested</h2>
+      <p class="muted">All 39 runs (the baseline and 38 changes), sorted by their 2015–2022 result. Across them, the correlation between the 2015–2022 and 2023–2026 averages is only 0.2, so a good development result said little about the later years. Settings are in candidates_round1–3.json.</p>
+    </div>
+    <div class="tablebox"><table id="vars"></table></div>
+  </section>
+
+  <section class="stack">
+    <div class="col stack">
+      <h2>Walk-forward and costs</h2>
+      <p class="muted">Each year from 2019, the variant with the best average R on all earlier years is used for that year only. The right-hand table repeats the finalists with spread and slippage doubled, and with the wider of each minute's opening and closing spread.</p>
+    </div>
+    <div class="verdict"><div class="tablebox"><table id="wf"></table></div><div class="tablebox"><table id="cost"></table></div></div>
+  </section>
+
+  <footer class="col stack note">
+    <p><b>Data coverage.</b> Exness XAUUSDm M1 bid and ask, 2015-08-10 to 2026-10-14 00:00 UTC. There is no verified data for 2014 or January–July 2015. The engine decides on 1H closes, the chart default. The shipped chart resolves fills on 1H candles; this study replays them on M1. In an independent check, 8 of 2,581 orders differed between the two.</p>
+    <p><b>Validation.</b> Codex checked the data, the execution rules and the ledger arithmetic independently. Holdout years 2024–2026 had been looked at in an earlier session, so they are not fully unseen. The finalists were frozen before the holdout was run. One earlier freeze was withdrawn before any holdout number was read, after a bug (front-run orders re-placed every hour) was found and fixed.</p>
+    <p><b>Files.</b> docs/research/claude-overlap-2026-10-17/: REPORT.md, CHART_REVIEW.md with 50 chart images, results/ (monthly, trade and missed-setup CSVs for each finalist), runs/ (every ledger) and scripts/.</p>
+  </footer>
+</div>
+
+<script>
+const D = __DATA__;
+const ORDER = ['baseline', 'R3_front0.50_be', 'R3_front0.50_q0.3f0.2', 'C9_front0.10_q0.3f0.3_be'];
+const SHORT = {'baseline': 'Baseline', 'R3_front0.50_be': 'P · early entry + stop to entry', 'R3_front0.50_q0.3f0.2': 'W · early entry + quick TP1 (70% rule)', 'C9_front0.10_q0.3f0.3_be': 'H · quick TP1 + stop to entry'};
+const COLOR = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)'];
+const f = (x, d = 2, sign = false) => x === null || x === undefined || x === '' ? '–' : (sign && x > 0 ? '+' : '') + Number(x).toFixed(d);
+const cls = x => x > 0 ? 'pos' : x < 0 ? 'neg' : '';
+const $ = id => document.getElementById(id);
+
+const b = D.finalists.baseline.overall, w = D.finalists['R3_front0.50_q0.3f0.2'].holdout, h = D.finalists['C9_front0.10_q0.3f0.3_be'].overall;
+const wf = D.walk.best_avg_R.all_2019_2026;
+$('k-base').innerHTML = `<span class="pos">${f(b.avg_R, 2, true)}R</span> / trade`;
+$('k-base-sub').textContent = `${b.n} trades, ${f(b.tp_win_rate, 1)}% TP-hit wins, ${f(b.total_R, 1, true)}R in total, t = ${f(b.t_stat)}. Small and not statistically proven.`;
+$('k-w').innerHTML = `${f(w.tp_win_rate, 1)}% <span class="neg" style="font-size:1rem">${f(w.avg_R, 2, true)}R</span>`;
+$('k-w-sub').textContent = `TP-hit wins on 2023–26, yet only ${f(w.cash_positive_rate, 1)}% of trades made money, for ${f(w.total_R, 1, true)}R in total.`;
+$('k-h').innerHTML = `${f(h.cash_positive_rate, 1)}% <span class="neg" style="font-size:1rem">${f(h.avg_R, 2, true)}R</span>`;
+$('k-h-sub').textContent = `Moving the stop to entry after a 0.3R TP1 makes most trades profitable, but the losses are bigger: ${f(h.total_R, 1, true)}R over ${h.n} trades.`;
+$('k-wf').innerHTML = `<span>${f(wf.avg_R, 2, true)}R</span> / trade`;
+$('k-wf-sub').textContent = `Choosing the best variant each year from the earlier years earned nothing over ${wf.n} trades; the defaults earned +0.15R.`;
+
+// equity chart
+(function () {
+  const svg = $('eq'), W = 1000, H = 360, L = 48, R = 16, T = 12, B = 30;
+  const all = ORDER.flatMap(n => D.finalists[n].equity);
+  const t0 = 1441065600, t1 = 1791936000;
+  let lo = Math.min(0, ...all.map(p => p[1])), hi = Math.max(...all.map(p => p[1]));
+  const step = 20; lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R), y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  let g = '';
+  for (let v = lo; v <= hi; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="${v === 0 ? 1.5 : 0.7}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${v}</text>`;
+  for (let yr = 2016; yr <= 2026; yr++) { const tx = x(Date.UTC(yr, 0, 1) / 1000); g += `<text x="${tx}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${yr}</text><line x1="${tx}" x2="${tx}" y1="${H - B}" y2="${H - B + 4}" stroke="var(--line)"/>`; }
+  const hx = x(1672531200);
+  g += `<line x1="${hx}" x2="${hx}" y1="${T}" y2="${H - B}" stroke="var(--gold)" stroke-dasharray="5 4"/><text x="${hx + 6}" y="${T + 12}" font-size="11" fill="var(--gold)" font-family="IBM Plex Mono, monospace">holdout →</text>`;
+  ORDER.forEach((n, i) => {
+    const e = D.finalists[n].equity; let d = `M${x(t0)},${y(0)}`;
+    e.forEach(p => d += `L${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`);
+    const last = e[e.length - 1];
+    g += `<path d="${d}" fill="none" stroke="${COLOR[i]}" stroke-width="${i === 0 ? 2.2 : 1.6}"/><circle cx="${x(last[0])}" cy="${y(last[1])}" r="3.5" fill="${COLOR[i]}"/>`;
+  });
+  svg.innerHTML = g;
+  $('legend').innerHTML = ORDER.map((n, i) => `<span style="--c:${COLOR[i]}">${SHORT[n]} (${f(D.finalists[n].overall.total_R, 1, true)}R)</span>`).join('');
+})();
+
+// finalists table
+(function () {
+  const head = '<thead><tr><th>Strategy</th><th>Period</th><th>Trades</th><th>TP-hit win %</th><th>Cash-positive %</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Total R</th><th>R / trade</th><th>Avg win R</th><th>Avg loss R</th><th>t</th><th>PF</th><th>Max DD R</th></tr></thead>';
+  let rows = '';
+  ORDER.forEach(n => {
+    const F = D.finalists[n];
+    [['development', '2015-09 – 2022'], ['holdout', '2023 – 2026-10'], ['overall', 'All']].forEach(([k, lab], j) => {
+      const s = F[k];
+      rows += `<tr class="${j === 0 ? 'grp' : ''}"><td>${j === 0 ? SHORT[n] : ''}</td><td>${lab}</td><td>${s.n}</td><td>${f(s.tp_win_rate, 1)}</td><td>${f(s.cash_positive_rate, 1)}</td><td>${s.tp1}</td><td>${s.tp2}</td><td>${s.tp3}</td><td class="${cls(s.total_R)}">${f(s.total_R, 1, true)}</td><td class="${cls(s.avg_R)}">${f(s.avg_R, 3, true)}</td><td>${f(s.avg_win_R)}</td><td>${f(s.avg_loss_R)}</td><td>${f(s.t_stat)}</td><td>${f(s.profit_factor)}</td><td>${f(s.max_dd_R, 1)}</td></tr>`;
+    });
+  });
+  $('fin').innerHTML = head + '<tbody>' + rows + '</tbody>';
+})();
+
+function seg(id, onPick, init) {
+  const el = $(id);
+  el.innerHTML = ORDER.map(n => `<button type="button" data-n="${n}" aria-pressed="${n === init}">${SHORT[n].split(' · ')[0]}</button>`).join('');
+  el.addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return;
+    el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === bt)); onPick(bt.dataset.n); });
+}
+function years(n) {
+  const Y = D.finalists[n].yearly;
+  let t = '<thead><tr><th>Year</th><th>Trades</th><th>Wins</th><th>Losses</th><th>TP-hit win %</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Total R</th><th>R / trade</th><th>PF</th><th>Max DD R</th></tr></thead><tbody>';
+  Y.forEach(y => t += `<tr><td>${y.year}${y.coverage !== 'full' ? ' *' : ''}</td><td>${y.n}</td><td>${y.wins}</td><td>${y.losses}</td><td>${f(y.tp_win_rate, 1)}</td><td>${y.tp1}</td><td>${y.tp2}</td><td>${y.tp3}</td><td class="${cls(y.total_R)}">${f(y.total_R, 1, true)}</td><td class="${cls(y.avg_R)}">${f(y.avg_R, 3, true)}</td><td>${f(y.profit_factor)}</td><td>${f(y.max_dd_R, 1)}</td></tr>`);
+  $('years').innerHTML = t + '</tbody>';
+}
+let mStrat = 'baseline', mYear = 'all';
+function months() {
+  const M = D.finalists[mStrat].monthly.filter(r => mYear === 'all' || r.month.startsWith(mYear));
+  let t = '<thead><tr><th>Month</th><th>Data</th><th>Trades</th><th>Wins</th><th>Losses</th><th>Win %</th><th>Cash +</th><th>R by entry</th><th>Avg R</th><th>R by exit</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Missed</th><th>→ TP1 first</th><th>→ SL first</th></tr></thead><tbody>';
+  M.forEach(r => {
+    if (r.trades === undefined) { t += `<tr class="na"><td>${r.month}</td><td>${r.coverage.startsWith('warm') ? 'warm-up' : 'no data'}</td>${'<td>–</td>'.repeat(14)}</tr>`; return; }
+    t += `<tr><td>${r.month}</td><td>${r.coverage === 'full' ? 'full' : 'partial'}</td><td>${r.trades}</td><td>${r.wins}</td><td>${r.losses}</td><td>${f(r.win_rate, 0)}</td><td>${r.cash_positive}</td><td class="${cls(r.net_R_entry_cohort)}">${f(r.net_R_entry_cohort, 2, true)}</td><td>${f(r.avg_R, 2, true)}</td><td class="${cls(r.net_R_by_exit_date)}">${f(r.net_R_by_exit_date, 2, true)}</td><td>${r.tp1}</td><td>${r.tp2}</td><td>${r.tp3}</td><td>${r.missed_setups}</td><td>${r.missed_wins}</td><td>${r.missed_avoided_losses}</td></tr>`;
+  });
+  $('months').innerHTML = t + '</tbody>';
+}
+seg('seg-y', years, 'baseline'); years('baseline');
+seg('seg-m', n => { mStrat = n; months(); }, 'baseline');
+$('yr').innerHTML = '<option value="all">All years</option>' + Array.from({length: 13}, (_, i) => 2014 + i).map(y => `<option value="${y}">${y}</option>`).join('');
+$('yr').addEventListener('change', e => { mYear = e.target.value; months(); });
+months();
+
+// variants
+(function () {
+  const V = Object.entries(D.variants).sort((a, b) => b[1].development.avg_R - a[1].development.avg_R);
+  let t = '<thead><tr><th>Variant</th><th>Dev trades</th><th>Dev TP-hit %</th><th>Dev R / trade</th><th>Dev t</th><th>Holdout trades</th><th>Holdout TP-hit %</th><th>Holdout cash + %</th><th>Holdout R / trade</th><th>Holdout total R</th></tr></thead><tbody>';
+  V.forEach(([n, v]) => { const d = v.development, h = v.holdout;
+    t += `<tr><td>${n}</td><td>${d.n}</td><td>${f(d.tp_win_rate, 1)}</td><td class="${cls(d.avg_R)}">${f(d.avg_R, 3, true)}</td><td>${f(d.t_stat)}</td><td>${h.n}</td><td>${f(h.tp_win_rate, 1)}</td><td>${f(h.cash_positive_rate, 1)}</td><td class="${cls(h.avg_R)}">${f(h.avg_R, 3, true)}</td><td class="${cls(h.total_R)}">${f(h.total_R, 1, true)}</td></tr>`; });
+  $('vars').innerHTML = t + '</tbody>';
+})();
+
+// walk-forward + costs
+(function () {
+  let t = '<thead><tr><th>Year</th><th>Best by R</th><th>R / trade</th><th>Best with ≥70% TP-hit</th><th>TP-hit %</th><th>R / trade</th></tr></thead><tbody>';
+  const A = D.walk.best_avg_R.years, B = D.walk.best_avg_R_with_70pct.years;
+  A.forEach((a, i) => { const b = B[i];
+    t += `<tr><td>${a.year}</td><td>${a.chosen}</td><td class="${cls(a.test_avg_R)}">${f(a.test_avg_R, 3, true)}</td><td>${b.chosen}</td><td>${f(b.test_tp_win, 1)}</td><td class="${cls(b.test_avg_R)}">${f(b.test_avg_R, 3, true)}</td></tr>`; });
+  const a = D.walk.best_avg_R.all_2019_2026, c = D.walk.best_avg_R_with_70pct.all_2019_2026;
+  t += `<tr class="grp"><td>2019–26</td><td>${a.n} trades</td><td class="${cls(a.avg_R)}">${f(a.avg_R, 3, true)}</td><td>${c.n} trades</td><td>${f(c.tp_win_rate, 1)}</td><td class="${cls(c.avg_R)}">${f(c.avg_R, 3, true)}</td></tr>`;
+  $('wf').innerHTML = t + '</tbody>';
+  let u = '<thead><tr><th>Run</th><th>Trades</th><th>TP-hit %</th><th>R / trade (all)</th><th>R / trade (holdout)</th></tr></thead><tbody>';
+  ORDER.forEach(n => [['', 'normal costs', D.finalists[n]], ['_cost2x', '2× costs', D.costs[n + '_cost2x']], ['_spreadmax', 'wider spread', D.costs[n + '_spreadmax']]].forEach(([suf, lab, s], j) => {
+    if (!s) return; const o = s.overall, ho = s.holdout;
+    u += `<tr class="${j === 0 ? 'grp' : ''}"><td>${j === 0 ? SHORT[n].split(' · ')[0] + ' · ' : ''}${lab}</td><td>${o.n}</td><td>${f(o.tp_win_rate, 1)}</td><td class="${cls(o.avg_R)}">${f(o.avg_R, 3, true)}</td><td class="${cls(ho.avg_R)}">${f(ho.avg_R, 3, true)}</td></tr>`; }));
+  $('cost').innerHTML = u + '</tbody>';
+})();
+</script>

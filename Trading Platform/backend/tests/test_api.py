@@ -83,7 +83,11 @@ def test_smc_master_runs_through_api(client, feed_id):
     assert r.status_code == 200, r.text
     out = r.json()
     assert len(out["times"]) == 1500 and len(out["candle_colors"]) == 1500
-    assert out["tables"][0]["id"] == "directions" and out["drawings"]
+    # Easy Mode (default on) leaves only the trading essentials on the chart
+    assert out["tables"] == [] and out["drawings"]
+    assert {d["group"] for d in out["drawings"]} <= {"internal_structure", "internal_ob", "swing_ob", "mtf"}
+    full = client.post("/api/indicators/run", json={**req, "inputs": {"easy_mode": False}}).json()
+    assert full["tables"][0]["id"] == "directions" and len(full["drawings"]) > len(out["drawings"])
     # the synthetic feed starts in March: no completed previous month to draw
     assert any(w.startswith("Previous M levels unavailable") for w in out["warnings"])
     bad = client.post("/api/indicators/run", json={**req, "inputs": {"fvg_tf": "W"}})
@@ -102,3 +106,33 @@ def test_live_websocket_reports_static_feed(client, feed_id):
 def test_csv_errors_are_400(client):
     r = client.post("/api/import/csv", files={"file": ("x.csv", "nothing useful here", "text/csv")})
     assert r.status_code == 400
+
+
+def test_easy_mode_is_display_only(client, feed_id):
+    """Flipping Easy Mode reuses the chart calculation and never reaches the overlap scan (sources, cache, locks)."""
+    from app.main import app
+
+    candles = client.get("/api/candles", params={"feed_id": feed_id, "timeframe": "M5", "limit": 1500}).json()
+    req = {"feed_id": feed_id, "timeframe": "M5", "script_id": "smc_ict_scalping_master",
+           "start_time": candles["bars"][0][0]}
+    svc = app.state.indicators
+    on = client.post("/api/indicators/run", json={**req, "inputs": {"easy_mode": True}}).json()
+    runners = len(svc._cache)
+    off = client.post("/api/indicators/run", json={**req, "inputs": {"easy_mode": False}}).json()
+    assert len(svc._cache) == runners  # same calculation reused
+    assert on["tables"] == [] and off["tables"] and len(off["drawings"]) > len(on["drawings"])
+    assert on["plots"] == off["plots"] and on["candle_colors"] == off["candle_colors"]
+
+    overlaps = app.state.badge_overlaps
+    as_of = candles["bars"][-1][0] + 300
+    run = lambda em, kind: overlaps.run(feed_id=feed_id, inputs={"easy_mode": em}, as_of=as_of,
+                                        timeframes=["M5", "M15", "H1"], kind=kind)
+    for kind in ("ds", "ob"):
+        first = run(True, kind)
+        sources = list(overlaps._sources)
+        assert run(False, kind) == first and list(overlaps._sources) == sources  # no new source runs
+    feed = overlaps.store.get_feed(feed_id)
+    from app.scripts.smc_master import SmcMaster
+    scopes = {overlaps.scope(k, "x", feed, SmcMaster({"easy_mode": em}).p, ["M5"], 2, ["swing"], True)
+              for k in ("ds",) for em in (True, False)}
+    assert len(scopes) == 1  # locks are keyed the same whichever way Easy Mode is set

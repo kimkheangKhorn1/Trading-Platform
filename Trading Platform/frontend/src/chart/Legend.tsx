@@ -4,7 +4,7 @@ import { fmtPrice } from '../lib/format'
 import { currentFeed, TF_LABELS, useApp } from '../state/app'
 import { useIndicators } from '../state/indicators'
 import type { ChartController } from './controller'
-import { BadgeOverlapControl } from './BadgeOverlap'
+import { OverlapControl } from './BadgeOverlap'
 
 function fmtVolume(v: number): string {
   if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`
@@ -84,7 +84,10 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
                       {meta.short_name} <span className="muted">{args.join(' ')}</span>
                     </span>
                     <span className="legend-actions">
-                      {inst.scriptId === 'smc_ict_scalping_master' ? <BadgeOverlapControl inst={inst} update={update} /> : null}
+                      {inst.scriptId === 'smc_ict_scalping_master' ? <>
+                        <OverlapControl inst={inst} update={update} kind="ds" />
+                        <OverlapControl inst={inst} update={update} kind="ob" />
+                      </> : null}
                       <button className="icon-btn sm" title={inst.visible ? 'Hide' : 'Show'} onClick={() => update(inst.uid, { visible: !inst.visible })}>
                         <Icon name={inst.visible ? 'eye' : 'eyeOff'} size={14} />
                       </button>

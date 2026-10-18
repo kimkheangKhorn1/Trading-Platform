@@ -10,6 +10,7 @@
   "example": "Monochrome is useful when you also run other colorful indicators and want SMC structure to stay in the background."
  },
  "show_trend": {
+  "label": "Show Colored Candles",
   "about": "Paints the candles with the internal structure trend: bullish color while structure is bullish, bearish color while it is bearish. A filled candle closed with the trend; a hollow candle is a pullback.",
   "example": "Gold breaks internal structure up at 2,610 → candles turn the Bullish Structure color (blue) until a bearish break turns them yellow."
  },
@@ -58,10 +59,12 @@
   "example": "In an uptrend the latest high is Weak (target above it) and the low that started the move is Strong (break below = trend in doubt)."
  },
  "show_iob": {
+  "label": "Show Internal Order Blocks",
   "about": "Shows internal order blocks: the last opposite candle before a move that broke internal structure. The number is how many of the nearest ones to keep.",
   "example": "3 → only the 3 internal order blocks closest to the current price are drawn."
  },
  "show_ob": {
+  "label": "Show Swing Order Blocks",
   "about": "Shows swing order blocks: the last opposite candle before a move that broke swing structure. The number is how many of the nearest ones to keep.",
   "example": "A bullish swing OB at 2,588–2,592 is where price may bounce on a retest after the break."
  },
@@ -94,6 +97,7 @@
   "example": "A darker red than internal OBs."
  },
  "show_eq": {
+  "label": "Show Equal High/Low",
   "about": "Marks equal highs (EQH) and equal lows (EQL): two highs or lows at almost the same price. Stops tend to sit beyond them, so they act as liquidity targets.",
   "example": "Two highs at 2,631.2 and 2,631.5 → EQH line; price often runs above it to take stops before reversing."
  },
@@ -106,6 +110,7 @@
   "example": "ATR = 5 points and 0.1 → highs within 0.5 point count as equal."
  },
  "show_fvg": {
+  "label": "Show Fair Value Gaps",
   "about": "Shows fair value gaps: a 3-candle imbalance where candle 1 and candle 3 do not overlap. Price often comes back to fill them.",
   "example": "Candle 1 high 2,600, candle 3 low 2,604 → a bullish FVG box from 2,600 to 2,604."
  },
@@ -138,18 +143,22 @@
   "example": "5 → at most 5 bullish and 5 bearish open gaps on the chart."
  },
  "show_pdhl": {
+  "label": "Show Daily",
   "about": "Draws the previous day's high and low (PDH / PDL) with the line style and color you pick.",
   "example": "Yesterday's high was 2,624 → a PDH line at 2,624, a common target and reaction level."
  },
  "show_pwhl": {
+  "label": "Show Weekly",
   "about": "Draws the previous week's high and low (PWH / PWL).",
   "example": "Last week's low 2,571 → a PWL line; a sweep below it and a quick reclaim is a classic ICT setup."
  },
  "show_pmhl": {
+  "label": "Show Monthly",
   "about": "Draws the previous month's high and low (PMH / PML). Needs at least one completed month of data in the feed.",
   "example": "Last month's high 2,685 → a PMH line far above, a long-term target."
  },
  "show_sd": {
+  "label": "Show Premium/Discount Zones",
   "about": "Shades premium (top), equilibrium (middle) and discount (bottom) of the current swing range. ICT idea: buy in discount, sell in premium.",
   "example": "Swing range 2,560–2,620 → above 2,590 is premium, below 2,590 is discount."
  },
@@ -202,10 +211,12 @@
   "example": "You are in Cambodia (UTC+7) → set 7 so a zone shows 21:00 instead of 14:00."
  },
  "showDemandZone": {
+  "label": "Show Demand",
   "about": "Shows demand zones (areas where buyers pushed price up) with their border and background colors. Solid = fresh, dotted = tested by a wick, dashed gray = invalidated by a close below.",
   "example": "Gold rallies hard from 2,575 → a demand zone at the base; the first retest is the classic buy area."
  },
  "showSupplyZone": {
+  "label": "Show Supply",
   "about": "Shows supply zones (areas where sellers pushed price down) with their border and background colors. Solid = fresh, dotted = tested by a wick, dashed gray = invalidated by a close above.",
   "example": "Gold drops sharply from 2,630 → a supply zone at the base; the first retest is the classic sell area."
  },
@@ -274,46 +285,57 @@
   "example": "A label reading 2,602.40 at the right end of a resistance line."
  },
  "dhighs": {
+  "label": "Show Pivot Highs",
   "about": "Tracks pivot highs (resistance). Off = no resistance zones are created.",
   "example": "Turn off when you only want to see support below price."
  },
  "dlows": {
+  "label": "Show Pivot Lows",
   "about": "Tracks pivot lows (support). Off = no support zones are created.",
   "example": "Turn off when you only want to see resistance above price."
  },
  "detectBO": {
+  "label": "Show Breakout",
   "about": "Arrow below the bar when price breaks above ALL tracked pivots: a strong breakout.",
   "example": "Close at 2,632 above every tracked resistance → breakout arrow."
  },
  "detectBD": {
+  "label": "Show Breakdown",
   "about": "Arrow above the bar when price breaks below ALL tracked pivots: a strong breakdown.",
   "example": "Close at 2,548 below every tracked support → breakdown arrow."
  },
  "breakUp": {
+  "label": "Show Resistance Break",
   "about": "Arrow when price closes above a resistance zone.",
   "example": "Resistance 2,610–2,613, close at 2,615 → resistance-break arrow."
  },
  "breakDn": {
+  "label": "Show Support Break",
   "about": "Arrow when price closes below a support zone.",
   "example": "Support 2,580–2,583, close at 2,577 → support-break arrow."
  },
  "falseBull": {
+  "label": "Show False Breakdown",
   "about": "Bear trap: price closes below support, then quickly closes back above it. Often leads to a fast move up.",
   "example": "Close at 2,576 under support 2,580, next bar closes at 2,584 → false-breakdown arrow."
  },
  "falseBear": {
+  "label": "Show False Breakup",
   "about": "Bull trap: price closes above resistance, then quickly closes back below it. Often leads to a fast move down.",
   "example": "Close at 2,616 over resistance 2,613, next bar closes at 2,609 → false-breakup arrow."
  },
  "supPush": {
+  "label": "Show Moves Off Support",
   "about": "Triangle under up candles that form inside a support zone: support is holding.",
   "example": "A green candle closes inside support 2,580–2,583 → triangle below it."
  },
  "resPush": {
+  "label": "Show Moves Off Resistance",
   "about": "Triangle over down candles that form inside a resistance zone: resistance is holding.",
   "example": "A red candle closes inside resistance 2,610–2,613 → triangle above it."
  },
  "curl": {
+  "label": "Show TSI Curl",
   "about": "Marks a TSI momentum 'curl' (momentum turning) while price is inside a key zone, a hint that the move is changing direction.",
   "example": "Price sits in support and TSI turns up → bullish curl triangle."
  },
@@ -322,6 +344,7 @@
   "example": "On → a hammer only appears after its candle closes, so it never vanishes."
  },
  "labels": {
+  "label": "Show Labels",
   "about": "Shows a text label with the name of each detected candle pattern. When one candle matches several (a hammer is also a long lower shadow), only the most specific is labelled; the tooltip lists the others.",
   "example": "A label 'Bullish Engulfing' under the candle."
  },
@@ -330,38 +353,47 @@
   "example": "A green box around the two candles of a bullish engulfing."
  },
  "d_": {
+  "label": "Show Doji",
   "about": "Detects doji candles: a tiny body with wicks on both sides, showing indecision.",
   "example": "Open 2,600.10, close 2,600.20, range 2,597–2,603 → doji."
  },
  "be_": {
+  "label": "Show Engulfing",
   "about": "Detects engulfing patterns: an opposite-color candle whose body fully covers the previous body, is larger than it and is larger than the average body. A small candle covering a doji or another small candle does not count.",
   "example": "Red candle 2,605→2,600, then a strong green 2,599→2,607 → bullish engulfing."
  },
  "hs_": {
+  "label": "Show Hammers and Stars",
   "about": "Detects hammers (long lower wick, small body at the top) and shooting stars (long upper wick, small body at the bottom).",
   "example": "Range 2,590–2,602 with the body at 2,600–2,602 → hammer."
  },
  "dg_": {
+  "label": "Show Dragons and Graves",
   "about": "Detects dragonfly doji (long lower wick, no upper wick) and gravestone doji (long upper wick, no lower wick).",
   "example": "Open = close = high = 2,600, low 2,594 → dragonfly doji."
  },
  "tw_": {
+  "label": "Show Tweezers",
   "about": "Detects tweezer tops and bottoms: two candles with almost the same high (top) or low (bottom), in opposite colors.",
   "example": "Two candles both with a low of 2,580.3 → tweezer bottom."
  },
  "st_": {
+  "label": "Show Spinning Top",
   "about": "Detects spinning tops: a small body in the middle with similar wicks above and below.",
   "example": "Body 2,600–2,601 in a 2,596–2,605 range → spinning top."
  },
  "pc_": {
+  "label": "Show Piercing and Clouds",
   "about": "Detects piercing line (green opens at or below the previous red close and closes above the middle of its body) and dark cloud cover (the mirror image). Gold trades 24 hours and rarely gaps, so no gap beyond the previous low/high is required.",
   "example": "Red 2,610→2,600, then green 2,598→2,606 (above the 2,605 midpoint) → piercing."
  },
  "bh_": {
+  "label": "Show Harami",
   "about": "Detects harami: a small candle whose body sits inside the previous large body.",
   "example": "Big red 2,620→2,600, then small green 2,604→2,608 → bullish harami."
  },
  "ls_": {
+  "label": "Show Long Shadows",
   "about": "Detects candles with a very long upper or lower shadow (wick), a sign of rejection.",
   "example": "Range 2,590–2,610 with the body at the bottom 2,590–2,592 → long upper shadow."
  },
@@ -514,11 +546,12 @@
   "example": "13 (default)."
  },
  "directions": {
+  "label": "Show Directions Dashboard",
   "about": "Shows the direction dashboard: one row per indicator (MACD, Stoch RSI, Vortex…) saying buy or sell. Context only, not entry signals.",
   "example": "8 of 9 rows say 'sell' → momentum broadly agrees the market is bearish."
  },
  "infoDataTableOn": {
-  "label": "Direction table",
+  "label": "Show Direction Table",
   "about": "Turns the whole direction (الاتجاه = 'direction') table on or off.",
   "example": "Off frees space on the chart but keeps the calculations running."
  },
@@ -528,6 +561,7 @@
   "example": "top_right keeps it away from the newest candles, which are at the bottom right when price is falling."
  },
  "macdOn": {
+  "label": "Show MACD Label",
   "about": "Shows the MACD row in the dashboard. MACD above its signal line = buy, below = sell.",
   "example": "MACD 1.2, signal 0.8 → 'MACD buy'."
  },
@@ -548,6 +582,7 @@
   "example": "9 (standard)."
  },
  "stochasticOn": {
+  "label": "Show Stochastic RSI Label",
   "about": "Shows the Stochastic RSI row in the dashboard. Adds OB/OS when it is overbought (above 80) or oversold (below 20).",
   "example": "K at 85 and falling → 'Stoch sell OB'."
  },
@@ -576,6 +611,7 @@
   "example": "14 (standard)."
  },
  "vortexOn": {
+  "label": "Show Vortex Label",
   "about": "Shows the Vortex row. VI+ above VI- = buy, below = sell.",
   "example": "VI+ 1.08, VI- 0.92 → 'Vortex buy'."
  },
@@ -588,6 +624,7 @@
   "example": "14 (standard)."
  },
  "momOn": {
+  "label": "Show Momentum Label",
   "about": "Shows the Momentum row: close minus the close N bars ago. Positive = buy, negative = sell.",
   "example": "Close 2,600 vs 2,590 ten bars ago → +10 → 'Mom buy'."
  },
@@ -600,6 +637,7 @@
   "example": "10 → compares with the close 10 bars ago."
  },
  "rsiOn": {
+  "label": "Show RSI Label",
   "about": "Shows the RSI row. RSI above 50 = buy, below 50 = sell; OB above 70, OS below 30.",
   "example": "RSI 28 → 'RSI sell OS' (bearish but oversold, so a bounce is possible)."
  },
@@ -612,6 +650,7 @@
   "example": "14 (standard)."
  },
  "psarOn": {
+  "label": "Show PSAR Label",
   "about": "Shows the Parabolic SAR row. Close above the SAR dots = buy, below = sell.",
   "example": "Close 2,600, SAR 2,592 → 'PSAR buy'."
  },
@@ -632,6 +671,7 @@
   "example": "0.2 (standard)."
  },
  "dmiOn": {
+  "label": "Show DMI Label",
   "about": "Shows the DMI row. DI+ above DI- = buy, below = sell; shows 'wait' while ADX is below the threshold.",
   "example": "DI+ 28, DI- 15 → 'DMI buy'."
  },
@@ -652,6 +692,7 @@
   "example": "20 → in a flat market with ADX 15 the row says 'wait' instead of buy or sell."
  },
  "mfiOn": {
+  "label": "Show Money Flow Index Label",
   "about": "Shows the Money Flow Index row: an RSI that weights each bar's typical price (H+L+C)/3 by its volume. Above 50 = buy, below 50 = sell; OB above 80, OS below 20.",
   "example": "MFI 62 → 'MFI buy'. With no volume data the row says 'no volume'."
  },
@@ -664,6 +705,7 @@
   "example": "14 (standard)."
  },
  "fisherOn": {
+  "label": "Show Fisher Label",
   "about": "Shows the Fisher Transform row. Rising = buy, falling = sell.",
   "example": "Fisher went from 1.1 to 1.4 → 'Fisher buy'."
  },
@@ -676,6 +718,7 @@
   "example": "14 (default)."
  },
  "recommendation": {
+  "label": "Show BULB",
   "about": "Shows BULB buy/sell labels at RSI extremes: buy when RSI leaves oversold, sell when it leaves overbought. It is a counter-trend exhaustion marker, not an entry signal: on XAUUSD 1H/4H (2025–2026) the move after BULB labels was no better than average, and sell labels in the 2025 uptrend were followed by further rises. Use it with structure and zones, not on its own.",
   "example": "RSI(13) drops below 30 → a 'buy' label under that candle."
  },

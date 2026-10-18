@@ -16,6 +16,7 @@ import { IndicatorScheduler } from './scheduler'
 import { IndicatorTables } from './Tables'
 import { indexAtOrBefore } from './timeIndex'
 import { useBadgeOverlaps } from './useBadgeOverlaps'
+import { withOverlapDrawings } from './overlapOutput'
 import { ChartTooltip } from './OverlapTooltip'
 import { barCloseTime } from './replayTime'
 
@@ -176,11 +177,17 @@ export function ChartView() {
   // ----------------------------------------------------------- render outputs/trades
   const badgeTip = ctrl?.shownBars.at(-1)
   const badgeReady = !!ctrl && !ctrl.loading && ctrl.feedId === feedId && ctrl.tf === tf
-  const badgeClock = badgeTip ? (replayMode !== 'off' ? ctrl?.replayCutoffTime() ?? null
+  // While picking a replay start bar there is no cutoff yet: keep the clock already on screen, so overlap
+  // zones and their candle-reaction symbols don't vanish until a bar is chosen.
+  const replayCutoff = replayMode !== 'off' ? ctrl?.replayCutoffTime() ?? null : null
+  const badgeClock = badgeTip ? (replayCutoff !== null ? replayCutoff
+    : replayMode === 'active' ? null
     : badgeTip[6] ? barCloseTime(badgeTip[0], tf, feed?.alignment)
     : Math.min(Math.floor(Date.now() / 60000) * 60, barCloseTime(badgeTip[0], tf, feed?.alignment))) : null
   const badgeOverlap = useBadgeOverlaps(instances, feedId, tf, badgeClock, badgeTip?.[0] ?? null,
-    TF_SECONDS[tf], ctrl?.precision ?? 3, badgeReady, tz)
+    TF_SECONDS[tf], ctrl?.precision ?? 3, badgeReady, tz, ctrl?.shownBars)
+  const obOverlap = useBadgeOverlaps(instances, feedId, tf, badgeClock, badgeTip?.[0] ?? null,
+    TF_SECONDS[tf], ctrl?.precision ?? 3, badgeReady, tz, ctrl?.shownBars, 'ob')
   useEffect(() => { setTip(null) }, [badgeClock, feedId, tf, instances])
   useEffect(() => {
     if (!tip?.pinned) return
@@ -190,10 +197,10 @@ export function ChartView() {
   }, [tip?.pinned])
   const outData = useMemo(() => {
     const o: Record<string, IndicatorOutput | null> = {}
-    for (const [uid, st] of Object.entries(outputs)) o[uid] = st.data && badgeOverlap.drawings[uid]?.length
-      ? {...st.data, drawings: [...st.data.drawings, ...badgeOverlap.drawings[uid]]} : st.data
+    for (const inst of instances) o[inst.uid] = withOverlapDrawings(inst,outputs[inst.uid]?.data??null,
+      [...badgeOverlap.drawings[inst.uid]??[], ...obOverlap.drawings[inst.uid]??[]])
     return o
-  }, [outputs, badgeOverlap.drawings])
+  }, [instances, outputs, badgeOverlap.drawings, obOverlap.drawings])
 
   useEffect(() => {
     if (ctrl) ctrl.setIndicators(instances, outData, scripts)
@@ -279,13 +286,6 @@ export function ChartView() {
       {ctrl ? <Legend ctrl={ctrl} hoverIdx={hoverIdx} version={version} /> : null}
       {ctrl ? <IndicatorTables ctrl={ctrl} tables={tables} version={version} /> : null}
       {tip ? <ChartTooltip info={tip.info} x={tip.x} y={tip.y} pinned={tip.pinned} onClose={() => setTip(null)} /> : null}
-      {badgeOverlap.enabled && <div className="overlap-status" role="status">
-        {badgeOverlap.error ? `D/S overlap unavailable: ${badgeOverlap.error}`
-          : badgeOverlap.loading ? 'D/S overlap · updating snapshot…'
-          : badgeOverlap.displayedBands ? `${badgeOverlap.displayedBands} locked D/S overlaps · ${badgeOverlap.hiddenLocks} hidden · counts frozen at locking`
-          : `No visible locked overlaps · ${badgeOverlap.hiddenLocks} hidden by display settings`}
-        {!!badgeOverlap.warnings.length && <span>{badgeOverlap.warnings.join(' · ')}</span>}
-      </div>}
       {notice ? (
         <div className="chart-notice">
           <Icon name="info" size={14} /> {notice}

@@ -1,0 +1,16 @@
+{
+  "audit_created_utc": "2026-10-17T06:32:08.016717+00:00",
+  "scope": "Canonical M1/M5 hashes/OHLC/cache equality and independent M1-to-H1 cache reconstruction; no new tick-source audit",
+  "dataset_version": "4a93ac758c0e87ba53679373ba68a82f8d8c718a01e888512b5ef434d9ebf049",
+  "source_audit_status": "passed",
+  "source_audit_finished_utc": "2026-10-14T10:02:50.610271+00:00",
+  "catalog_integrity_passed": true,
+  "catalog_issues": [],
+  "cutoff_exclusive_utc": "2026-10-14T00:00:00+00:00",
+  "issues": [],
+  "eligible_rows": {
+    "M1": 3921678,
+    "M5": 785841,
+    "H1": 65817
+  }
+}

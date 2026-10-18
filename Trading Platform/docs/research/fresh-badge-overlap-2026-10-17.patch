@@ -1,0 +1,655 @@
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -19,6 +19,7 @@
+ from .engine.inputs import InputError
+ from .engine.registry import list_scripts
+ from .indicator_service import IndicatorRequestError, IndicatorService
++from .badge_overlap import BadgeOverlapService
+ from .market.csv_import import CsvImportError
+ from .market.importer import import_csv
+ from .market.live import LiveHub
+@@ -59,6 +60,7 @@
+     app.state.store = store
+     app.state.sync = sync
+     app.state.indicators = IndicatorService(store, sync)
++    app.state.badge_overlaps = BadgeOverlapService(store)
+     app.state.backtests = BacktestJobs(store, settings)
+     app.state.downloads = HistoryDownloadJobs(sync) if sync else None
+     app.state.live = (ExnessLiveHub if sync is not None and sync.provider == "exness" else LiveHub)(store, sync, settings.live_poll_seconds)
+@@ -325,6 +327,15 @@
+ 
+ 
+ # ---------------------------------------------------------------------- backtests
++@app.post("/api/badge-overlaps")
++def badge_overlaps(request: dict):
++    """Optional display-only analysis; uses the original indicator's rendered fresh badges."""
++    try:
++        return app.state.badge_overlaps.run(**request)
++    except (ValueError, TypeError, InputError) as exc:
++        raise HTTPException(400, str(exc)) from exc
++
++
+ @app.post("/api/backtests")
+ def submit_backtest(request: dict):
+     try:
+--- a/frontend/src/chart/ChartView.tsx
++++ b/frontend/src/chart/ChartView.tsx
+@@ -2,7 +2,7 @@
+ import { LiveSocket, nonStreamingStatus } from '../api/live'
+ import type { IndicatorOutput, IndicatorTable, TradeDto } from '../api/types'
+ import { Icon, Spinner } from '../components/common/Icon'
+-import { useApp } from '../state/app'
++import { TF_SECONDS, useApp } from '../state/app'
+ import { useIndicators } from '../state/indicators'
+ import { useReplay } from '../state/replay'
+ import { useScale } from '../state/scale'
+@@ -15,6 +15,8 @@
+ import { IndicatorScheduler } from './scheduler'
+ import { IndicatorTables } from './Tables'
+ import { indexAtOrBefore } from './timeIndex'
++import { useBadgeOverlaps } from './useBadgeOverlaps'
++import { barCloseTime } from './replayTime'
+ 
+ const LIVE_REFRESH_MS = 3000
+ 
+@@ -162,11 +164,19 @@
+   }, [instances, outputs])
+ 
+   // ----------------------------------------------------------- render outputs/trades
++  const badgeTip = ctrl?.shownBars.at(-1)
++  const badgeReady = !!ctrl && !ctrl.loading && ctrl.feedId === feedId && ctrl.tf === tf
++  const badgeClock = badgeTip ? (replayMode !== 'off' ? ctrl?.replayCutoffTime() ?? null
++    : badgeTip[6] ? barCloseTime(badgeTip[0], tf, feed?.alignment)
++    : Math.min(Math.floor(Date.now() / 60000) * 60, barCloseTime(badgeTip[0], tf, feed?.alignment))) : null
++  const badgeOverlap = useBadgeOverlaps(instances, feedId, tf, badgeClock, badgeTip?.[0] ?? null,
++    TF_SECONDS[tf], ctrl?.precision ?? 3, badgeReady)
+   const outData = useMemo(() => {
+     const o: Record<string, IndicatorOutput | null> = {}
+-    for (const [uid, st] of Object.entries(outputs)) o[uid] = st.data
++    for (const [uid, st] of Object.entries(outputs)) o[uid] = st.data && badgeOverlap.drawings[uid]?.length
++      ? {...st.data, drawings: [...st.data.drawings, ...badgeOverlap.drawings[uid]]} : st.data
+     return o
+-  }, [outputs])
++  }, [outputs, badgeOverlap.drawings])
+ 
+   useEffect(() => {
+     if (ctrl) ctrl.setIndicators(instances, outData, scripts)
+--- a/frontend/src/chart/Legend.tsx
++++ b/frontend/src/chart/Legend.tsx
+@@ -4,6 +4,7 @@
+ import { currentFeed, TF_LABELS, useApp } from '../state/app'
+ import { useIndicators } from '../state/indicators'
+ import type { ChartController } from './controller'
++import { BadgeOverlapControl } from './BadgeOverlap'
+ 
+ function fmtVolume(v: number): string {
+   if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`
+@@ -86,6 +87,7 @@
+                       {meta.short_name} <span className="muted">{args.join(' ')}</span>
+                     </span>
+                     <span className="legend-actions">
++                      {inst.scriptId === 'smc_ict_scalping_master' ? <BadgeOverlapControl inst={inst} update={update} /> : null}
+                       {hasSignals ? (
+                         <button className="legend-signals" aria-pressed={signalsVisible}
+                           aria-label={signalsVisible ? 'Hide all MTF signals' : 'Show all MTF signals'}
+--- a/frontend/src/state/indicators.ts
++++ b/frontend/src/state/indicators.ts
+@@ -2,6 +2,7 @@
+ import type { IndicatorOutput, InputValue, LineStyle, ScriptMeta, TimeframeCode } from '../api/types'
+ import { loadRaw, save } from '../lib/storage'
+ import { ALL_TFS } from './app'
++import type { BadgeOverlapSettings } from '../api/badgeOverlap'
+ 
+ export interface PlotStyle {
+   visible: boolean
+@@ -19,6 +20,7 @@
+   uid: string
+   scriptId: string
+   inputs: Record<string, InputValue>
++  badgeOverlap?: BadgeOverlapSettings
+   visible: boolean
+   /** Master visibility for MTF signal drawings; individual Style choices remain intact. */
+   signalsVisible?: boolean
+@@ -134,6 +136,10 @@
+         )
+         return {
+           ...i,
++          badgeOverlap: i.badgeOverlap ? {
++            enabled: i.badgeOverlap.enabled, timeframes: i.badgeOverlap.timeframes,
++            minTimeframes: i.badgeOverlap.minTimeframes,
++          } : undefined,
+           inputs: { ...d.inputs, ...validInputs },
+           plotStyles: { ...d.plotStyles, ...upgradeColors('plot', i.plotStyles, meta.plots, done) },
+           shapeStyles: { ...d.shapeStyles, ...upgradeColors('shape', i.shapeStyles, meta.shapes, done) },
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -596,3 +596,16 @@
+ .scale-btn:hover { background: var(--hover); color: var(--text-strong); }
+ .scale-btn.on { color: var(--accent); }
+ .scale-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
++
++/* Optional, separate from the original indicator's settings and drawings. */
++.badge-overlap-control { display: inline-flex; align-items: center; position: relative; }
++.badge-overlap-settings {
++  position: absolute; left: 0; top: 25px; z-index: 30; width: 280px; padding: 12px; display: flex; gap: 10px;
++  flex-direction: column; white-space: normal; background: var(--panel); border: 1px solid var(--border-2);
++  border-radius: 6px; box-shadow: 0 6px 24px #0008; color: var(--text); pointer-events: auto;
++}
++.badge-overlap-settings > span { color: var(--muted); font-size: 11px; }
++.badge-overlap-settings label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
++.badge-overlap-tfs { display: flex; flex-wrap: wrap; gap: 8px; }
++.badge-overlap-tfs label { justify-content: flex-start; gap: 3px; }
++.badge-overlap-settings > button { align-self: flex-end; cursor: pointer; background: var(--hover); border: 1px solid var(--border-2); border-radius: 3px; }
+--- /dev/null
++++ b/backend/app/badge_overlap.py
+@@ -0,0 +1,213 @@
++"""Optional visual analysis of the *rendered* fresh Demand/Supply badges.
++
++No detector is copied: each source is the original SmcMaster with the same inputs. Only its numeric
++fresh Demand/Supply labels are eligible. Native candles beyond the observation clock are replaced
++by an unfinished candle made from already-observed M1 bars. No orders or trade signals are emitted.
++"""
++from __future__ import annotations
++
++import json
++import math
++import re
++import threading
++from collections import OrderedDict
++from dataclasses import asdict, dataclass
++from datetime import datetime, timezone
++
++import numpy as np
++
++from .engine.bars import Bars, concat_bars
++from .engine.runner import DataRevisionError, ScriptRunner
++from .market.providers import StoreHtfProvider
++from .market.repository import MarketStore
++from .market.timeframes import TIMEFRAMES, bar_close_times, bucket_end, bucket_start
++from .scripts.smc_master import SmcMaster
++
++SOURCE_TFS = ('M1', 'M5', 'M15', 'M30', 'H1', 'H4')
++_RANGE = re.compile(r'\nRange: ([\d.]+) – ([\d.]+)\nOrigin UTC([+-][\d.]+): (\d{4}/\d{2}/\d{2} \d{2}:\d{2})$')
++
++
++@dataclass(frozen=True)
++class Badge:
++    timeframe: str
++    side: str
++    bottom: float
++    top: float
++    price: float
++    origin: int
++
++
++def rendered_badges(drawings: list[dict], tf: str, as_of: int) -> list[Badge]:
++    """Extract only numeric Fresh badge labels the original renderer actually produced."""
++    out: dict[Badge, None] = {}
++    for d in drawings:
++        if d.get('group') != 'demand_supply' or d.get('kind') != 'label' or d.get('style') != 'label_left':
++            continue
++        tip = d.get('tooltip', '')
++        side = 'demand' if tip.startswith('Demand Zone · Fresh\n') else 'supply' if tip.startswith('Supply Zone · Fresh\n') else None
++        color = d.get('color', '')
++        if side is None or (len(color) == 9 and color[-2:] == '00'):
++            continue
++        m = _RANGE.search(tip)
++        if m is None:
++            continue  # never guess a zone's range from the one price on its badge
++        bottom, top, offset = map(float, m.group(1, 2, 3))
++        origin = int(datetime.strptime(m[4], '%Y/%m/%d %H:%M').replace(tzinfo=timezone.utc).timestamp() - offset * 3600)
++        price = float(d['y'])
++        if not (math.isfinite(bottom) and math.isfinite(top) and bottom < top
++                and abs(price - (top if side == 'demand' else bottom)) < 1e-7
++                and origin <= as_of):
++            continue
++        try:
++            if abs(float(d['text']) - price) > 1e-7:
++                continue
++        except (ValueError, TypeError):
++            continue
++        out[Badge(tf, side, bottom, top, price, origin)] = None
++    return list(out)
++
++
++def overlap_bands(badges: list[Badge], min_timeframes: int = 2) -> list[dict]:
++    """Exact common bands, with distinct timeframe strength; never bridge a gap or mix sides."""
++    out = []
++    for side in ('demand', 'supply'):
++        zs = list(dict.fromkeys(z for z in badges if z.side == side))
++        edges = sorted({x for z in zs for x in (z.bottom, z.top)})
++        last_cover = None
++        for bottom, top in zip(edges, edges[1:]):
++            cover = [z for z in zs if z.bottom <= bottom and z.top >= top]
++            tfs = [tf for tf in SOURCE_TFS if any(z.timeframe == tf for z in cover)]
++            if len(tfs) < min_timeframes:
++                last_cover = None
++                continue
++            identity = frozenset(cover)
++            if last_cover == identity and out and out[-1]['top'] == bottom:
++                out[-1]['top'] = top
++            else:
++                out.append(dict(side=side, bottom=bottom, top=top, strength=len(tfs), timeframes=tfs,
++                                zone_count=len(cover), badges=[asdict(z) for z in cover]))
++            last_cover = identity
++    return out
++
++
++def strongest_bands(bands: list[dict]) -> list[dict]:
++    """Keep the maximum distinct-TF coverage in each connected overlap area, not its weaker fringes."""
++    out = []
++    for side in ('demand', 'supply'):
++        group = []
++        end = -math.inf
++        for b in sorted((x for x in bands if x['side'] == side), key=lambda x: x['bottom']):
++            if group and b['bottom'] > end:
++                strength = max(x['strength'] for x in group)
++                out.extend(x for x in group if x['strength'] == strength)
++                group = []
++            group.append(b)
++            end = max(end, b['top']) if len(group) > 1 else b['top']
++        if group:
++            strength = max(x['strength'] for x in group)
++            out.extend(x for x in group if x['strength'] == strength)
++    return out
++
++
++class BadgeOverlapService:
++    def __init__(self, store: MarketStore, max_sources: int = 12):
++        self.store = store
++        self.max_sources = max_sources
++        self._sources: OrderedDict[tuple, dict] = OrderedDict()
++        self._guard = threading.Lock()
++
++    def source_bars(self, feed, tf_code: str, as_of: int, count: int) -> Bars:
++        """Native history plus one partial candle; no final HTF OHLC from after as_of."""
++        series = self.store.get_series(feed.id, tf_code)
++        if series is None:
++            return Bars.empty()
++        tf = TIMEFRAMES[tf_code]
++        raw = self.store.load_bars(series.id, before=as_of, limit=count, complete_only=True)
++        if not len(raw):
++            return raw
++        keep = bar_close_times(raw.time, tf, feed.alignment) <= as_of
++        closed = Bars(*(getattr(raw, k)[keep] for k in ('time', 'open', 'high', 'low', 'close', 'volume', 'complete')))
++        start = bucket_start(as_of - 1, tf, feed.alignment)
++        if bucket_end(start, tf, feed.alignment) <= as_of:
++            return closed
++        minute_series = self.store.get_series(feed.id, 'M1')
++        if minute_series is None:
++            raise ValueError(f'{tf.label}: M1 data is needed to reconstruct the current unfinished candle safely')
++        mins = self.store.load_bars(minute_series.id, start=start, before=as_of, complete_only=True)
++        k = mins.time + 60 <= as_of
++        if not np.any(k):
++            raise ValueError(f'{tf.label}: no observed M1 data in the current candle')
++        part = Bars.from_rows([(start, mins.open[k][0], mins.high[k].max(), mins.low[k].min(),
++                                mins.close[k][-1], mins.volume[k].sum(), False)])
++        return concat_bars(closed, part)
++
++    def source_drawings(self, feed, tf: str, as_of: int, inputs: dict) -> tuple[list[dict], int]:
++        source = SmcMaster(inputs)  # same validated settings; the original indicator is not mutated
++        key = (feed.id, tf, json.dumps(source.p, sort_keys=True))
++        with self._guard:
++            state = self._sources.get(key)
++            if state is None:
++                state = dict(runner=None, as_of=-1, drawings=None, lock=threading.Lock())
++                self._sources[key] = state
++            self._sources.move_to_end(key)
++            while len(self._sources) > self.max_sources:
++                self._sources.popitem(last=False)
++        with state['lock']:
++            if state['as_of'] == as_of and state['drawings'] is not None:
++                return state['drawings'], state['last_bar']
++            bars = self.source_bars(feed, tf, as_of, 3000 + source.required_warmup())
++            if not len(bars):
++                return [], 0
++            def fresh():
++                return ScriptRunner(SmcMaster, source.p, timeframe=tf, alignment=feed.alignment,
++                                    precision=feed.precision, htf_provider=StoreHtfProvider(self.store, feed))
++            r = state['runner']
++            if r is None or as_of < state['as_of']:
++                r = fresh()
++            try:
++                r.process(bars)
++            except DataRevisionError:
++                r = fresh()
++                r.process(bars)
++            # This invokes the exact same last-bar renderer as the chart, without serializing plots/history.
++            drawings, _ = r._last_bar_view()
++            result = drawings.to_json()
++            state.update(runner=r, as_of=as_of, drawings=result, last_bar=int(bars.time[-1]))
++            return result, int(bars.time[-1])
++
++    def run(self, *, feed_id: str, inputs: dict, as_of: int, timeframes: list[str],
++            min_timeframes: int = 2, max_ranges: int = 8) -> dict:
++        feed = self.store.get_feed(feed_id)
++        if feed is None:
++            raise ValueError('Unknown data feed')
++        if not timeframes or any(tf not in SOURCE_TFS for tf in timeframes):
++            raise ValueError('Choose source timeframes from 1m, 5m, 15m, 30m, 1H and 4H')
++        if not 2 <= min_timeframes <= 6 or not 1 <= max_ranges <= 30:
++            raise ValueError('Invalid overlap settings')
++        SmcMaster(inputs)  # reject bad source settings before doing any work
++        # Archive snapshots can end inside a chart candle. Use only observed completed minutes,
++        # never its nominal future close or the workstation's wall clock as if prices were known there.
++        minute_series = self.store.get_series(feed.id, 'M1')
++        if minute_series is not None:
++            latest = self.store.load_bars(minute_series.id, before=as_of, limit=2, complete_only=True)
++            observed = latest.time[latest.time + 60 <= as_of]
++            if not len(observed):
++                raise ValueError('No completed M1 data at this observation time')
++            as_of = min(as_of, int(observed[-1]) + 60)
++        badges, sources, warnings = [], [], []
++        for tf in SOURCE_TFS:
++            if tf not in timeframes:
++                continue
++            try:
++                drawings, last = self.source_drawings(feed, tf, as_of, inputs)
++                zs = rendered_badges(drawings, tf, as_of)
++                badges.extend(zs)
++                sources.append(dict(timeframe=tf, last_bar=last, badges=len(zs)))
++                if last == 0:
++                    warnings.append(f'{TIMEFRAMES[tf].label}: no source candles available')
++            except ValueError as exc:
++                warnings.append(str(exc))
++        bands = strongest_bands(overlap_bands(badges, min_timeframes))
++        bands.sort(key=lambda b: (-b['strength'], -b['zone_count'], -(b['top'] - b['bottom']), b['bottom']))
++        return dict(as_of=as_of, badges=[asdict(z) for z in badges], sources=sources,
++                    overlaps=bands[:max_ranges], total_overlaps=len(bands), warnings=warnings)
+--- /dev/null
++++ b/backend/tests/test_badge_overlap.py
+@@ -0,0 +1,135 @@
++"""Display-only badge confluence: exact source parity, freshness and causal snapshots."""
++from datetime import datetime, timezone
++
++import numpy as np
++import pytest
++
++from app.badge_overlap import Badge, BadgeOverlapService, overlap_bands, rendered_badges, strongest_bands
++from app.engine.runner import ScriptRunner
++from app.market.providers import StoreHtfProvider
++from app.market.repository import MarketStore
++from app.market.resample import resample
++from app.market.timeframes import TIMEFRAMES
++from app.scripts.smc_master import SmcMaster
++from tests.helpers import random_walk_bars, ts
++
++T = ts('2026-10-13 04:35')
++
++
++def badge_label(*, side='demand', state='Fresh', origin=T-3600, bottom=100, top=105, group='demand_supply'):
++    stamp=datetime.fromtimestamp(origin,timezone.utc).strftime('%Y/%m/%d %H:%M')
++    price=top if side=='demand' else bottom
++    return dict(kind='label',group=group,style='label_left',color='#17FF00FF',y=price,text=f'{price:.3f}',
++                tooltip=f'{side.capitalize()} Zone · {state}\nRange: {bottom:.3f} – {top:.3f}\nOrigin UTC+0: {stamp}')
++
++
++def test_only_actual_numeric_fresh_ds_badges_with_ranges_are_used():
++    labels=[badge_label(),badge_label(side='supply'),badge_label(state='Tested'),badge_label(state='Invalidated'),
++            badge_label(group='internal_ob'),badge_label(origin=T-32*86400),
++            {**badge_label(),'kind':'box'}, {**badge_label(),'color':'#17FF0000'},
++            {**badge_label(),'tooltip':'Range unknown'}, {**badge_label(),'text':'BUY'}]
++    got=rendered_badges(labels,'M5',T)
++    assert len(got)==3 and {z.side for z in got}=={'demand','supply'}
++    assert all((z.bottom,z.top)==(100,105) for z in got)
++
++
++def test_badge_origin_timezone_no_age_cutoff_and_no_future_origin():
++    d=badge_label();d['tooltip']=d['tooltip'].replace('UTC+0: 2026/10/13 03:35','UTC+7: 2026/10/13 10:35')
++    assert rendered_badges([d],'M5',T)[0].origin==T-3600
++    assert rendered_badges([badge_label(origin=T-32*86400)],'H4',T)[0].origin==T-32*86400
++    assert rendered_badges([badge_label(origin=T+60)],'H4',T)==[]
++
++
++def z(tf,bottom,top,side='demand',origin=T-3600):
++    return Badge(tf,side,bottom,top,top if side=='demand' else bottom,origin)
++
++
++def test_common_range_and_distinct_timeframes_determine_strength():
++    got=overlap_bands([z('M1',100,105),z('M5',103,107),z('M1',100,105)])
++    assert len(got)==1 and (got[0]['bottom'],got[0]['top'],got[0]['strength'])==(103,105,2)
++    assert overlap_bands([z('M1',100,105),z('M1',103,107)])==[]
++    assert overlap_bands([z('M1',100,105),z('M5',103,107,'supply')])==[]
++    assert overlap_bands([z('M1',100,105),z('M5',105,107)])==[]
++
++
++def test_overlap_chain_is_never_claimed_as_three_way_common_range():
++    got=overlap_bands([z('M1',0,2),z('M5',1,4),z('M15',3,5)])
++    assert [(b['bottom'],b['top'],b['strength']) for b in got]==[(1,2,2),(3,4,2)]
++    peak=strongest_bands(overlap_bands([z('M1',100,110),z('M5',102,108),z('M15',104,106)]))
++    assert len(peak)==1 and (peak[0]['bottom'],peak[0]['top'],peak[0]['strength'])==(104,106,3)
++
++
++@pytest.fixture
++def market(tmp_path):
++    store=MarketStore(tmp_path/'m.db')
++    feed=store.ensure_feed('f',provider='csv',symbol='XAUUSD',instrument=None,price_type='bid',display_name='synthetic',alignment='utc')
++    minutes=random_walk_bars(5000,start='2026-10-05 00:00',step=60,seed=72,skip_weekends=False)
++    for code in ('M1','M5','M15','M30','H1','H4','D'):
++        b=minutes if code=='M1' else resample(minutes,TIMEFRAMES['M1'],TIMEFRAMES[code],alignment='utc')
++        series=store.ensure_series(feed.id,code)
++        store.upsert_candles(series.id,zip(b.time.tolist(),b.open.tolist(),b.high.tolist(),b.low.tolist(),b.close.tolist(),b.volume.tolist(),b.complete.astype(int).tolist()))
++    return store,feed,minutes
++
++
++def test_partial_htf_candle_uses_observed_minutes_not_future_native_ohlc(market):
++    store,feed,m=market;svc=BadgeOverlapService(store)
++    as_of=int(m.time[1012])+60
++    bars=svc.source_bars(feed,'M15',as_of,4000)
++    start=int(bars.time[-1]);seen=(m.time>=start)&(m.time+60<=as_of)
++    assert not bars.complete[-1] and bars.high[-1]==m.high[seen].max() and bars.low[-1]==m.low[seen].min()
++    series=store.get_series(feed.id,'M15')
++    store.conn.execute('UPDATE candles SET h=999999,l=0 WHERE series_id=? AND t=?',(series.id,start));store.conn.commit()
++    later=svc.source_bars(feed,'M15',as_of,4000)
++    assert np.array_equal(later.high,bars.high) and np.array_equal(later.low,bars.low)
++
++
++def test_source_drawings_are_exact_original_indicator_drawings(market):
++    store,feed,m=market;svc=BadgeOverlapService(store)
++    clock=int(m.time[-1])+60
++    p={'ds_line_atr':100.0,'aoi_max_dist':0.0,'ds_min_atr':.5}
++    drawings,last=svc.source_drawings(feed,'M5',clock,p)
++    bars=svc.source_bars(feed,'M5',clock,3000+SmcMaster(p).required_warmup())
++    direct=ScriptRunner(SmcMaster,p,timeframe='M5',alignment='utc',precision=feed.precision,htf_provider=StoreHtfProvider(store,feed))
++    direct.process(bars)
++    baseline=direct.output()
++    assert drawings==baseline['drawings'] and last==int(bars.time[-1])
++    assert rendered_badges(drawings,'M5',clock)
++    assert direct.output()==baseline and baseline['signals']==[]
++    assert len(SmcMaster.meta.inputs)==210
++
++
++def test_forward_and_backward_snapshot_matches_fresh_source(market):
++    store,feed,m=market;svc=BadgeOverlapService(store)
++    p={'ds_min_atr':.5,'ds_line_atr':100.,'aoi_max_dist':0.}
++    for i in (2500,2513,2525,2100):
++        clock=int(m.time[i])+60
++        inc,_=svc.source_drawings(feed,'M15',clock,p)
++        direct,_=BadgeOverlapService(store).source_drawings(feed,'M15',clock,p)
++        assert rendered_badges(inc,'M15',clock)==rendered_badges(direct,'M15',clock)
++
++
++def test_hidden_side_and_unbadged_zones_do_not_contribute(market):
++    store,feed,m=market;svc=BadgeOverlapService(store)
++    clock=int(m.time[-1])+60
++    r=svc.run(feed_id=feed.id,inputs={'showDemandZone':False,'showSupplyZone':False},as_of=clock,timeframes=['M1','M5'])
++    assert r['badges']==r['overlaps']==[] and not r['warnings']
++    with pytest.raises(ValueError):svc.run(feed_id=feed.id,inputs={},as_of=clock,timeframes=['D'])
++    with pytest.raises(ValueError):svc.run(feed_id=feed.id,inputs={},as_of=clock,timeframes=['M1'],min_timeframes=1)
++
++
++def test_distance_setting_changes_badges_at_same_observation_time(market):
++    store,feed,m=market;svc=BadgeOverlapService(store)
++    clock=int(m.time[-1])+60
++    base={'ds_min_atr':.5,'ds_line_atr':100.,'ds_line_max':5}
++    unrestricted=svc.run(feed_id=feed.id,inputs={**base,'aoi_max_dist':0.},as_of=clock,timeframes=['M1','M5'])
++    limited=svc.run(feed_id=feed.id,inputs={**base,'aoi_max_dist':.5},as_of=clock,timeframes=['M1','M5'])
++    assert unrestricted['badges'] and len(limited['badges']) < len(unrestricted['badges'])
++    assert all(z in unrestricted['badges'] for z in limited['badges'])
++    for tf in ('M1','M5'):
++        bars=svc.source_bars(feed,tf,clock,3000+SmcMaster(base).required_warmup())
++        hi,lo=float(bars.high[-120:].max()),float(bars.low[-120:].min())
++        pad=(hi-lo)*.5
++        assert all(lo-pad-.001 <= z['price'] <= hi+pad+.001 for z in limited['badges'] if z['timeframe']==tf)
++        # The overlay must receive exactly the badges the original renderer displays with this setting.
++        drawings,_=svc.source_drawings(feed,tf,clock,{**base,'aoi_max_dist':.5})
++        assert len(rendered_badges(drawings,tf,clock))==sum(z['timeframe']==tf for z in limited['badges'])
+--- /dev/null
++++ b/frontend/src/api/badgeOverlap.ts
+@@ -0,0 +1,51 @@
++import type { DrawingObj, InputValue, TimeframeCode } from './types'
++
++export const BADGE_TFS: TimeframeCode[] = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4']
++export interface BadgeOverlapSettings {
++  enabled: boolean
++  timeframes: TimeframeCode[]
++  minTimeframes: number
++}
++export const BADGE_OVERLAP_DEFAULTS: BadgeOverlapSettings = {
++  enabled: false, timeframes: BADGE_TFS, minTimeframes: 2,
++}
++export interface BadgeZone {
++  timeframe: string; side: 'demand' | 'supply'; bottom: number; top: number; price: number; origin: number
++}
++export interface BadgeOverlapResult {
++  as_of: number
++  overlaps: { side: 'demand' | 'supply'; bottom: number; top: number; strength: number; timeframes: string[];
++    zone_count: number; badges: BadgeZone[] }[]
++  badges: BadgeZone[]
++  sources: {timeframe: string; last_bar: number; badges: number}[]
++  total_overlaps: number
++  warnings: string[]
++}
++export interface BadgeOverlapRequest {
++  feed_id: string; inputs: Record<string, InputValue>; as_of: number; timeframes: TimeframeCode[];
++  min_timeframes: number; max_ranges: number
++}
++export async function fetchBadgeOverlaps(body: BadgeOverlapRequest): Promise<BadgeOverlapResult> {
++  const res = await fetch('/api/badge-overlaps', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
++  const data = await res.json()
++  if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `Overlap request failed (${res.status})`)
++  return data
++}
++const labels: Record<string, string> = {M1: '1m', M5: '5m', M15: '15m', M30: '30m', H1: '1H', H4: '4H'}
++export function badgeOverlapDrawings(data: BadgeOverlapResult, time: number, step: number, precision: number): DrawingObj[] {
++  return data.overlaps.flatMap((b, i): DrawingObj[] => {
++    const col = b.side === 'demand' ? '#22D3A5' : '#FF6B81'
++    const f = (p: number) => p.toFixed(precision)
++    const title = `${b.side === 'demand' ? 'Demand' : 'Supply'} ×${b.strength} · ${b.timeframes.map(t => labels[t]).join('/')}`
++    const tip = `${title}\nOverlap: ${f(b.bottom)} – ${f(b.top)}\n${b.zone_count} displayed fresh badges · follows indicator visibility settings\nAs of ${new Date(data.as_of * 1000).toISOString()}\n` + b.badges.map(z => `${labels[z.timeframe]}: ${f(z.bottom)} – ${f(z.top)} · origin ${new Date(z.origin * 1000).toISOString()}`).join('\n')
++    const common = {group: 'badge_overlap', created_at: data.as_of, tooltip: tip}
++    return [
++      {...common, kind: 'box', id: -10000 - i * 2, left: time, right: time + 8 * step, top: b.top, bottom: b.bottom,
++        border_color: col + 'FF', border_width: b.strength >= 3 ? 2 : 1, border_style: 'solid',
++        bg_color: col + (b.strength >= 4 ? '55' : b.strength >= 3 ? '40' : '26'), extend: 'right',
++        text: '', text_color: '#FFFFFFFF', text_size: 'small', text_halign: 'right', text_valign: 'center'},
++      {...common, kind: 'label', id: -10001 - i * 2, x: time + 4 * step, y: (b.top + b.bottom) / 2,
++        text: title, yloc: 'price', style: 'label_left', color: col + 'FF', text_color: '#091019FF', size: 'small'},
++    ]
++  })
++}
+--- /dev/null
++++ b/frontend/src/chart/BadgeOverlap.tsx
+@@ -0,0 +1,39 @@
++import { useState } from 'react'
++import { BADGE_OVERLAP_DEFAULTS, BADGE_TFS } from '../api/badgeOverlap'
++import type { BadgeOverlapSettings } from '../api/badgeOverlap'
++import type { IndicatorInstance } from '../state/indicators'
++import { Select } from '../components/common/Fields'
++import { TF_LABELS } from '../state/app'
++
++export function BadgeOverlapControl({ inst, update }: {
++  inst: IndicatorInstance; update: (uid: string, patch: Partial<IndicatorInstance>) => void
++}) {
++  const [open, setOpen] = useState(false)
++  const c = inst.badgeOverlap ?? BADGE_OVERLAP_DEFAULTS
++  const change = (patch: Partial<BadgeOverlapSettings>) => update(inst.uid, {badgeOverlap: {
++    enabled: c.enabled, timeframes: c.timeframes, minTimeframes: c.minTimeframes, ...patch,
++  }})
++  return <span className="badge-overlap-control">
++    <button className="legend-signals" aria-pressed={c.enabled}
++      aria-label={c.enabled ? 'Hide fresh badge overlaps' : 'Show fresh badge overlaps'}
++      title="Optional overlap of currently displayed fresh Demand/Supply badges"
++      onClick={() => change({enabled: !c.enabled})}>{c.enabled ? 'D/S overlap on' : 'D/S overlap off'}</button>
++    <button className="icon-btn sm" aria-label="Fresh badge overlap settings" aria-expanded={open}
++      onClick={() => setOpen(!open)}>⌄</button>
++    {open && <div className="badge-overlap-settings" role="group" aria-label="Fresh badge overlap settings">
++      <strong>Fresh badge overlaps</strong>
++      <span>Uses current red/green D/S price badges only.</span>
++      <span>Follows “Hide Zones Farther Than” and the indicator’s D/S display settings on each source timeframe.</span>
++      <div className="badge-overlap-tfs">{BADGE_TFS.map(tf => <label key={tf}>
++        <input type="checkbox" checked={c.timeframes.includes(tf)} onChange={e => change({timeframes: e.target.checked
++          ? BADGE_TFS.filter(t => t === tf || c.timeframes.includes(t)) : c.timeframes.filter(t => t !== tf)})} />{TF_LABELS[tf]}
++      </label>)}</div>
++      <label>Minimum timeframes<Select value={c.minTimeframes} ariaLabel="Overlap minimum timeframes" width={78}
++        options={[2,3,4,5,6].map(n => ({value:n,label:String(n)}))}
++        onChange={minTimeframes => change({minTimeframes})} /></label>
++      <span>Strength counts different timeframes. No trade signals.</span>
++      <button onClick={() => setOpen(false)}>Close</button>
++    </div>}
++  </span>
++}
++
+--- /dev/null
++++ b/frontend/src/chart/useBadgeOverlaps.ts
+@@ -0,0 +1,60 @@
++import { useEffect, useMemo, useRef, useState } from 'react'
++import { BADGE_OVERLAP_DEFAULTS, badgeOverlapDrawings, fetchBadgeOverlaps } from '../api/badgeOverlap'
++import type { BadgeOverlapRequest, BadgeOverlapResult } from '../api/badgeOverlap'
++import type { DrawingObj, TimeframeCode } from '../api/types'
++import type { IndicatorInstance } from '../state/indicators'
++
++interface Job { uid: string; body: BadgeOverlapRequest }
++interface State { key: string; results: Record<string, BadgeOverlapResult>; error: string | null; loading: boolean }
++export function useBadgeOverlaps(instances: IndicatorInstance[], feedId: string | null, tf: TimeframeCode,
++  asOf: number | null, displayTime: number | null, step: number, precision: number, ready: boolean) {
++  const jobs: Job[] = ready && feedId && asOf !== null ? instances.flatMap(inst => {
++    const c = inst.badgeOverlap ?? BADGE_OVERLAP_DEFAULTS
++    if (inst.scriptId !== 'smc_ict_scalping_master' || !c.enabled || !inst.visible || !inst.timeframes.includes(tf)
++      || inst.groupVisible.demand_supply === false) return []
++    return [{uid: inst.uid, body: {feed_id: feedId, inputs: inst.inputs, as_of: asOf,
++      timeframes: c.timeframes.filter(t => inst.timeframes.includes(t)),
++      min_timeframes: c.minTimeframes, max_ranges: 8}}]
++  }) : []
++  const key = JSON.stringify({tf, displayTime, jobs})
++  const current = useRef(key)
++  const pending = useRef<{key: string; jobs: Job[]} | null>(null)
++  const running = useRef(false)
++  const mounted = useRef(true)
++  const [state, setState] = useState<State>({key: '', results: {}, error: null, loading: false})
++  useEffect(() => { mounted.current = true; return () => {mounted.current = false} }, [])
++  useEffect(() => {
++    current.current = key
++    const job = JSON.parse(key) as {jobs: Job[]}
++    pending.current = {key, jobs: job.jobs}
++    // One calculation in flight; while it runs, retain only the latest requested chart/replay clock.
++    if (running.current) return
++    running.current = true
++    void (async () => {
++      try {
++        while (pending.current) {
++          const next = pending.current
++          pending.current = null
++          try {
++            const entries: [string, BadgeOverlapResult][] = []
++            for (const j of next.jobs) entries.push([j.uid, await fetchBadgeOverlaps(j.body)])
++            if (mounted.current && current.current === next.key)
++              setState({key: next.key, results: Object.fromEntries(entries), error: null, loading: false})
++          } catch (e) {
++            if (mounted.current && current.current === next.key)
++              setState({key: next.key, results: {}, error: e instanceof Error ? e.message : String(e), loading: false})
++          }
++        }
++      } finally {running.current = false}
++    })()
++  }, [key])
++  const valid = state.key === key
++  const drawings = useMemo(() => {
++    const out: Record<string, DrawingObj[]> = {}
++    if (state.key === key && displayTime !== null) for (const [uid, data] of Object.entries(state.results))
++      out[uid] = badgeOverlapDrawings(data, displayTime, step, precision)
++    return out
++  }, [state, key, displayTime, step, precision])
++  return {drawings, enabled: jobs.length > 0, loading: !valid || state.loading, error: valid ? state.error : null,
++    warnings: valid ? Object.values(state.results).flatMap(d => d.warnings) : []}
++}

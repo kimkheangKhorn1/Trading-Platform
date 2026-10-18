@@ -1,0 +1,184 @@
+{
+ "M1": {
+  "config": {
+   "pivot_len": 5,
+   "confirm": "mss",
+   "use_vol": false,
+   "stop": "sweep+0.5",
+   "entry": "retest",
+   "plan": "single_1R",
+   "trend_filter": true,
+   "session_filter": true,
+   "spread_guard": true
+  },
+  "validated": true,
+  "train": {
+   "trades": 217,
+   "avg_r": 0.097
+  },
+  "valid": {
+   "trades": 196,
+   "avg_r": 0.114
+  },
+  "test": {
+   "trades": 280,
+   "avg_r": 0.144
+  }
+ },
+ "M5": {
+  "config": {
+   "pivot_len": 13,
+   "confirm": "mss",
+   "use_vol": false,
+   "stop": "atr1.5",
+   "entry": "retest",
+   "plan": "single_3R",
+   "trend_filter": true,
+   "session_filter": false,
+   "spread_guard": true
+  },
+  "validated": false,
+  "train": {
+   "trades": 98,
+   "avg_r": 0.315
+  },
+  "valid": {
+   "trades": 45,
+   "avg_r": -0.116
+  },
+  "test": {
+   "trades": 60,
+   "avg_r": 0.173
+  }
+ },
+ "M15": {
+  "config": {
+   "pivot_len": 8,
+   "confirm": "mss",
+   "use_vol": false,
+   "stop": "sweep+0.2",
+   "entry": "retest",
+   "plan": "single_2R",
+   "trend_filter": true,
+   "session_filter": true,
+   "spread_guard": false
+  },
+  "validated": false,
+  "train": {
+   "trades": 63,
+   "avg_r": 0.227
+  },
+  "valid": {
+   "trades": 17,
+   "avg_r": -0.305
+  },
+  "test": {
+   "trades": 30,
+   "avg_r": -0.205
+  }
+ },
+ "M30": {
+  "config": {
+   "pivot_len": 5,
+   "confirm": "mss",
+   "use_vol": true,
+   "stop": "atr1.5",
+   "entry": "market",
+   "plan": "single_3R",
+   "trend_filter": true,
+   "session_filter": false,
+   "spread_guard": false
+  },
+  "validated": true,
+  "train": {
+   "trades": 79,
+   "avg_r": 0.121
+  },
+  "valid": {
+   "trades": 20,
+   "avg_r": 0.176
+  },
+  "test": {
+   "trades": 40,
+   "avg_r": -0.309
+  }
+ },
+ "H1": {
+  "config": {
+   "pivot_len": 13,
+   "confirm": "mss",
+   "use_vol": false,
+   "stop": "atr1.5",
+   "entry": "market",
+   "plan": "scaled_123",
+   "trend_filter": false,
+   "session_filter": false,
+   "spread_guard": false
+  },
+  "validated": false,
+  "train": {
+   "trades": 34,
+   "avg_r": 0.301
+  },
+  "valid": {
+   "trades": 13,
+   "avg_r": -0.288
+  },
+  "test": {
+   "trades": 23,
+   "avg_r": 0.143
+  }
+ },
+ "H4": {
+  "config": {
+   "pivot_len": 8,
+   "confirm": "close_back",
+   "use_vol": false,
+   "stop": "atr1.5",
+   "entry": "retest",
+   "plan": "single_3R",
+   "trend_filter": false,
+   "session_filter": false,
+   "spread_guard": false
+  },
+  "validated": true,
+  "train": {
+   "trades": 24,
+   "avg_r": 0.665
+  },
+  "valid": {
+   "trades": 7,
+   "avg_r": 0.142
+  },
+  "test": {
+   "trades": 16,
+   "avg_r": 0.342
+  }
+ },
+ "D": {
+  "config": {
+   "pivot_len": 5,
+   "confirm": "close_back",
+   "use_vol": true,
+   "stop": "sweep+0.2",
+   "entry": "market",
+   "plan": "single_1R",
+   "trend_filter": false,
+   "session_filter": false,
+   "spread_guard": false
+  },
+  "validated": false,
+  "train": {
+   "trades": 8,
+   "avg_r": 0.748
+  },
+  "valid": {
+   "trades": 1,
+   "avg_r": -1.001
+  },
+  "test": {
+   "trades": 7,
+   "avg_r": -0.558
+  }
+ }
+}

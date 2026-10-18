@@ -1,0 +1,24 @@
+{
+  "file": "../docs/research/claude-overlap-2026-10-17/runs/baseline.json",
+  "sha256": "08117ece415c0a621b01b130a00742030e8c1af36bb94844a65b48ae9c81cfbb",
+  "status": "passed",
+  "scope": "Independent per-fill cash/R arithmetic and basic order/zone timing; source/cost assumptions require separate audit",
+  "orders": 2612,
+  "closed_trades": 465,
+  "unresolved_executed": [
+    {
+      "id": 2612,
+      "realized_R": 1.8950057302238204,
+      "units_remaining": 0.6666666666666667,
+      "tp_hit": true
+    }
+  ],
+  "tp_based_wins": 111,
+  "tp_based_win_rate_pct": 23.870967741935484,
+  "net_realized_R": 69.58679076662104,
+  "average_realized_R": 0.14964901240133557,
+  "profit_factor_R": 1.191530476967674,
+  "closed_trade_drawdown_R": 31.50422712759393,
+  "issues": [],
+  "independent_monthly_csv": "/Users/kimkheangkhorn/Desktop/Trading Platform/docs/research/codex-overlap-2026-10-17/baseline-independent-monthly.csv"
+}

@@ -77,6 +77,24 @@ coverage/gap reports and validation limits. Archive history needs no API keys or
   are built from the feed's daily candles (week opens Sunday 17:00 New York), which can differ from
   TradingView's session for the same symbol.
 
+### Converted TradingView indicators (2026-10-18)
+
+Line-for-line Python ports in `backend/app/scripts/`, listed in the Indicators dialog. Inputs, defaults, colors,
+labels, boxes, lines and dashboards follow the Pine sources; `backend/tests/test_converted_scripts.py` checks that live
+updates equal a full run, that nothing reads later bars, and a hand-built Liquidity Reaper sweep.
+
+| Indicator | Script id | Notes |
+|---|---|---|
+| Liquidity Reaper [JOAT] | `liquidity_reaper_joat` | Volume filter needs real volume: on the Dukascopy CSV feed (volume 0) no sweep passes, as on TradingView with no volume. "Raids (B / S)" counts from the first loaded bar, so it differs from TradingView's count. |
+| Footprint IQ Pro [TradingIQ] | `footprint_iq_pro` | Intrabars come from the feed's 1-minute candles. 1-Second / 1-Tick granularity is not available (no second / tick candles stored) and shows a warning. The "highest delta lines" accumulate from the first loaded bar. |
+| Triple Confluence Navigator [MarkitTick] | `triple_confluence_markittick` | HTF filter uses `request.security(..., expr[1], lookahead_on)` as in Pine. Webhook alerts are not delivered. |
+| 3EMA | `three_ema` | EMA 50 / 100 / 200 of the close. |
+| Liquidity Swings [LuxAlgo] | `liquidity_swings_luxalgo` | Intrabar Precision reads intrabars for at most 500 bars before the first displayed bar (TradingView also limits intrabar history). As in Pine, the swing-area boxes are the script's oldest boxes, so a very long history (over 500 zone boxes) removes them. |
+| Volume Supply and Demand [TradingIQ] | `volume_supply_demand_tradingiq` | Lower timeframe = chart / 5 (at least 1 minute), built from 1-minute candles. Replays 20,000 bars like `calc_bars_count`, because zone detection averages the whole run. |
+
+Not verified against TradingView-exported values (none available). Known rendering differences: table and label font
+sizes are approximations of TradingView's; lines are drawn as hairlines like the rest of this chart.
+
 The script is both the chart indicator and a strategy: it declares the **SMC Master** strategy, so the
 Strategy Tester lists it and can run it. It has no entry rules yet, so a backtest currently reports 0
 trades with a note saying no signals were emitted. Add the rules in `SmcMaster.strategy()` in

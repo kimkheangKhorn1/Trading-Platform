@@ -3,6 +3,7 @@ import type { IndicatorOutput, InputValue, LineStyle, ScriptMeta, TimeframeCode 
 import { loadRaw, save } from '../lib/storage'
 import { ALL_TFS } from './app'
 import type { BadgeOverlapSettings } from '../api/badgeOverlap'
+import { OB_TYPES } from '../api/badgeOverlap'
 
 export interface PlotStyle {
   visible: boolean
@@ -21,6 +22,7 @@ export interface IndicatorInstance {
   scriptId: string
   inputs: Record<string, InputValue>
   badgeOverlap?: BadgeOverlapSettings
+  obOverlap?: BadgeOverlapSettings
   visible: boolean
   plotStyles: Record<string, PlotStyle>
   shapeStyles: Record<string, ShapeStyle>
@@ -136,6 +138,16 @@ export const useIndicators = create<IndicatorsState>((set, get) => ({
           badgeOverlap: i.badgeOverlap ? {
             enabled: i.badgeOverlap.enabled, timeframes: i.badgeOverlap.timeframes,
             minTimeframes: i.badgeOverlap.minTimeframes,
+            strongestOnly: i.badgeOverlap.strongestOnly ?? false,
+            candleReactions: i.badgeOverlap.candleReactions ?? true,
+          } : undefined,
+          obOverlap: i.obOverlap ? {
+            enabled: i.obOverlap.enabled, timeframes: i.obOverlap.timeframes,
+            minTimeframes: i.obOverlap.minTimeframes,
+            strongestOnly: i.obOverlap.strongestOnly ?? false,
+            candleReactions: i.obOverlap.candleReactions ?? true,
+            obTypes: i.obOverlap.obTypes?.length ? i.obOverlap.obTypes : OB_TYPES,
+            freshOnly: i.obOverlap.freshOnly ?? true,
           } : undefined,
           inputs: { ...d.inputs, ...validInputs },
           plotStyles: { ...d.plotStyles, ...upgradeColors('plot', i.plotStyles, meta.plots, done) },

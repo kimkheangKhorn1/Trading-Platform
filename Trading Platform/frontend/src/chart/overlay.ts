@@ -42,6 +42,10 @@ export interface OverlayLayer {
   name: string
   drawings: DrawingObj[]
   shapes: ShapeLayer[]
+  /** boxes drawn in front of the candles (Pine behind_chart = false) */
+  front?: boolean
+  /** labels and markers keep their exact position (TradingView behaviour) instead of being moved apart */
+  fixedLabels?: boolean
 }
 
 export interface TradeOverlay {
@@ -214,12 +218,13 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       const t1 = hi >= this.times.length ? Infinity : this.times[Math.max(0, hi)]
       if (pass === 'background') {
         this.bgRegions = []
-        for (const layer of this.layers) this.drawBoxes(ctx, layer, mediaSize.width, t0, t1)
+        for (const layer of this.layers) if (!layer.front) this.drawBoxes(ctx, layer, mediaSize.width, t0, t1)
         if (this.trades) this.drawTradeZones(ctx, t0, t1)
         return
       }
       if (pass === 'lines') {
         this.lineRegions = []
+        for (const layer of this.layers) if (layer.front) this.drawBoxes(ctx, layer, mediaSize.width, t0, t1)
         for (const layer of this.layers) this.drawLines(ctx, layer, mediaSize.width)
         if (this.trades) this.drawTrades(ctx, mediaSize.width, t0, t1)
         return
@@ -274,19 +279,36 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
         ctx.strokeRect(sx0, sy0, snap(x0 + w) - sx0, snap(y0 + h) - sy0)
         ctx.setLineDash([])
       }
-      if (d.text) {
-        ctx.font = `${FONT_PX[d.text_size] ?? 10}px ${FONT}`
-        ctx.fillStyle = cssColor(d.text_color)
-        ctx.textBaseline = 'middle'
-        ctx.textAlign = d.text_halign === 'left' ? 'left' : d.text_halign === 'right' ? 'right' : 'center'
-        const tx = d.text_halign === 'left' ? x0 + 4 : d.text_halign === 'right' ? x0 + w - 4 : x0 + w / 2
-        ctx.fillText(d.text, tx, y0 + h / 2)
-      }
+      if (d.text) this.drawBoxText(ctx, d, x0, y0, w, h)
       if (d.tooltip || d.text) {
         this.bgRegions.push({ x0, y0, x1: x0 + w, y1: y0 + h, priority: d.overlap ? 2 : 0,
-          info: { title: d.overlap ? 'Demand/Supply overlap' : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
+          info: { title: d.overlap ? (d.overlap.kind === 'ob' ? 'Order block overlap' : 'Demand/Supply overlap') : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
       }
     }
+  }
+
+  /** Box text like Pine: one or more lines aligned inside the box; size 'auto' scales the text to fit the box
+   *  (and hides it once it would be unreadably small). */
+  private drawBoxText(ctx: CanvasRenderingContext2D, d: Extract<DrawingObj, { kind: 'box' }>, x0: number, y0: number,
+    w: number, h: number) {
+    const lines = d.text.split('\n')
+    const pad = 2
+    let fpx = FONT_PX[d.text_size] ?? 10
+    if (d.text_size === 'auto') {
+      ctx.font = `100px ${FONT}`
+      const widest = Math.max(...lines.map((l) => ctx.measureText(l).width), 1)
+      fpx = Math.min(((h - 2 * pad) / lines.length) / 1.2, ((w - 2 * pad) * 100) / widest, 40)
+      if (fpx < 5) return
+    }
+    ctx.font = `${fpx}px ${FONT}`
+    ctx.fillStyle = cssColor(d.text_color)
+    ctx.textBaseline = 'middle'
+    ctx.textAlign = d.text_halign === 'left' ? 'left' : d.text_halign === 'right' ? 'right' : 'center'
+    const tx = d.text_halign === 'left' ? x0 + pad + 2 : d.text_halign === 'right' ? x0 + w - pad - 2 : x0 + w / 2
+    const lh = fpx * 1.2
+    const block = lh * lines.length
+    const top = d.text_valign === 'top' ? y0 + pad : d.text_valign === 'bottom' ? y0 + h - pad - block : y0 + (h - block) / 2
+    lines.forEach((l, k) => ctx.fillText(l, tx, top + lh * (k + 0.5)))
   }
 
   private drawLines(ctx: CanvasRenderingContext2D, layer: OverlayLayer, width: number) {
@@ -366,7 +388,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
         const w = Math.max(size + 3, textWidth + 4)
         const original = { x: x - w / 2, y: above && text ? y - size - textHeight : y - size / 2 - 1.5,
           width: w, height: size + 3 + (text ? size / 2 + textHeight : 0) }
-        const placed = layout.place(original, above ? -1 : 1)
+        const placed = layer.fixedLabels ? original : layout.place(original, above ? -1 : 1)
         const px = x + placed.x - original.x
         const py = y + placed.y - original.y
         annotations.push({ rect: placed, original, x, y, color, paint: () => {
@@ -399,7 +421,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
     width: number, height: number) {
     const found: { d: LabelObj; rect: AnnotationRect }[] = []
     for (const layer of this.layers) for (const d of layer.drawings) {
-      if (d.kind !== 'label' || d.x < t0 || d.x > t1 || !inRow(d)) continue
+      if (layer.fixedLabels || d.kind !== 'label' || d.x < t0 || d.x > t1 || !inRow(d)) continue
       const g = this.labelGeometry(ctx, d, height)
       if (g) found.push({ d, rect: g.original })
     }
@@ -460,7 +482,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
     const { x, y, fpx, lines, lh, w, h, ptr, st, textOnly, shapeStyle, glyph, original } = g
     let { bx, by } = g
     const direction = d.yloc === 'belowbar' || st === 'label_up' ? 1 : -1
-    const placed = rows.get(d) ?? layout.place(original, direction)
+    const placed = layer.fixedLabels ? original : rows.get(d) ?? layout.place(original, direction)
     const dx = placed.x - original.x
     const dy = placed.y - original.y
     const px = x + dx
@@ -498,7 +520,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
     } })
     if (d.tooltip || d.text) {
       this.regions.push({ x0: placed.x, y0: placed.y, x1: placed.x + placed.width, y1: placed.y + placed.height, priority: 3,
-        info: { title: d.overlap ? 'Demand/Supply overlap' : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
+        info: { title: d.overlap ? (d.overlap.kind === 'ob' ? 'Order block overlap' : 'Demand/Supply overlap') : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
     }
   }
 

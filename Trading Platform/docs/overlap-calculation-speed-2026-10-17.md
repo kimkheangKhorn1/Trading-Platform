@@ -27,3 +27,19 @@ Exact serialized overlap outputs matched at every benchmark clock. Timings are a
 Validation: 57 focused backend tests passed across snapshot isolation, provisional rollback versus the previous recursive-copy path, indicator incremental/full parity, no-lookahead behavior, source badges, MTF, API, pivot lifecycle and backtest execution. All 47 frontend tests, production build and lint passed. Live browser latency was not measured.
 
 Remaining cost: a cold scan or uncached backward jump still rebuilds the complete indicator history on each selected source timeframe. High replay rates can outrun calculation. No settings or source timeframes were silently reduced to achieve the measured improvement.
+
+## D/S-only overlap source execution
+
+The overlap service previously ran all independent SMC systems on every selected source timeframe to obtain only D/S badges. It now uses `DemandSupplyBadgeSource`, which calls the original `SmcMaster.demand_supply` and shared `render_demand_supply` methods with the same validated settings, ATR(14), history and rollback model. Other systems (structure, OBs, pivots, patterns, dashboard, BULB, envelopes and HTF security requests) are skipped in this internal source scan. The actual chart still runs the full SMC indicator. No thresholds, timeframes or warmup/history lengths were reduced.
+
+The D/S rendering block was extracted without formula changes so the full chart and overlap source cannot diverge through separately copied rules. Source alerts/strategy intents are not emitted by this internal badge-only path. Retirement, locked bounds/counts, own-band deletion, candidate ranking and candle-reaction rules are unchanged.
+
+### Measured comparison
+
+Five sources M5/M15/M30/H1/H4 over the existing Exness archive, fixed D/S settings: cold 2489 → 824 ms; next observed-minute steps 189 → 95 ms and 208 → 61 ms; unvisited backward jump 1872 → 703 ms. All serialized service outputs matched exactly at all four clocks. These are single local direct-service samples without locks/reactions; detailed evidence is in `research/evidence/overlap-ds-only-latency-2026-10-17.json`.
+
+The running API was also measured using the actual browser's saved inputs, selected source timeframes, indicator lock ID and candle reactions enabled. Responses took 52, 108 and 78 ms, all HTTP 200 without warnings. Band count advanced from 3 to 4 at the next observation and remained 4. The user's replay state was unchanged. These measure response completion, not browser paint or a guarantee of zero latency. Cold loads and uncached backward jumps still require a source scan; queued work and machine load can add delay.
+
+### Validation
+
+182 focused backend tests and 61 frontend tests passed, plus production build, lint and whitespace checks. Twelve added parity cases cover all six source timeframes, ATR/Percent modes, distance/line/timezone settings and provisional-to-confirmed rollback. They compare fresh source badges against the full indicator at each observation, with nonempty badges required. A separate exact comparison of every full-indicator output field across 1,800 M1 candles matched the original code. The prior latency from unrelated source systems is removed without making optimistic overlaps from stale/retired source data.

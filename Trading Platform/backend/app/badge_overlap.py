@@ -1,6 +1,6 @@
-"""Optional visual analysis of the *rendered* fresh Demand/Supply badges.
+"""Optional visual analysis of the *rendered* fresh Demand/Supply badges, or of the displayed order blocks.
 
-No detector is copied: each source is the original SmcMaster with the same inputs. Only its numeric
+No detector is copied: source execution calls the original D/S methods with the same inputs. Only numeric
 fresh Demand/Supply labels are eligible. Native candles beyond the observation clock are replaced
 by an unfinished candle made from already-observed M1 bars. No orders or trade signals are emitted.
 """
@@ -22,9 +22,13 @@ from .market.providers import StoreHtfProvider
 from .market.repository import MarketStore
 from .market.timeframes import TIMEFRAMES, bar_close_times, bucket_end, bucket_start
 from .scripts.smc_master import SmcMaster
-from .locked_overlaps import LockedOverlapRegistry
+from .scripts.smc_master.badge_source import DemandSupplyBadgeSource
+from .scripts.smc_master.ob_source import OrderBlockSource
+from .locked_overlaps import OB_DETECTOR_INPUTS, LockedOverlapRegistry
+from .overlap_reactions import overlap_reactions
 
 SOURCE_TFS = ('M1', 'M5', 'M15', 'M30', 'H1', 'H4')
+OB_TYPES = ('swing', 'internal')
 _RANGE = re.compile(r'\nRange: ([\d.]+) – ([\d.]+)\nOrigin UTC([+-][\d.]+): (\d{4}/\d{2}/\d{2} \d{2}:\d{2})$')
 
 
@@ -36,6 +40,29 @@ class Badge:
     top: float
     price: float
     origin: int
+
+
+@dataclass(frozen=True)
+class OrderBlockZone:
+    """A displayed order block. Bullish blocks use the 'demand' side (proximal = top), bearish 'supply'."""
+    timeframe: str
+    side: str
+    bottom: float
+    top: float
+    price: float
+    origin: int  # the order block candle
+    born: int  # the structure-break candle that created it (its open time)
+    kind: str  # 'swing' or 'internal'
+
+
+def displayed_order_blocks(script, tf: str) -> list[OrderBlockZone]:
+    out: dict[OrderBlockZone, None] = {}
+    for internal, z in script.displayed_order_blocks():
+        bull = z.side == 1
+        out[OrderBlockZone(tf, 'demand' if bull else 'supply', float(z.bottom), float(z.top),
+                           float(z.top if bull else z.bottom), int(z.origin), int(z.born),
+                           'internal' if internal else 'swing')] = None
+    return list(out)
 
 
 def rendered_badges(drawings: list[dict], tf: str, as_of: int) -> list[Badge]:
@@ -111,7 +138,7 @@ def strongest_bands(bands: list[dict]) -> list[dict]:
 
 
 class BadgeOverlapService:
-    def __init__(self, store: MarketStore, max_sources: int = 12):
+    def __init__(self, store: MarketStore, max_sources: int = 24):
         self.store = store
         self.locks = LockedOverlapRegistry(store)
         self.max_sources = max_sources
@@ -143,26 +170,26 @@ class BadgeOverlapService:
                                 mins.close[k][-1], mins.volume[k].sum(), False)])
         return concat_bars(closed, part)
 
-    def source_drawings(self, feed, tf: str, as_of: int, inputs: dict) -> tuple[list[dict], int]:
-        # same validated settings; the original indicator is not mutated. Only its D/S badges are read.
+    def _run_source(self, kind: str, script_cls, feed, tf: str, as_of: int, inputs: dict, read):
+        # Same validated settings/history as the chart; one incremental runner per kind/feed/timeframe/settings.
         source = SmcMaster(dict(inputs))
-        key = (feed.id, tf, json.dumps(source.p, sort_keys=True))
+        key = (kind, feed.id, tf, json.dumps(source.p, sort_keys=True))
         with self._guard:
             state = self._sources.get(key)
             if state is None:
-                state = dict(runner=None, as_of=-1, drawings=None, lock=threading.Lock())
+                state = dict(runner=None, as_of=-1, result=None, lock=threading.Lock())
                 self._sources[key] = state
             self._sources.move_to_end(key)
             while len(self._sources) > self.max_sources:
                 self._sources.popitem(last=False)
         with state['lock']:
-            if state['as_of'] == as_of and state['drawings'] is not None:
-                return state['drawings'], state['last_bar']
+            if state['as_of'] == as_of and state['result'] is not None:
+                return state['result'], state['last_bar']
             bars = self.source_bars(feed, tf, as_of, 3000 + source.required_warmup())
             if not len(bars):
                 return [], 0
             def fresh():
-                return ScriptRunner(SmcMaster, source.p, timeframe=tf, alignment=feed.alignment,
+                return ScriptRunner(script_cls, source.p, timeframe=tf, alignment=feed.alignment,
                                     precision=feed.precision, htf_provider=StoreHtfProvider(self.store, feed))
             r = state['runner']
             if r is None or as_of < state['as_of']:
@@ -172,15 +199,43 @@ class BadgeOverlapService:
             except DataRevisionError:
                 r = fresh()
                 r.process(bars)
-            # This invokes the exact same last-bar renderer as the chart, without serializing plots/history.
-            drawings, _ = r._last_bar_view()
-            result = drawings.to_json()
-            state.update(runner=r, as_of=as_of, drawings=result, last_bar=int(bars.time[-1]))
+            result = read(r)
+            state.update(runner=r, as_of=as_of, result=result, last_bar=int(bars.time[-1]))
             return result, int(bars.time[-1])
+
+    def source_drawings(self, feed, tf: str, as_of: int, inputs: dict) -> tuple[list[dict], int]:
+        # The original D/S methods run without unrelated independent SMC systems.
+        # Invoke the shared original D/S renderer without serializing unrelated plots/history.
+        return self._run_source('ds', DemandSupplyBadgeSource, feed, tf, as_of, inputs,
+                                lambda r: r._last_bar_view()[0].to_json())
+
+    def source_order_blocks(self, feed, tf: str, as_of: int, inputs: dict) -> tuple[list[OrderBlockZone], int]:
+        # The original structure/order block logic and the chart's own order block display selection.
+        return self._run_source('ob', OrderBlockSource, feed, tf, as_of, inputs,
+                                lambda r: displayed_order_blocks(r.script, tf))
+
+    def untouched(self, feed, z: OrderBlockZone, as_of: int) -> bool:
+        """No completed 1m candle after the block formed has reached its proximal edge."""
+        minute_series = self.store.get_series(feed.id, 'M1')
+        if minute_series is None:
+            raise ValueError('Untouched order blocks need M1 data')
+        start = z.born + TIMEFRAMES[z.timeframe].seconds
+        field, operator = ('l', '<=') if z.side == 'demand' else ('h', '>=')
+        hit = self.store.conn.execute(f"""SELECT 1 FROM candles WHERE series_id=? AND complete=1
+            AND t>=? AND t+60<=? AND {field}{operator}? LIMIT 1""", (minute_series.id, start, as_of, z.price)).fetchone()
+        return hit is None
+
+    def scope(self, kind, lock_id, feed, params, timeframes, min_timeframes, ob_types, fresh_only) -> str:
+        if kind == 'ds':
+            return self.locks.scope(lock_id, feed.id, params, timeframes, min_timeframes)
+        return self.locks.scope('ob:' + lock_id, feed.id, params, timeframes, min_timeframes, OB_DETECTOR_INPUTS,
+                                dict(kind='ob', types=sorted(ob_types), fresh_only=bool(fresh_only)))
 
     def run(self, *, feed_id: str, inputs: dict, as_of: int, timeframes: list[str],
             min_timeframes: int = 2, max_ranges: int = 8, lock_id: str | None = None,
-            chart_timeframe: str = 'M5', strongest_only: bool = False) -> dict:
+            chart_timeframe: str = 'M5', strongest_only: bool = False, candle_reactions: bool = True,
+            reactions_only: bool = False, kind: str = 'ds', ob_types: list[str] | None = None,
+            fresh_only: bool = True) -> dict:
         feed = self.store.get_feed(feed_id)
         if feed is None:
             raise ValueError('Unknown data feed')
@@ -188,11 +243,20 @@ class BadgeOverlapService:
             raise ValueError('Choose source timeframes from 1m, 5m, 15m, 30m, 1H and 4H')
         if not 2 <= min_timeframes <= 6 or not 1 <= max_ranges <= 30:
             raise ValueError('Invalid overlap settings')
+        # Display-only inputs (Easy Mode) cannot change sources, caches or lock scopes: drop them first
+        inputs = {k: v for k, v in (inputs or {}).items() if k not in SmcMaster.meta.display_inputs}
         params = SmcMaster(inputs).p  # reject bad source settings before doing any work
         if lock_id is not None and (not isinstance(lock_id, str) or not 1 <= len(lock_id) <= 128):
             raise ValueError('Invalid overlap lock identity')
         if chart_timeframe not in TIMEFRAMES:
             raise ValueError('Invalid chart timeframe')
+        if kind not in ('ds', 'ob'):
+            raise ValueError('Overlap kind must be ds or ob')
+        ob_types = list(OB_TYPES if ob_types is None else ob_types)
+        if kind == 'ob' and (not ob_types or any(t not in OB_TYPES for t in ob_types)):
+            raise ValueError('Choose order block types from swing and internal')
+        # Order block sides are always shown; D/S sides follow the indicator's own D/S toggles.
+        show = (params['showDemandZone'], params['showSupplyZone']) if kind == 'ds' else (True, True)
         # Archive snapshots can end inside a chart candle. Use only observed completed minutes,
         # never its nominal future close or the workstation's wall clock as if prices were known there.
         minute_series = self.store.get_series(feed.id, 'M1')
@@ -202,36 +266,74 @@ class BadgeOverlapService:
             if not len(observed):
                 raise ValueError('No completed M1 data at this observation time')
             as_of = min(as_of, int(observed[-1]) + 60)
+        if reactions_only:
+            if lock_id is None or chart_timeframe not in ('M1','M5'):
+                raise ValueError('Fast candle reactions require an indicator lock and a 1m/5m chart')
+            # Independent close-confirmation lane: no source discovery, ranking or candidate creation.
+            # This can finish while the ordinary multi-timeframe overlap scan is still running.
+            chart = self.source_bars(feed,chart_timeframe,as_of,121)
+            if not len(chart):
+                raise ValueError('No observed chart candles for candle reactions')
+            scope = self.scope(kind,lock_id,feed,params,timeframes,min_timeframes,ob_types,fresh_only)
+            observed = self.locks.observe(scope=scope,feed_id=feed.id,as_of=as_of,candidates=[],
+                low=float(chart.low[-120:].min()),high=float(chart.high[-120:].max()),
+                close=float(chart.close[-1]),distance=params['aoi_max_dist'],
+                show_demand=show[0],show_supply=show[1])
+            return dict(as_of=as_of,reactions=self.reactions(feed,chart_timeframe,as_of,params,
+                observed['reaction_zones']) if candle_reactions else [],warnings=[])
         badges, sources, warnings = [], [], []
         for tf in SOURCE_TFS:
             if tf not in timeframes:
                 continue
             try:
-                drawings, last = self.source_drawings(feed, tf, as_of, inputs)
-                zs = rendered_badges(drawings, tf, as_of)
+                if kind == 'ds':
+                    drawings, last = self.source_drawings(feed, tf, as_of, inputs)
+                    zs = rendered_badges(drawings, tf, as_of)
+                else:
+                    zs, last = self.source_order_blocks(feed, tf, as_of, inputs)
+                    zs = [z for z in zs if z.kind in ob_types and z.origin <= as_of]
+                    if fresh_only:
+                        zs = [z for z in zs if self.untouched(feed, z, as_of)]
                 badges.extend(zs)
                 sources.append(dict(timeframe=tf, last_bar=last, badges=len(zs)))
                 if last == 0:
                     warnings.append(f'{TIMEFRAMES[tf].label}: no source candles available')
             except ValueError as exc:
                 warnings.append(str(exc))
-        bands = strongest_bands(overlap_bands(badges, min_timeframes))
-        bands.sort(key=lambda b: (-b['strength'], -b['zone_count'], -(b['top'] - b['bottom']), b['bottom']))
-        result = dict(as_of=as_of, badges=[asdict(z) for z in badges], sources=sources,
+        def ranked_bands(source_badges):
+            found = strongest_bands(overlap_bands(source_badges, min_timeframes))
+            found.sort(key=lambda b: (-b['strength'], -b['zone_count'], -(b['top'] - b['bottom']), b['bottom']))
+            return found
+        bands = ranked_bands(badges)
+        result = dict(kind=kind, as_of=as_of, badges=[asdict(z) for z in badges], sources=sources,
                       overlaps=bands[:max_ranges], total_overlaps=len(bands), warnings=warnings)
         if lock_id is not None:
             chart = self.source_bars(feed, chart_timeframe, as_of, 121)
             if not len(chart):
                 raise ValueError('No observed chart candles for overlap distance filtering')
-            # An incomplete source scan must not freeze an accidentally reduced count.
-            candidates = [] if warnings else bands[:max_ranges]
-            if strongest_only:
-                peaks = {side: max((b['strength'] for b in candidates if b['side'] == side), default=0)
-                         for side in ('demand', 'supply')}
-                candidates = [b for b in candidates if b['strength'] == peaks[b['side']]]
-            scope = self.locks.scope(lock_id, feed.id, params, timeframes, min_timeframes)
+            # Retire original sources BEFORE computing intersections/counts. Otherwise one
+            # retired badge could either inflate a new group or block an all-new valid group.
+            def candidates(retired):
+                eligible = [z for z in badges if (z.timeframe,z.side,z.origin) not in retired]
+                found = [] if warnings else ranked_bands(eligible)[:max_ranges]
+                if strongest_only:
+                    peaks = {side: max((b['strength'] for b in found if b['side'] == side), default=0)
+                             for side in ('demand', 'supply')}
+                    found = [b for b in found if b['strength'] == peaks[b['side']]]
+                return found
+            scope = self.scope(kind, lock_id, feed, params, timeframes, min_timeframes, ob_types, fresh_only)
             result.update(self.locks.observe(scope=scope, feed_id=feed.id, as_of=as_of, candidates=candidates,
                 low=float(chart.low[-120:].min()), high=float(chart.high[-120:].max()),
                 close=float(chart.close[-1]), distance=params['aoi_max_dist'],
-                show_demand=params['showDemandZone'], show_supply=params['showSupplyZone']))
+                show_demand=show[0], show_supply=show[1]))
+        zones = result.pop('reaction_zones', [])
+        result['reactions'] = []
+        if candle_reactions and chart_timeframe in ('M1', 'M5') and zones:
+            result['reactions'] = self.reactions(feed,chart_timeframe,as_of,params,zones)
         return result
+
+    def reactions(self,feed,timeframe,as_of,params,zones):
+        if not zones:
+            return []
+        bars = self.source_bars(feed,timeframe,as_of,3000 + SmcMaster(params).required_warmup())
+        return overlap_reactions(bars,zones,params,timeframe,as_of)

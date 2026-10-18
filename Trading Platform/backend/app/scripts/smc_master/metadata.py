@@ -42,6 +42,19 @@ INPUTS=[InputSpec(**{**s, 'options':tuple(s['options']) if s.get('options') is n
         for s in ({**s,'default':TUNED_DEFAULTS.get(s['id'],s['default']),
                    'replaced_defaults':(s['default'],) if s['id'] in TUNED_DEFAULTS else None}
                   for s in json.loads(Path(__file__).with_name('inputs.json').read_text()))]
+# Display-only switch (not in the Pine source): hide every drawing except what overlap trading uses. It changes no
+# detector input, so all systems, alerts, D/S + order block overlaps and their locks keep working exactly as before.
+EASY_MODE=InputSpec('easy_mode','bool','Easy Mode',True,group='Easy Mode',
+    tooltip='On: only the SMA / envelope lines, internal structure (BOS / CHoCH), structure-colored candles, order blocks, '
+            'previous day / week / month highs and lows and the D/S + order block overlaps are drawn. Everything else '
+            'is hidden from the chart but keeps calculating. Off: every drawing follows its own Show setting again.',
+    help='One switch for a clean trading chart. On keeps only the SMA / envelope lines, internal structure (BOS / CHoCH), '
+         'structure-colored candles, order blocks, previous day / week / month highs and lows, and the D/S and order block '
+         'overlaps. Swing structure, HH/LH/HL/LL, strong/weak highs and lows, EQH/EQL, fair value gaps, premium/discount, '
+         'the individual demand/supply zones, pivot support/resistance, candle patterns, BULB, the pivot markers and the '
+         'direction table are hidden. Hidden systems still run: alerts, overlaps and their locks are unchanged.',
+    example='Trading overlapped fresh D/S and order blocks → On. Studying swing structure or FVGs → Off.')
+INPUTS.insert(0,EASY_MODE)
 SHAPES=[
     ('breakout','Pivot breakout','arrowup','belowbar','upCol'),
     ('breakdown','Pivot breakdown','arrowdown','abovebar','dnCol'),
@@ -57,7 +70,7 @@ SHAPES=[
 DEFAULTS={x.id:x.default for x in INPUTS}
 REPLACED={x.id:x.replaced_defaults for x in INPUTS}
 STRATEGY_ID='smc_master'
-META=ScriptMeta(id='smc_ict_scalping_master',name='SMC & ICT & Indicators + Scalping Master',short_name='SMC & ICT & Indicators + Scalping Master',category='Custom',
+META=ScriptMeta(id='smc_ict_scalping_master',display_inputs=('easy_mode',),name='SMC & ICT & Indicators + Scalping Master',short_name='SMC & ICT & Indicators + Scalping Master',category='Custom',
     description='Python port of the supplied Pine indicator; separate structure, OB, Demand/Supply, pivot S/R, FVG, dashboard, BULB and ATR systems. Indicator and strategy: trade signals come from SmcMaster.strategy().',
     inputs=INPUTS,
     plots=[PlotSpec('sma','Simple Moving Average','#5B8CFFFF',replaced_colors=('#2962FFFF',)),PlotSpec('upper','High Envelope','#FF5252FF'),PlotSpec('lower','Low Envelope','#4CAF50FF')],

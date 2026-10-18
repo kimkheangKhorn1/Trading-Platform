@@ -19,10 +19,10 @@ from typing import Protocol
 import numpy as np
 
 from ..market.timeframes import get_timeframe
-from .bars import Bars
+from .bars import Bars, concat_bars
 from .drawings import DrawingStore
 from .mtf import SecurityRequest, evaluate_security
-from .script import Context, Script, SecurityHandle
+from .script import Context, Intrabars, Script, SecurityHandle
 from .signals import SignalLog
 
 
@@ -50,6 +50,8 @@ class ScriptRunner:
         precision: int = 3,
         htf_provider: HtfProvider | None = None,
         htf_warmup_bars: int = 500,
+        ticker: str = "",
+        ltf_start: int | None = None,
     ):
         self.script = script_cls(params)
         self.meta = script_cls.meta
@@ -58,6 +60,9 @@ class ScriptRunner:
         self.precision = precision
         self.htf_provider = htf_provider
         self.htf_warmup_bars = htf_warmup_bars
+        self.ticker = ticker
+        # first displayed bar: intrabars are loaded from `lookback` bars before it (all bars when None)
+        self.ltf_start = ltf_start
 
         self.drawings = DrawingStore(self.meta.max_boxes, self.meta.max_lines, self.meta.max_labels,
                                      self.meta.group_limits)
@@ -71,6 +76,12 @@ class ScriptRunner:
         self.series_vars: list = []
         self.securities: list[SecurityRequest] = []
         self.security_values: list[np.ndarray | None] = []
+        # request.security_lower_tf: intrabar seconds per request, the 1-minute source candles and, per request,
+        # the intrabar candles plus for every chart bar the [start, stop) range of its intrabars
+        self.lower_tfs: list[int] = []
+        self.ltf_lookback: int | None = None
+        self.ltf_source: Bars | None = None
+        self.ltf_values: list[tuple[Bars, np.ndarray, np.ndarray] | None] = []
 
         cap = 1024
         self.buf_time = np.empty(cap, dtype=np.int64)
@@ -115,7 +126,82 @@ class ScriptRunner:
         self.security_values.append(None)
         return SecurityHandle(len(self.securities) - 1)
 
+    def register_lower_tf(self, seconds: int, lookback: int | None = None) -> int:
+        self.lower_tfs.append(int(seconds))
+        if lookback is not None:
+            self.ltf_lookback = max(self.ltf_lookback or 0, int(lookback))
+        self.ltf_values.append(None)
+        return len(self.lower_tfs) - 1
+
+    def _refresh_lower_tfs(self) -> None:
+        """1-minute candles of the same feed inside the chart bars, grouped into each request's intrabars.
+
+        Only candles that open inside a chart bar are used, so a bar never sees data from a later bar. Confirmed
+        source candles are kept between refreshes; only the newest ones are reloaded."""
+        if not self.lower_tfs or self.n == 0:
+            return
+        from ..market.timeframes import bar_close_times
+
+        chart_t = self.buf_time[: self.n]
+        closes = bar_close_times(chart_t, self.tf, self.alignment)
+        first = 0
+        if self.ltf_start is not None and self.ltf_lookback is not None:
+            first = max(0, int(np.searchsorted(chart_t, self.ltf_start, side="left")) - self.ltf_lookback)
+        start, end = int(chart_t[first]), int(closes[-1]) - 1
+        if self.tf.code == "M1" or self.htf_provider is None:
+            src = self.bars().slice(first) if self.tf.code == "M1" else Bars.empty()
+        else:
+            old = self.ltf_source
+            keep_upto = None
+            if old is not None and len(old) and int(old.time[0]) <= start:
+                done = np.flatnonzero(old.complete)
+                keep_upto = int(old.time[done[-1]]) if len(done) else None
+            if keep_upto is None:
+                src = self.htf_provider.load("M1", start, end, 0)
+            else:
+                kept = old.slice(0, int(np.searchsorted(old.time, keep_upto, side="right")))
+                new = self.htf_provider.load("M1", keep_upto + 1, end, 0)
+                new = new.slice(int(np.searchsorted(new.time, keep_upto, side="right")))
+                src = concat_bars(kept, new) if len(new) else kept
+            lo = int(np.searchsorted(src.time, start, side="left"))
+            hi = int(np.searchsorted(src.time, end, side="right"))
+            src = src.slice(lo, hi)
+        self.ltf_source = src
+        # chart bar of every source candle (-1 if it falls in no chart bar, e.g. a gap in the chart series)
+        j = np.searchsorted(chart_t, src.time, side="right") - 1
+        inside = (j >= 0) & (src.time < closes[np.maximum(j, 0)])
+        for k, secs in enumerate(self.lower_tfs):
+            jj = j[inside]
+            t = src.time[inside]
+            bucket = (t - chart_t[jj]) // secs if len(t) else t
+            key = jj.astype(np.int64) * 1_000_000 + bucket
+            if len(key):
+                heads = np.flatnonzero(np.r_[True, key[1:] != key[:-1]])
+                last = np.r_[heads[1:], len(key)] - 1
+                o, h, l, c, v, comp = (getattr(src, f)[inside] for f in ("open", "high", "low", "close", "volume",
+                                                                         "complete"))
+                bars = Bars(chart_t[jj[heads]] + bucket[heads] * secs, o[heads], np.maximum.reduceat(h, heads),
+                            np.minimum.reduceat(l, heads), c[last], np.add.reduceat(v, heads),
+                            np.logical_and.reduceat(comp, heads))
+                owner = jj[heads]
+            else:
+                bars, owner = Bars.empty(), np.empty(0, dtype=np.int64)
+            idx = np.arange(self.n)
+            lo_i = np.searchsorted(owner, idx, side="left")
+            hi_i = np.searchsorted(owner, idx, side="right")
+            self.ltf_values[k] = (bars, lo_i, hi_i)
+
+    def intrabars(self, handle: int, i: int) -> Intrabars:
+        entry = self.ltf_values[handle]
+        if entry is None:
+            return Intrabars.empty()
+        bars, lo, hi = entry
+        a, b = int(lo[i]), int(hi[i])
+        prev = float(bars.close[a - 1]) if a > 0 else float("nan")
+        return Intrabars(bars.slice(a, b), prev)
+
     def _refresh_securities(self) -> None:
+        self._refresh_lower_tfs()
         if not self.securities or self.n == 0:
             return
         chart = self.bars()
@@ -293,3 +379,21 @@ class ScriptRunner:
             "tables": extras.get("tables", []),
             "warnings": extras.get("warnings", []),
         }
+
+
+def apply_display_filter(out: dict, hide: dict | None) -> dict:
+    """Remove what :meth:`Script.display_filter` hides from a runner output (display only, nothing is recomputed)."""
+    if not hide:
+        return out
+    groups, shapes, plots = set(hide.get("groups", ())), set(hide.get("shapes", ())), set(hide.get("plots", ()))
+    out = dict(out)
+    out["drawings"] = [d for d in out["drawings"] if d.get("group") not in groups]
+    out["shapes"] = {k: ([] if k in shapes else v) for k, v in out["shapes"].items()}
+    out["plots"] = {k: ([None] * len(v) if k in plots else v) for k, v in out["plots"].items()}
+    out["plot_colors"] = {k: v for k, v in out["plot_colors"].items() if k not in plots}
+    if hide.get("tables"):
+        out["tables"] = []
+    if hide.get("candles"):
+        out["bar_colors"], out["candle_colors"] = [], []
+    return out
+

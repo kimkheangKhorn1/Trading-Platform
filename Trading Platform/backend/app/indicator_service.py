@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 from .engine.bars import concat_bars
 from .engine.registry import get_script
-from .engine.runner import DataRevisionError, ScriptRunner
+from .engine.runner import DataRevisionError, ScriptRunner, apply_display_filter
 from .market.providers import MarketSync, StoreHtfProvider
 from .market.repository import MarketStore
 from .market.timeframes import get_timeframe
@@ -51,12 +51,17 @@ class IndicatorService:
         if len(bars) == 0:
             raise IndicatorRequestError("no candles in the requested range")
         mode = "live" if end_time is None else "replay"
-        key = (feed.id, tf.code, script_id, json.dumps(script.p, sort_keys=True), int(bars.time[0]), mode)
+        # start_time is part of the key: when the stored history is shorter than the warm-up, the first bar is the same
+        # for every start, but a runner only has intrabars from its own start on (ltf_start)
+        # display-only inputs (e.g. Easy Mode) are left out: flipping them reuses the same calculation
+        calc = {k: v for k, v in script.p.items() if k not in script_cls.meta.display_inputs}
+        key = (feed.id, tf.code, script_id, json.dumps(calc, sort_keys=True), int(bars.time[0]), int(start_time), mode)
         provider = StoreHtfProvider(self.store, feed, sync=self.sync, sync_interval=20.0)
 
         def fresh() -> ScriptRunner:
             return ScriptRunner(script_cls, script.p, timeframe=tf.code, alignment=feed.alignment,
-                                precision=feed.precision, htf_provider=provider)
+                                precision=feed.precision, htf_provider=provider,
+                                ticker=feed.symbol, ltf_start=start_time)
 
         with self._guard:
             entry = self._cache.get(key)
@@ -78,7 +83,8 @@ class IndicatorService:
                 runner.process(bars)
             with self._guard:
                 self._cache[key] = (runner, lock)
-            out = runner.output(start_time=start_time, end_time=end_time)
+            out = apply_display_filter(runner.output(start_time=start_time, end_time=end_time),
+                                       script.display_filter())  # this request's display settings
         out["warmup_bars"] = len(pre)
         out["script_id"] = script_id
         out["inputs"] = script.p

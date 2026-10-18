@@ -1,0 +1,50 @@
+{
+  "scope": "Direct five-source overlap service; existing archive; no lock_id; fixed D/S render settings, not a full exported user snapshot",
+  "timeframes": [
+    "M5",
+    "M15",
+    "M30",
+    "H1",
+    "H4"
+  ],
+  "exact_serialized_output_equality": true,
+  "runs": [
+    {
+      "as_of": 1791865800,
+      "before_ms": 2488.59,
+      "after_ms": 824.02
+    },
+    {
+      "as_of": 1791865860,
+      "before_ms": 188.89,
+      "after_ms": 94.88
+    },
+    {
+      "as_of": 1791865920,
+      "before_ms": 208.42,
+      "after_ms": 61.31
+    },
+    {
+      "as_of": 1791864000,
+      "before_ms": 1871.51,
+      "after_ms": 703.03
+    }
+  ],
+  "running_api_with_saved_user_settings_ms": [
+    52,
+    108,
+    78
+  ],
+  "running_api_status": [
+    200,
+    200,
+    200
+  ],
+  "running_api_band_counts": [
+    3,
+    4,
+    4
+  ],
+  "running_api_warnings": [],
+  "limits": "Single local samples; API completion timings, not guaranteed paint latency. Initial scan and unvisited rewind remain slower."
+}

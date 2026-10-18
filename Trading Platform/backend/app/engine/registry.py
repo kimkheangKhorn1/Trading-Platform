@@ -17,9 +17,18 @@ def register(cls: type[Script]) -> type[Script]:
 def _load_builtin() -> None:
     if _SCRIPTS:
         return
+    from ..scripts.footprint_iq import FootprintIQ
+    from ..scripts.liquidity_reaper import LiquidityReaper
+    from ..scripts.liquidity_reaper_pro import LiquidityReaperPro
+    from ..scripts.liquidity_swings import LiquiditySwings
     from ..scripts.smc_master import SmcMaster
+    from ..scripts.three_ema import ThreeEma
+    from ..scripts.triple_confluence import TripleConfluence
+    from ..scripts.volume_supply_demand import VolumeSupplyDemand
 
-    register(SmcMaster)
+    for cls in (SmcMaster, LiquidityReaper, FootprintIQ, TripleConfluence, ThreeEma, VolumeSupplyDemand,
+                LiquiditySwings, LiquidityReaperPro):
+        register(cls)
 
 
 def get_script(script_id: str) -> type[Script]:

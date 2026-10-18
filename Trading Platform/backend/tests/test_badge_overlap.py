@@ -92,10 +92,11 @@ def test_source_drawings_are_exact_original_indicator_drawings(market):
     direct=ScriptRunner(SmcMaster,p,timeframe='M5',alignment='utc',precision=feed.precision,htf_provider=StoreHtfProvider(store,feed))
     direct.process(bars)
     baseline=direct.output()
-    assert drawings==baseline['drawings'] and last==int(bars.time[-1])
+    assert rendered_badges(drawings,'M5',clock)==rendered_badges(baseline['drawings'],'M5',clock)
+    assert all(d['group']=='demand_supply' for d in drawings) and last==int(bars.time[-1])
     assert rendered_badges(drawings,'M5',clock)
     assert direct.output()==baseline and baseline['signals']==[]
-    assert len(SmcMaster.meta.inputs)==210
+    assert len(SmcMaster.meta.inputs)==211  # the 210 Pine inputs + the display-only Easy Mode switch
 
 
 def test_forward_and_backward_snapshot_matches_fresh_source(market):
@@ -158,3 +159,36 @@ def test_locked_service_keeps_original_band_after_source_loss_distance_change_an
     # Even if source eligibility later supplies the original badge group again, no resurrection.
     source['M1']=[badge_label(bottom=100,top=110,origin=clock-3600)]
     assert svc.run(**base,as_of=t+120)['overlaps']==[]
+
+
+@pytest.mark.parametrize('tf',['M1','M5','M15','M30','H1','H4'])
+@pytest.mark.parametrize('options',[
+    {'ds_mode':'ATR','ds_min_atr':.5,'ds_line_atr':100.,'aoi_max_dist':0.},
+    {'ds_mode':'Percent','ds_min_pc_change':.01,'ds_max_pc_zone':.1,'ds_line_pc_display':5.,'aoi_max_dist':.5},
+])
+def test_fast_source_matches_full_indicator_across_timeframes_and_rollback(tf,options):
+    import copy
+    from app.scripts.smc_master.badge_source import DemandSupplyBadgeSource
+    p={**options,'show_pdhl':False,'show_pwhl':False,'show_pmhl':False,'ds_hours_offset':7.,'ds_line_max':5}
+    bars=random_walk_bars(700,start='2026-10-05 00:00',step=TIMEFRAMES[tf].seconds,seed=52,skip_weekends=False)
+    full=ScriptRunner(SmcMaster,p,timeframe=tf)
+    fast=ScriptRunner(DemandSupplyBadgeSource,p,timeframe=tf)
+    observed=[]
+    for n in (600,610,630,700):
+        partial=copy.deepcopy(bars.slice(0,n))
+        partial.complete[-1]=False
+        partial.high[-1]=max(partial.open[-1],partial.close[-1]);partial.low[-1]=min(partial.open[-1],partial.close[-1])
+        for source in (full,fast):source.process(partial)
+        clock=int(partial.time[-1])+60
+        f,_=full._last_bar_view();d,_=fast._last_bar_view()
+        assert rendered_badges(d.to_json(),tf,clock)==rendered_badges(f.to_json(),tf,clock)
+        closed=bars.slice(0,n)
+        for source in (full,fast):source.process(closed)
+        clock=int(closed.time[-1])+TIMEFRAMES[tf].seconds
+        f,_=full._last_bar_view();d,_=fast._last_bar_view()
+        expected=rendered_badges(f.to_json(),tf,clock)
+        assert rendered_badges(d.to_json(),tf,clock)==expected
+        observed.extend(expected)
+    assert observed
+    assert not fast.securities
+    assert not any(fast.shapes.values()) and not fast.signals.intents

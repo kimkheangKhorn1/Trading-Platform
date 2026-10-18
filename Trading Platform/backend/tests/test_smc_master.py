@@ -49,7 +49,7 @@ def test_registered_with_metadata():
     assert get_script("smc_ict_scalping_master") is SmcMaster
     assert SmcMaster in list_scripts()
     meta = SmcMaster.meta.to_dict()
-    assert len(meta["inputs"]) == 210 and {"show_pwhl", "show_pmhl", "fvg_tf"} <= {i["id"] for i in meta["inputs"]}
+    assert len(meta["inputs"]) == 211 and meta["inputs"][0]["id"] == "easy_mode" and {"show_pwhl", "show_pmhl", "fvg_tf"} <= {i["id"] for i in meta["inputs"]}
 
 
 def test_full_run_outputs(bars):
@@ -266,3 +266,24 @@ def test_piercing_line_without_a_price_gap():
     of its body (but below its open) is a piercing line, with no gap below the previous low."""
     titles, labels = _last_bar_patterns([(102, 102.2, 99.8, 100), (100, 101.7, 99.9, 101.5)])
     assert "Piercing / Dark Cloud Cover" in titles and [d["text"] for d in labels] == ["P"]
+
+
+def test_easy_mode_hides_drawings_but_not_logic(bars):
+    """The Easy Mode switch only filters what the chart receives: calculation, alerts and D/S state are unchanged."""
+    from app.engine.runner import apply_display_filter
+
+    on, off = _run(bars, params={"easy_mode": True}), _run(bars, params={"easy_mode": False})
+    full_on, full_off = on.output(), off.output()
+    strip = lambda o: sorted((d["kind"], d["group"], str(d.get("x", d.get("left", d.get("x1"))))) for d in o["drawings"])
+    assert strip(full_on) == strip(full_off)  # same systems ran, same objects exist
+    assert on.script.events == off.script.events  # same alert conditions
+    assert [len(z) for z in on.script.ds] == [len(z) for z in off.script.ds]
+    shown = apply_display_filter(full_on, on.script.display_filter())
+    groups = {d["group"] for d in shown["drawings"]}
+    assert groups <= {"internal_structure", "internal_ob", "swing_ob", "mtf"}
+    assert "internal_structure" in groups and not shown["tables"] and not any(shown["shapes"].values())
+    assert shown["plots"] == full_on["plots"] and shown["candle_colors"] == full_on["candle_colors"]
+    assert {d["group"] for d in full_on["drawings"]} - groups  # something was actually hidden
+    assert off.script.display_filter() is None
+
+

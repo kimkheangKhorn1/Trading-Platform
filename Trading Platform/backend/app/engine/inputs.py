@@ -178,6 +178,13 @@ class ScriptMeta:
     drawing_groups: list[DrawingGroup] = field(default_factory=list)
     # drawing groups with their own object quota, e.g. {"trades": {"box": 5000, "line": 5000, "label": 5000}}
     group_limits: dict[str, dict[str, int]] = field(default_factory=dict)
+    # Pine ``indicator(behind_chart=...)``: False draws the script's boxes in front of the candles
+    behind_chart: bool = True
+    # False keeps labels and markers exactly where the script puts them, overlapping like on TradingView; True lets
+    # the chart move them apart (with a connector to their anchor) when they collide
+    label_layout: bool = True
+    # inputs that only change what is drawn (Script.display_filter): calculations, caches and overlap scans ignore them
+    display_inputs: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -192,4 +199,7 @@ class ScriptMeta:
             "shapes": [s.to_dict() for s in self.shapes],
             "strategies": [s.to_dict() for s in self.strategies],
             "drawing_groups": [g.to_dict() for g in self.drawing_groups],
+            "behind_chart": self.behind_chart,
+            "label_layout": self.label_layout,
+            "display_inputs": list(self.display_inputs),
         }

@@ -13,13 +13,13 @@ from ...engine.pine import new_color
 from ...market.timeframes import get_timeframe, bucket_start
 from .metadata import META, SHAPES, STRATEGY_ID
 from .technical import EMA, Mean, RSI, TSI, DMI, SAR, pivot, div, NAN
+from .patterns import pattern_formulas, PATTERN_PRIORITY, BEARISH_CODES
 
 PINE_TF={'1':'M1','5':'M5','15':'M15','30':'M30','60':'H1','240':'H4','D':'D'}
 TRANSPARENT='#FFFFFF00'
 # Label precedence when one candle matches several patterns: two-candle patterns, then the most specific single ones.
 # White text needs a dark enough fill: the former bright green (#00E676) gave 1.7:1; these give 3.6-4.9:1.
 DASH_BUY,DASH_SELL,DASH_WAIT='#089981FF','#F23645FF','#2962FFFF'
-PATTERN_PRIORITY=['BE','P','TB','HW','H','DD','LLS','D','ST']
 
 @dataclass
 class Zone:
@@ -353,30 +353,12 @@ class SmcMaster(Script):
 
     def patterns(self,ctx,atr,bull1,bear1,bull2,bear2):
         # Bjorgum/BjCandlePatterns/2 formulas, including the user's gravestone correction.
-        p=self.p; o,h,l,c=ctx.open,ctx.high,ctx.low,ctx.close; body=abs(c-o); bh=max(o,c); bl=min(o,c); size=h-l; upper=h-bh; lower=bl-l
+        p=self.p; h,l=ctx.high,ctx.low; body=abs(ctx.close-ctx.open); size=h-l
         avg=self.body_mean.update(body); self.body_avgs.append(avg)
         if p['repaint'] and not ctx.is_confirmed: return
         if p['atrMax']!=0 and not size<=p['atrMax']*atr: return
-        prev=self.rows[-2] if len(self.rows)>1 else (0,NAN,NAN,NAN,NAN,NAN); _,po,ph,pl,pc,_=prev
-        pb=abs(pc-po); pbh=max(po,pc); pbl=min(po,pc); tall=pb>(self.body_avgs[-2] if len(self.body_avgs)>1 else NAN); short=body<avg
-        doji=div(body,size)*100<=5; sized=size>=p['hammerSize']*atr; shadows=upper>.05*body and lower>.05*body
-        rejection_b=p['rejectWickMax']==0 or div(upper,body)<p['rejectWickMax']/100; rejection_s=p['rejectWickMax']==0 or div(lower,body)<p['rejectWickMax']/100
-        formulas=[
-            ('D','Doji','d_',div(body,size)*100<=p['dojiSize'] and upper<=lower*p['dojiWickSize'] and lower<=upper*p['dojiWickSize'],div(body,size)*100<=p['dojiSize'] and upper<=lower*p['dojiWickSize'] and lower<=upper*p['dojiWickSize'],False,1,True),
-            # Engulfing: an opposite-color candle whose body is larger than the previous body and than the average body
-            # (TradingView's long-body rule); a small candle covering a doji or another small candle is not engulfing.
-            ('BE','Engulfing','be_',pc<po and c>o and c>=po and o<=pc and body>pb and body>avg and rejection_b and (not p['ecWick'] or c>=ph),pc>po and c<o and c<=po and o>=pc and body>pb and body>avg and rejection_s and (not p['ecWick'] or c<=pl),True,2,False),
-            ('H','Hammer / Shooting Star','hs_',body>0 and bl>=h-size*p['hammerFib']/100 and upper<=p['hsShadowPerc']/100*body and sized and (not p['colorMatch'] or c>o),body>0 and bh<=l+size*p['hammerFib']/100 and lower<=p['hsShadowPerc']/100*body and sized and (not p['colorMatch'] or c<o),False,1,False),
-            ('DD','Dragonfly / Gravestone Doji','dg_',doji and upper<=body,doji and lower<=body,False,1,False),
-            ('TB','Tweezer Bottom / Top','tw_',(not doji or shadows) and abs(l-pl)<=avg*.05 and pc<po and c>o and tall and (not p['closeHalf'] or c>(ph+pl)/2),(not doji or shadows) and abs(h-ph)<=avg*.05 and pc>po and c<o and tall and (not p['closeHalf'] or c<(ph+pl)/2),True,2,False),
-            ('ST','Spinning Top','st_',lower>=size*.34 and upper>=size*.34 and not doji,lower>=size*.34 and upper>=size*.34 and not doji,False,1,True),
-            # Opening beyond the previous low/high needs a price gap, which a 24-hour market like XAUUSD almost never prints
-            # (2 piercing patterns in 10 weeks of 5m): the open only has to be at or beyond the previous close.
-            ('P','Piercing / Dark Cloud Cover','pc_',pc<po and tall and c>o and o<=pc and c>(pb/2+pbl) and c<po,pc>po and tall and c<o and o>=pc and c<(pb/2+pbl) and c>po,False,2,False),
-            ('HW','Harami','bh_',tall and pc<po and c>o and short and h<=pbh and l>=pbl,tall and pc>po and c<o and short and h<=pbh and l>=pbl,False,2,False),
-            ('LLS','Long Lower / Upper Shadow','ls_',lower>size*p['luRatio']/100 and sized,upper>size*p['luRatio']/100 and sized,False,1,False),
-        ]
-        bearish_codes={'H':'SS','DD':'GD','TB':'TT','P':'DCC','HW':'HB','LLS':'LUS'}
+        prev=self.rows[-2] if len(self.rows)>1 else (0,NAN,NAN,NAN,NAN,NAN)
+        formulas=pattern_formulas(p,self.rows[-1],prev,avg,self.body_avgs[-2] if len(self.body_avgs)>1 else NAN,atr)
         matches=[]
         for code,title,toggle,cb,cs,two,bars,neutral in formulas:
             if not p[toggle]: continue
@@ -388,7 +370,7 @@ class SmcMaster(Script):
         # labels on one candle. The most specific pattern is shown (two-candle patterns first); every match still alerts.
         code,title,bull,neutral,bars=min(matches,key=lambda m:PATTERN_PRIORITY.index(m[0]))
         also=[m[1] for m in matches if m[1]!=title]
-        suffix='Neut' if neutral and code=='D' else 'Bull' if bull else 'Bear'; text=code if bull else bearish_codes.get(code,code)
+        suffix='Neut' if neutral and code=='D' else 'Bull' if bull else 'Bear'; text=code if bull else BEARISH_CODES.get(code,code)
         tip=title+' near pivot '+('support' if bull else 'resistance')+(f" (also {', '.join(also)})" if also else '')
         if p['labels']:
             self.label(ctx,ctx.time,l if bull else h,text,p['text'+suffix+'Col'],'patterns',bull,bg=p['lab'+suffix+'Col'],tooltip=tip,yloc='belowbar' if bull else 'abovebar')
@@ -473,20 +455,28 @@ class SmcMaster(Script):
         if self.fvg_htf and p['show_fvg'] and not math.isfinite(ctx.security(self.fvg_handles['h2'])): self.warnings.append(f'FVG {self.fvg_tf.label}: insufficient completed higher-timeframe candles.')
         self.render(ctx,self.atr14.value)
 
+    def displayed_order_blocks(self):
+        """(internal, zone) for the order blocks the chart draws: within the distance filter, nearest first."""
+        p=self.p; rows=self.rows; close=rows[-1][4]; hi=max(r[2] for r in rows[-120:]); lo=min(r[3] for r in rows[-120:]); pad=(hi-lo)*p['aoi_max_dist']
+        def visible(top,bottom): return p['aoi_max_dist']==0 or top>=lo-pad and bottom<=hi+pad
+        out=[]
+        for a,internal in enumerate((True,False)):
+            candidates=[z for z in self.obs[a] if visible(z.top,z.bottom)]
+            candidates.sort(key=lambda z:max(z.bottom-close,close-z.top,0))
+            out+=[(internal,z) for z in candidates[:p['iob_showlast' if internal else 'ob_showlast']]]
+        return out
+
     def render(self,ctx,atr14):
         p=self.p; rows=self.rows; hi=max(r[2] for r in rows[-120:]); lo=min(r[3] for r in rows[-120:]); pad=(hi-lo)*p['aoi_max_dist']
         def visible(top,bottom): return p['aoi_max_dist']==0 or top>=lo-pad and bottom<=hi+pad
         line,label,box=ctx.line,ctx.label,ctx.box
         future=lambda bars:ctx.time_at(ctx.bar_index+bars)
-        for a,internal in enumerate((True,False)):
+        for internal,z in self.displayed_order_blocks():
             group='internal_ob' if internal else 'swing_ob'
-            candidates=[z for z in self.obs[a] if visible(z.top,z.bottom)]
-            candidates.sort(key=lambda z:max(z.bottom-ctx.close,ctx.close-z.top,0))
-            for z in candidates[:p['iob_showlast' if internal else 'ob_showlast']]:
-                bull=z.side==1
-                if p['style']=='Monochrome': css=new_color('#B2B5BEFF' if bull else '#5D606BFF',80); border=('#B2B5BEFF' if bull else '#5D606BFF') if not internal else css
-                else: css=p[('i' if internal else '')+('bull_ob_css' if bull else 'bear_ob_css')]; border=css
-                box(left=z.origin,right=z.origin,top=z.top,bottom=z.bottom,border_color=border,bg_color=css,extend='right',group=group,tooltip=('Internal ' if internal else 'Swing ')+'SMC Order Block')
+            bull=z.side==1
+            if p['style']=='Monochrome': css=new_color('#B2B5BEFF' if bull else '#5D606BFF',80); border=('#B2B5BEFF' if bull else '#5D606BFF') if not internal else css
+            else: css=p[('i' if internal else '')+('bull_ob_css' if bull else 'bear_ob_css')]; border=css
+            box(left=z.origin,right=z.origin,top=z.top,bottom=z.bottom,border_color=border,bg_color=css,extend='right',group=group,tooltip=('Internal ' if internal else 'Swing ')+'SMC Order Block')
         if p['show_hl_swings']:
             for high,y,x in [(True,self.trail_high,self.trail_hx),(False,self.trail_low,self.trail_lx)]:
                 col=self.color(not high); strong=self.struct[1]['trend']<0 if high else self.struct[1]['trend']>0; text=('Strong ' if strong else 'Weak ')+('High' if high else 'Low')
@@ -519,25 +509,7 @@ class SmcMaster(Script):
                 text='P'+tf+('H' if ishigh else 'L'); tip=f'Previous {tf} '+('High' if ishigh else 'Low')+f': {y:.{ctx.precision}f}'
                 line(x1=anchor,y1=y,x2=ext,y2=y,color=color,style=style,group='mtf',tooltip=tip)
                 label(x=ext,y=y,text=text,color=color,text_color='#FFFFFFFF',style='label_left',size='small',group='mtf',tooltip=tip)
-        for a,bull in enumerate((True,False)):
-            col=p['demand_bord_col' if bull else 'supply_bord_col']; bg=p['demand_bg_col' if bull else 'supply_bg_col']; show=p['showDemandZone' if bull else 'showSupplyZone']
-            for z in self.ds[a]:
-                if not show: continue
-                title='Demand Zone' if bull else 'Supply Zone'; state=['Fresh','Tested','Invalidated'][z.state]
-                date=datetime.fromtimestamp(z.origin,timezone.utc)+timedelta(hours=p['ds_hours_offset'])
-                tip=f'{title} · {state}\nRange: {z.bottom:.{ctx.precision}f} – {z.top:.{ctx.precision}f}\nOrigin UTC{p["ds_hours_offset"]:+g}: {date:%Y/%m/%d %H:%M}'
-                if not z.box: continue
-                z.box.tooltip=tip; z.box.bg_color=bg if z.state==0 else TRANSPARENT; z.box.border_style=['solid','dotted','dashed'][z.state]; z.box.border_color='#787B8699' if z.state==2 else col
-            active=sorted([z for z in self.ds[a] if z.state==0],key=lambda z:z.top if bull else z.bottom,reverse=bull)
-            limit=100*div(atr14,abs(ctx.close))*p['ds_line_atr'] if p['ds_mode']=='ATR' else p['ds_line_pc_display']; stagger=100*div(atr14,abs(ctx.close)) if p['ds_mode']=='ATR' else .7
-            previous=None; extra=0; drawn=0
-            if show:
-                for z in active:
-                    y=z.top if bull else z.bottom
-                    if drawn>=p['ds_line_max'] or abs(div(y-ctx.close,ctx.close))*100>limit or not visible(y,y): break
-                    extra=0 if extra>0 else 25 if previous is not None and abs(div(y-previous,previous))*100<stagger else 0; previous=y; drawn+=1
-                    line(x1=z.origin+2*ctx.timeframe.seconds,y1=y,x2=future(1),y2=y,color=col,group='demand_supply',tooltip=z.box.tooltip if z.box else '')
-                    label(x=future(4+extra),y=y,text=f'{y:.{ctx.precision}f}',color=col,text_color='#111827FF',style='label_left',group='demand_supply',tooltip=z.box.tooltip if z.box else '')
+        self.render_demand_supply(ctx,atr14)
         # Align Zones snaps an overlapping new zone onto an older one's exact edges, so two zones can share a level.
         # Pine stacks their labels on one spot; the chart spreads overlapping labels apart, so draw one per price.
         labelled=set()
@@ -559,6 +531,42 @@ class SmcMaster(Script):
             obj.border_color=p['bullBorder' if role else 'bearBorder'] if visible(obj.top,obj.bottom) else TRANSPARENT
             obj.bg_color=p['bullBgCol' if role else 'bearBgCol'] if visible(obj.top,obj.bottom) else TRANSPARENT
 
+    def render_demand_supply(self,ctx,atr14):
+        """Shared original D/S badge renderer, also used by the overlap-only calculation."""
+        p=self.p; rows=self.rows; hi=max(r[2] for r in rows[-120:]); lo=min(r[3] for r in rows[-120:]); pad=(hi-lo)*p['aoi_max_dist']
+        def visible(top,bottom): return p['aoi_max_dist']==0 or top>=lo-pad and bottom<=hi+pad
+        line,label=ctx.line,ctx.label
+        future=lambda bars:ctx.time_at(ctx.bar_index+bars)
+        for a,bull in enumerate((True,False)):
+            col=p['demand_bord_col' if bull else 'supply_bord_col']; bg=p['demand_bg_col' if bull else 'supply_bg_col']; show=p['showDemandZone' if bull else 'showSupplyZone']
+            for z in self.ds[a]:
+                if not show: continue
+                title='Demand Zone' if bull else 'Supply Zone'; state=['Fresh','Tested','Invalidated'][z.state]
+                date=datetime.fromtimestamp(z.origin,timezone.utc)+timedelta(hours=p['ds_hours_offset'])
+                tip=f'{title} · {state}\nRange: {z.bottom:.{ctx.precision}f} – {z.top:.{ctx.precision}f}\nOrigin UTC{p["ds_hours_offset"]:+g}: {date:%Y/%m/%d %H:%M}'
+                if not z.box: continue
+                z.box.tooltip=tip; z.box.bg_color=bg if z.state==0 else TRANSPARENT; z.box.border_style=['solid','dotted','dashed'][z.state]; z.box.border_color='#787B8699' if z.state==2 else col
+            active=sorted([z for z in self.ds[a] if z.state==0],key=lambda z:z.top if bull else z.bottom,reverse=bull)
+            limit=100*div(atr14,abs(ctx.close))*p['ds_line_atr'] if p['ds_mode']=='ATR' else p['ds_line_pc_display']; stagger=100*div(atr14,abs(ctx.close)) if p['ds_mode']=='ATR' else .7
+            previous=None; extra=0; drawn=0
+            if show:
+                for z in active:
+                    y=z.top if bull else z.bottom
+                    if drawn>=p['ds_line_max'] or abs(div(y-ctx.close,ctx.close))*100>limit or not visible(y,y): break
+                    extra=0 if extra>0 else 25 if previous is not None and abs(div(y-previous,previous))*100<stagger else 0; previous=y; drawn+=1
+                    line(x1=z.origin+2*ctx.timeframe.seconds,y1=y,x2=future(1),y2=y,color=col,group='demand_supply',tooltip=z.box.tooltip if z.box else '')
+                    label(x=future(4+extra),y=y,text=f'{y:.{ctx.precision}f}',color=col,text_color='#111827FF',style='label_left',group='demand_supply',tooltip=z.box.tooltip if z.box else '')
+
+    # Easy Mode keeps internal structure, order blocks, previous D/W/M levels, the SMA / envelope plots and the
+    # structure-colored candles; the D/S + order block overlaps are separate chart layers and are always kept.
+    EASY_MODE_HIDDEN=('swing_structure','swing_points','strong_weak','liquidity','fvg','premium_discount',
+                       'demand_supply','pivot_sr','patterns','bulb')
+
+    def display_filter(self):
+        if not self.p.get('easy_mode'):
+            return None
+        return dict(groups=self.EASY_MODE_HIDDEN,shapes=[s[0] for s in SHAPES],tables=True)
+
     def extra_output(self):
         tables=[]
         for t in self.tables:
@@ -569,7 +577,8 @@ class SmcMaster(Script):
             tables.append(dict(id=t['id'],position=t['position'],rows=rows))
         return dict(tables=tables,warnings=list(self.warnings))
 
-    def on_bar(self,ctx:Context):
+    def structure_step(self,ctx):
+        """Candle history, ATRs, market structure and order blocks (creation and close-through removal)."""
         p=self.p; self.rows.append((ctx.time,ctx.open,ctx.high,ctx.low,ctx.close,ctx.volume))
         a200=self.atr200.update(ctx.high,ctx.low,ctx.close); a14=self.atr14.update(ctx.high,ctx.low,ctx.close); za=self.zone_atr.update(ctx.high,ctx.low,ctx.close)
         self.range_sum+=ctx.high-ctx.low; self.thresholds.append(a200 if p['ob_filter']=='Atr' else self.range_sum/(ctx.bar_index+1)); self.disp_atrs.append(a14); self.zone_atrs.append(za)
@@ -579,6 +588,10 @@ class SmcMaster(Script):
                 for z in list(pool):
                     if ctx.close<z.bottom if z.side==1 else ctx.close>z.top:
                         pool.remove(z); self.emit(ctx,('Bullish' if z.side==1 else 'Bearish')+' '+('Internal ' if z.kind=='internal_ob' else '')+'OB Breakout',z.kind)
+        return a200,a14,za
+
+    def on_bar(self,ctx:Context):
+        p=self.p; a200,a14,za=self.structure_step(ctx)
         self.equal_levels(ctx,a200); self.gaps(ctx); self.demand_supply(ctx,a14); self.pivot_system(ctx,za); self.dashboard(ctx); self.bulb(ctx)
         m=self.ma.update(ctx.close); a=self.env_atr.update(ctx.high,ctx.low,ctx.close); width=m*div(a,ctx.close)*p['atrm']
         ctx.plot('sma',m); ctx.plot('upper',m+width); ctx.plot('lower',m-width)

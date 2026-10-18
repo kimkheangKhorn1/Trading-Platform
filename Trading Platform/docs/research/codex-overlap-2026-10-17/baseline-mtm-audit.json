@@ -1,0 +1,11 @@
+{
+  "scope": "Minute-close model equity with one original R per trade; opening-spread proxy; no commission/swap; not compounded currency equity or intraminute maximum",
+  "max_minute_close_drawdown_R": 34.98597481378828,
+  "drawdown_trough_utc": "2024-03-22T17:27:00+00:00",
+  "realized_R_including_open_partials": 71.4817964968448,
+  "final_equity_R_including_open": 73.66325818719177,
+  "unrealized_R_at_cutoff": 2.1814616903469783,
+  "issues": [],
+  "file": "../docs/research/claude-overlap-2026-10-17/runs/baseline.json",
+  "sha256": "90e61362fda53c9716cdaf546c0677cf58e6be347c89f67905074973de449a20"
+}

@@ -1,0 +1,5 @@
+{
+ "R3_front0.50_be_cost2x": {"entry_offset_atr": 0.50, "breakeven": true, "_cost": 2.0},
+ "R3_front0.50_q0.3f0.2_cost2x": {"entry_offset_atr": 0.50, "scalp_r": 0.3, "scalp_frac": 0.2, "_cost": 2.0},
+ "C9_front0.10_q0.3f0.3_be_cost2x": {"entry_offset_atr": 0.10, "scalp_r": 0.3, "scalp_frac": 0.3, "breakeven": true, "_cost": 2.0}
+}

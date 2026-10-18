@@ -1,0 +1,12 @@
+{
+  "scope": "Controlled comparison; unchanged H1 decision logic, fixed .2 bid spread, zero slippage/commission/swap, history extended to 2015",
+  "cutoff": 1791936000,
+  "engine_sha256_before": "832a4c7f815f8bbf76ad69b314780d403e6eb144b4fbfca263a62778bcaf3fb6",
+  "engine_sha256_after": "832a4c7f815f8bbf76ad69b314780d403e6eb144b4fbfca263a62778bcaf3fb6",
+  "H1_orders": 2581,
+  "M1_orders": 2581,
+  "shared_orders": 2581,
+  "shared_orders_with_execution_difference": 8,
+  "H1_closed_trades": 459,
+  "M1_closed_trades": 459
+}

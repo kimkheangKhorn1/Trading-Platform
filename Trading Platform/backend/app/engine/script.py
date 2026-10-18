@@ -78,11 +78,34 @@ class Script:
         Runs at output time on a throwaway copy of the state, so nothing done here carries into later
         bars: a live update or replay step yields the same chart as a fresh run over the same bars."""
 
+    def display_filter(self) -> dict | None:
+        """Display-only hiding for the chart: ``{"groups": drawing groups, "shapes": plotshape ids, "plots": plot ids,
+        "tables": bool, "candles": bool}``. Applied to what is sent to the chart only; the script, its drawings,
+        signals and anything else that reads its state are unaffected. None shows everything."""
+        return None
+
     def extra_output(self) -> dict:
         """State shown next to the chart after the last bar: ``tables`` (Pine ``table`` objects as
         ``{"id", "position", "rows": [[{"text", "bg_color", "text_color", "tooltip"}]]}``) and
         ``warnings`` (data problems the user should know about)."""
         return {}
+
+
+class Intrabars:
+    """``request.security_lower_tf`` result for one chart bar: its intrabar candles, oldest first, and the close
+    of the intrabar before the first one (``close[1]`` evaluated on the lower timeframe; na if none)."""
+
+    def __init__(self, bars: "Bars", prev_close: float):
+        self.bars = bars
+        self.prev_close = prev_close
+
+    @staticmethod
+    def empty() -> "Intrabars":
+        from .bars import Bars
+        return Intrabars(Bars.empty(), nan)
+
+    def __len__(self) -> int:
+        return len(self.bars)
 
 
 class SecurityHandle:
@@ -139,6 +162,11 @@ class Context:
     def alignment(self) -> str:
         """Session alignment of the feed's candles ("ny17" or "utc")."""
         return self._r.alignment
+
+    @property
+    def ticker(self) -> str:
+        """``syminfo.ticker`` (the feed's symbol, empty when the runner was not given one)."""
+        return self._r.ticker
 
     @property
     def precision(self) -> int:
@@ -202,6 +230,24 @@ class Context:
             return bars
         return Bars(bars.time[keep], bars.open[keep], bars.high[keep], bars.low[keep], bars.close[keep],
                     bars.volume[keep], bars.complete[keep])
+
+    def request_lower_tf(self, seconds: int, lookback: int | None = None) -> int:
+        """Register a ``request.security_lower_tf`` call (``setup`` only). Intrabars are built from the feed's
+        1-minute candles, so ``seconds`` must be a multiple of 60 and divide the chart timeframe. ``lookback``: chart
+        bars before the first displayed bar that need intrabars (older warm-up bars get none, like the oldest bars on
+        TradingView, whose intrabar history is limited too); None loads them for every bar."""
+        if seconds < 60 or seconds % 60:
+            raise ValueError("lower timeframes are built from 1-minute candles: seconds must be a multiple of 60")
+        return self._r.register_lower_tf(seconds, lookback)
+
+    def intrabars(self, handle: int, offset: int = 0) -> Intrabars:
+        """Intrabars of the current bar (or of the bar ``offset`` bars back, Pine ``arr[offset]``) for a handle from
+        :meth:`request_lower_tf`."""
+        if offset < 0:
+            raise IndexError("negative offsets would read future bars")
+        if self.i - offset < 0:
+            return Intrabars.empty()
+        return self._r.intrabars(handle, self.i - offset)
 
     def security(self, handle: SecurityHandle) -> float:
         values = self._r.security_values[handle.index]

@@ -1,0 +1,103 @@
+{
+  "scope": "Provisional baseline trades spanning >72h without observed M1 quotes; no calendar classification or performance acceptance",
+  "large_gap_count": 24,
+  "affected_closed_trades": 7,
+  "trades": [
+    {
+      "id": 85,
+      "entry_time": 1453311540,
+      "exit_time": 1453893360,
+      "R": -2.075097847358126,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2016-01-22T20:59:00+00:00",
+          "next_observed_utc": "2016-01-27T11:16:00+00:00",
+          "unobserved_hours": 110.26666666666667
+        }
+      ]
+    },
+    {
+      "id": 372,
+      "entry_time": 1483059840,
+      "exit_time": 1483521240,
+      "R": -1.0259807742270488,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2016-12-30T21:59:00+00:00",
+          "next_observed_utc": "2017-01-03T00:00:00+00:00",
+          "unobserved_hours": 74.0
+        }
+      ]
+    },
+    {
+      "id": 1358,
+      "entry_time": 1615218480,
+      "exit_time": 1620356880,
+      "R": 12.448091521436885,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2021-04-01T20:58:00+00:00",
+          "next_observed_utc": "2021-04-04T22:05:00+00:00",
+          "unobserved_hours": 73.1
+        }
+      ]
+    },
+    {
+      "id": 1718,
+      "entry_time": 1649775000,
+      "exit_time": 1650238380,
+      "R": -1.0103252452245646,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2022-04-14T20:57:00+00:00",
+          "next_observed_utc": "2022-04-17T22:05:00+00:00",
+          "unobserved_hours": 73.11666666666666
+        }
+      ]
+    },
+    {
+      "id": 1898,
+      "entry_time": 1671733200,
+      "exit_time": 1672713780,
+      "R": 8.002074549956513,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2022-12-23T21:57:00+00:00",
+          "next_observed_utc": "2022-12-26T23:01:00+00:00",
+          "unobserved_hours": 73.05
+        },
+        {
+          "last_observed_utc": "2022-12-30T21:57:00+00:00",
+          "next_observed_utc": "2023-01-02T23:01:00+00:00",
+          "unobserved_hours": 73.05
+        }
+      ]
+    },
+    {
+      "id": 2148,
+      "entry_time": 1703253120,
+      "exit_time": 1703690880,
+      "R": -1.0118315191670506,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2023-12-22T21:57:00+00:00",
+          "next_observed_utc": "2023-12-25T23:05:00+00:00",
+          "unobserved_hours": 73.11666666666666
+        }
+      ]
+    },
+    {
+      "id": 2510,
+      "entry_time": 1774542060,
+      "exit_time": 1775606520,
+      "R": 3.520197696139486,
+      "gaps_over_72h": [
+        {
+          "last_observed_utc": "2026-04-02T20:57:00+00:00",
+          "next_observed_utc": "2026-04-05T22:01:00+00:00",
+          "unobserved_hours": 73.05
+        }
+      ]
+    }
+  ]
+}

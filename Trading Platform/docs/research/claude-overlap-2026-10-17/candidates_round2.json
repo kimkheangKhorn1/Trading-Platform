@@ -1,0 +1,13 @@
+{
+ "C1_front0.10_be": {"entry_offset_atr": 0.10, "breakeven": true},
+ "C2_front0.10_q0.3f0.3": {"entry_offset_atr": 0.10, "scalp_r": 0.3, "scalp_frac": 0.3},
+ "C3_front0.25_q0.3f0.3": {"entry_offset_atr": 0.25, "scalp_r": 0.3, "scalp_frac": 0.3},
+ "C4_q0.3f0.2": {"scalp_r": 0.3, "scalp_frac": 0.2},
+ "C5_front0.10_q0.3f0.2": {"entry_offset_atr": 0.10, "scalp_r": 0.3, "scalp_frac": 0.2},
+ "C6_q0.25f0.2": {"scalp_r": 0.25, "scalp_frac": 0.2},
+ "C7_front0.25_be": {"entry_offset_atr": 0.25, "breakeven": true},
+ "C8_front0.10_q0.25f0.2": {"entry_offset_atr": 0.10, "scalp_r": 0.25, "scalp_frac": 0.2},
+ "C9_front0.10_q0.3f0.3_be": {"entry_offset_atr": 0.10, "scalp_r": 0.3, "scalp_frac": 0.3, "breakeven": true},
+ "C10_q0.2f0.3_be": {"scalp_r": 0.2, "scalp_frac": 0.3, "breakeven": true},
+ "E4_front_0.50": {"entry_offset_atr": 0.50}
+}

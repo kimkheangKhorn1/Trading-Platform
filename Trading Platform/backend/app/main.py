@@ -336,6 +336,15 @@ def badge_overlaps(request: dict):
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.post('/api/overlap-reactions')
+def fast_overlap_reactions(request: dict):
+    """Closed-candle confirmations on existing locks, independent of source discovery."""
+    try:
+        return app.state.badge_overlaps.run(**{**request,'reactions_only':True})
+    except (ValueError,TypeError,InputError) as exc:
+        raise HTTPException(400,str(exc)) from exc
+
+
 @app.post("/api/backtests")
 def submit_backtest(request: dict):
     try:

@@ -430,7 +430,8 @@ export class ChartController {
           color: inst.shapeStyles[sp.id]?.color ?? sp.color, text: sp.text, textColor: sp.textcolor, size: sp.size,
           points: out.shapes[sp.id] ?? [],
         }))
-      layers.push({ uid: inst.uid, name: meta.short_name, drawings, shapes })
+      layers.push({ uid: inst.uid, name: meta.short_name, drawings, shapes, front: meta.behind_chart === false,
+        fixedLabels: meta.label_layout === false })
     }
     for (const [key, s] of this.plotSeries) {
       if (!wanted.has(key)) {

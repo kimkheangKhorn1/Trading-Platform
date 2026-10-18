@@ -1,0 +1,74 @@
+{
+ "rule": {
+  "period": "entry or order placed before 2023-01-01 UTC",
+  "seed": 20261017,
+  "win": "TP1 reached; random 15",
+  "near_tp_loss": "no TP hit, MFE before SL >= 60% of entry-to-TP1 distance; random 10",
+  "loss": "other losses; random 15",
+  "missed": "unfilled order whose closest approach was within 0.25 ATR(1H) of the limit; random 10"
+ },
+ "pools": {
+  "win": 73,
+  "near": 24,
+  "loss": 215,
+  "missed": 30
+ },
+ "win": [
+  46,
+  346,
+  601,
+  628,
+  690,
+  905,
+  933,
+  940,
+  1030,
+  1371,
+  1463,
+  1539,
+  1592,
+  1693,
+  1857
+ ],
+ "near": [
+  151,
+  260,
+  507,
+  520,
+  891,
+  1059,
+  1256,
+  1686,
+  1727,
+  1765
+ ],
+ "loss": [
+  16,
+  97,
+  327,
+  371,
+  513,
+  691,
+  786,
+  811,
+  902,
+  1140,
+  1146,
+  1226,
+  1707,
+  1747,
+  1780
+ ],
+ "missed": [
+  184,
+  840,
+  917,
+  978,
+  986,
+  989,
+  1581,
+  1697,
+  1835,
+  1838
+ ]
+}

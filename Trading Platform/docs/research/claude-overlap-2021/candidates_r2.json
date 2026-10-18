@@ -1,0 +1,9 @@
+{
+ "K1_against_early0.5": {"entry_offset_atr": 0.5, "_filters": {"htf": "against"}},
+ "K2_against_be1.5": {"_filters": {"htf": "against"}, "_rules": {"be_at_r": 1.5}},
+ "K3_against_part1.5_be": {"scalp_r": 1.5, "scalp_frac": 0.5, "breakeven": true, "_filters": {"htf": "against"}},
+ "K4_against_early0.5_be1.5": {"entry_offset_atr": 0.5, "_filters": {"htf": "against"}, "_rules": {"be_at_r": 1.5}},
+ "K5_early0.5_be1.5": {"entry_offset_atr": 0.5, "_rules": {"be_at_r": 1.5}},
+ "K6_against_q0.3f0.2": {"scalp_r": 0.3, "scalp_frac": 0.2, "_filters": {"htf": "against"}},
+ "K7_against_early0.5_q0.3f0.2": {"entry_offset_atr": 0.5, "scalp_r": 0.3, "scalp_frac": 0.2, "_filters": {"htf": "against"}}
+}

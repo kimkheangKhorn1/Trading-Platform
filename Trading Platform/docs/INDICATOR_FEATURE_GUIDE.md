@@ -421,7 +421,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 |---|---|---|
 | Mode (`mode`) | Historical | Historical keeps selected historical structure/swing/EQ drawings within drawing limits; Present replaces older drawings in those display paths. It does not clear every subsystem. |
 | Style (`style`) | Colored | Colored/Monochrome presentation for selected SMC structure, OB and candle paths; other modules retain their own palettes. |
-| Color Candles (`show_trend`) | true | Draw candles using internal trend direction, with the project swing color inputs. With-trend candles are filled; pullbacks are hollow. Initial non-bullish state uses the bearish branch. |
+| Show Colored Candles (`show_trend`) | true | Draw candles using internal trend direction, with the project swing color inputs. With-trend candles are filled; pullbacks are hollow. Initial non-bullish state uses the bearish branch. |
 | Hide Zones Farther Than (× Recent Range) (`aoi_max_dist`) | 0.2 | Display padding around the latest 120 processed chart bars: multiplier × their high-low range. Hides selected distant drawings without invalidating logical zones; zero disables the filter. |
 
 ### Real Time Internal Structure — 7 inputs
@@ -453,9 +453,9 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Internal Order Blocks (`show_iob`) | true | Enable internal OB creation on internal structure breaks. Render nearest stored eligible blocks using the internal count. |
+| Show Internal Order Blocks (`show_iob`) | true | Enable internal OB creation on internal structure breaks. Render nearest stored eligible blocks using the internal count. |
 | iob_showlast (`iob_showlast`) | 3 | Maximum number of nearest visible internal OBs drawn; does not rank quality or track touch freshness. |
-| Swing Order Blocks (`show_ob`) | true | Enable swing OB creation on swing structure breaks. Render nearest stored eligible blocks using the swing count. |
+| Show Swing Order Blocks (`show_ob`) | true | Enable swing OB creation on swing structure breaks. Render nearest stored eligible blocks using the swing count. |
 | ob_showlast (`ob_showlast`) | 3 | Maximum number of nearest visible swing OBs drawn; does not rank quality or track touch freshness. |
 | Order Block Filter (`ob_filter`) | Atr | Candidate range must be strictly below 2× its historical ATR(200), or 2× cumulative mean high-low range, according to the chosen mode. |
 | Order Block Candle (`ob_candle`) | Opposite Candle (ICT) | ICT selects the first opposite candle before qualifying directional displacement in the breaking structural leg, subject to size/pre-break-close filters. Extreme selects an eligible leg extreme regardless of candle color. |
@@ -469,7 +469,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Equal High/Low (`show_eq`) | true | Enable confirmed EQH/EQL matching and drawings. No automatic sweep or consumed-liquidity state. |
+| Show Equal High/Low (`show_eq`) | true | Enable confirmed EQH/EQL matching and drawings. No automatic sweep or consumed-liquidity state. |
 | Bars Confirmation (`eq_len`) | 5 | Left and right bars used by the EQ pivot confirmation helper. |
 | Threshold (`eq_threshold`) | 0.1 | Allowed difference between successive confirmed same-side pivots: max(ATR(200) × threshold, half tick). |
 
@@ -477,7 +477,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Fair Value Gaps (`show_fvg`) | true | Enable three-candle imbalance detection, lifecycle and drawings. No automatic trade on gap touch. |
+| Show Fair Value Gaps (`show_fvg`) | true | Enable three-candle imbalance detection, lifecycle and drawings. No automatic trade on gap touch. |
 | Auto Threshold (`fvg_auto`) | true | Require directional middle-candle percentage movement above twice the running average absolute movement at processed source update points. |
 | Timeframe (`fvg_tf`) | Chart (empty) | Timeframe used to find fair value gaps. Chart = the current timeframe. A higher timeframe shows its gaps on your chart; a lower one falls back to the chart timeframe. |
 | Bullish FVG (`bull_fvg_css`) | #00FF684D | Fill color of bullish fair value gaps. |
@@ -490,13 +490,13 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Daily (`show_pdhl`) | true | Draws the previous day's high and low (PDH / PDL) with the line style and color you pick. |
+| Show Daily (`show_pdhl`) | true | Draws the previous day's high and low (PDH / PDL) with the line style and color you pick. |
 | pdhl_style (`pdhl_style`) | ⎯⎯⎯ | Line style for the corresponding previous-period reference. |
 | pdhl_css (`pdhl_css`) | #5B9CFFFF | Companion color/opacity control for this group’s drawings. |
-| Weekly (`show_pwhl`) | true | Draws the previous week's high and low (PWH / PWL). |
+| Show Weekly (`show_pwhl`) | true | Draws the previous week's high and low (PWH / PWL). |
 | pwhl_style (`pwhl_style`) | ---- | Line style for the corresponding previous-period reference. |
 | pwhl_css (`pwhl_css`) | #5B9CFFFF | Companion color/opacity control for this group’s drawings. |
-| Monthly (`show_pmhl`) | true | Draws the previous month's high and low (PMH / PML). Needs at least one completed month of data in the feed. |
+| Show Monthly (`show_pmhl`) | true | Draws the previous month's high and low (PMH / PML). Needs at least one completed month of data in the feed. |
 | pmhl_style (`pmhl_style`) | ···· | Line style for the corresponding previous-period reference. |
 | pmhl_css (`pmhl_css`) | #5B9CFFFF | Companion color/opacity control for this group’s drawings. |
 
@@ -504,7 +504,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Premium/Discount Zones (`show_sd`) | true | Show narrow 5% Premium/Discount extremes and the 47.5–52.5% equilibrium band of the current tracked swing range. No entry gate. |
+| Show Premium/Discount Zones (`show_sd`) | true | Show narrow 5% Premium/Discount extremes and the 47.5–52.5% equilibrium band of the current tracked swing range. No entry gate. |
 | Premium Zone (`premium_css`) | #FFC800FF | Color of the top 5% swing-range band. |
 | Equilibrium Zone (`eq_css`) | #B2B5BEFF | Color of the 47.5–52.5% middle swing-range band. |
 | Discount Zone (`discount_css`) | #00C8FFFF | Color of the bottom 5% swing-range band. |
@@ -523,10 +523,10 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 | Max line (`ds_line_max`) | 3 | Maximum fresh proximal price lines per direction, subject to display-distance filtering. |
 | Max number of zones (`ds_max_zones`) | 100 | Stored D/S pool capacity per direction; remove older non-fresh zones first, otherwise oldest fresh zones. |
 | Timezone offset (H) (`ds_hours_offset`) | 0.0 | Offset applied only to origin dates in D/S tooltips. Does not shift candles or calculations. |
-| Demand (`showDemandZone`) | true | Show demand origin boxes/fresh lines. State calculation continues. Fresh: filled solid; Tested: transparent dotted; Invalidated by confirmed close below bottom: gray dashed. |
+| Show Demand (`showDemandZone`) | true | Show demand origin boxes/fresh lines. State calculation continues. Fresh: filled solid; Tested: transparent dotted; Invalidated by confirmed close below bottom: gray dashed. |
 | Border (`demand_bord_col`) | #0AFF02B2 | Companion color/opacity control for this group’s drawings. |
 | Background (`demand_bg_col`) | #0AFF0226 | Companion color/opacity control for this group’s drawings. |
-| Supply (`showSupplyZone`) | true | Show supply origin boxes/fresh lines. State calculation continues. Fresh: filled solid; Tested: transparent dotted; Invalidated by confirmed close above top: gray dashed. |
+| Show Supply (`showSupplyZone`) | true | Show supply origin boxes/fresh lines. State calculation continues. Fresh: filled solid; Tested: transparent dotted; Invalidated by confirmed close above top: gray dashed. |
 | Border (`supply_bord_col`) | #FF4D4DCC | Companion color/opacity control for this group’s drawings. |
 | Background (`supply_bg_col`) | #FF5C5C33 | Companion color/opacity control for this group’s drawings. |
 
@@ -561,34 +561,34 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Detect Pivot Highs (`dhighs`) | true | Enable pivot-high-origin zone creation; its role can initialize/flip to support later. |
-| Detect Pivot Lows (`dlows`) | true | Enable pivot-low-origin zone creation; its role can initialize/flip to resistance later. |
-| Detect Breakout (`detectBO`) | true | Enable confirmed upward-break marker with recent Look Right close maximum and all active zones now support-role. Does not require current close above every zone top. |
-| Detect Breakdown (`detectBD`) | true | Enable confirmed downward-break marker with recent Look Right close minimum and all active zones now resistance-role. Does not require current close below every zone bottom. |
-| Detect Resistance Break (`breakUp`) | true | Enable local resistance-role flip marker, subject to broader-breakout/false-breakdown suppression. |
-| Detect Support Break (`breakDn`) | true | Enable local support-role flip marker, subject to broader-breakdown/false-breakup suppression. |
-| Detect False Breakdown (`falseBull`) | true | Enable same-zone confirmed support break followed within the lookback by full close reclaim above stored top, with recent close-minimum filter. |
-| Detect False Breakup (`falseBear`) | true | Enable same-zone confirmed resistance break followed within the lookback by full close reclaim below stored bottom, with recent close-maximum filter. |
-| Detect Moves Off Support (`supPush`) | false | Enable bullish support-touch triangles without opposing role overlap and without current/previous upward role change. Project default off. |
-| Detect Moves Off Resistance (`resPush`) | false | Enable bearish resistance-touch triangles without opposing role overlap and without current/previous downward role change. Project default off. |
-| Detect TSI Curl (`curl`) | false | Enable zone-qualified TSI turns toward its signal line, without requiring a crossover. Project default off. |
+| Show Pivot Highs (`dhighs`) | true | Enable pivot-high-origin zone creation; its role can initialize/flip to support later. |
+| Show Pivot Lows (`dlows`) | true | Enable pivot-low-origin zone creation; its role can initialize/flip to resistance later. |
+| Show Breakout (`detectBO`) | true | Enable confirmed upward-break marker with recent Look Right close maximum and all active zones now support-role. Does not require current close above every zone top. |
+| Show Breakdown (`detectBD`) | true | Enable confirmed downward-break marker with recent Look Right close minimum and all active zones now resistance-role. Does not require current close below every zone bottom. |
+| Show Resistance Break (`breakUp`) | true | Enable local resistance-role flip marker, subject to broader-breakout/false-breakdown suppression. |
+| Show Support Break (`breakDn`) | true | Enable local support-role flip marker, subject to broader-breakdown/false-breakup suppression. |
+| Show False Breakdown (`falseBull`) | true | Enable same-zone confirmed support break followed within the lookback by full close reclaim above stored top, with recent close-minimum filter. |
+| Show False Breakup (`falseBear`) | true | Enable same-zone confirmed resistance break followed within the lookback by full close reclaim below stored bottom, with recent close-maximum filter. |
+| Show Moves Off Support (`supPush`) | false | Enable bullish support-touch triangles without opposing role overlap and without current/previous upward role change. Project default off. |
+| Show Moves Off Resistance (`resPush`) | false | Enable bearish resistance-touch triangles without opposing role overlap and without current/previous downward role change. Project default off. |
+| Show TSI Curl (`curl`) | false | Enable zone-qualified TSI turns toward its signal line, without requiring a crossover. Project default off. |
 
 ### Candle Patterns — 12 inputs
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
 | Wait For Confirmed Bar (`repaint`) | true | Despite internal identifier, true means wait for a confirmed candle for patterns. False allows provisional pattern drawings; events still require confirmation. |
-| Show Label (`labels`) | true | Show one highest-priority pattern label per matching candle; tooltip lists other enabled matches. |
+| Show Labels (`labels`) | true | Show one highest-priority pattern label per matching candle; tooltip lists other enabled matches. |
 | Show Boxes Around Patterns (`sBox`) | true | Show a box for the selected highest-priority pattern on a qualifying candle, subject to Max Boxes. |
-| Detect Doji (`d_`) | true | Enable balanced-wick Doji family near significant pivot S/R. Body threshold and wick balance are configurable. |
-| Detect Engulfing (`be_`) | true | Enable engulfing near pivot S/R; opposite-color body must cover and exceed prior body and exceed current body EMA(14), plus optional filters. |
-| Detect Hammers and Stars (`hs_`) | true | Enable hammer/shooting-star family with body location, short opposite wick and minimum range filters near pivot S/R. |
-| Detect Dragons and Graves (`dg_`) | true | Enable dragonfly/gravestone family using a fixed 5% doji-body test and opposite wick no larger than body, near pivot S/R. |
-| Detect Tweezers (`tw_`) | true | Enable opposite-color tweezer bottom/top near pivot S/R; extreme tolerance 5% of current body EMA and prior body must be large. |
-| Detect Spinning Top (`st_`) | true | Enable spinning tops: both wicks at least 34% of full range, excluding fixed 5% doji, near pivot S/R. |
-| Detect Piercing and Clouds (`pc_`) | true | Enable piercing/dark-cloud family near pivot S/R: open at/beyond previous close, resolve past prior body midpoint without full engulfing. |
-| Detect Harami (`bh_`) | true | Enable harami near pivot S/R: small opposite candle with full high-low inside prior large body, not only its body. |
-| Detect Long Shadows (`ls_`) | true | Enable long-shadow family near pivot S/R: relevant wick strictly exceeds configured range share, plus minimum range filter. |
+| Show Doji (`d_`) | true | Enable balanced-wick Doji family near significant pivot S/R. Body threshold and wick balance are configurable. |
+| Show Engulfing (`be_`) | true | Enable engulfing near pivot S/R; opposite-color body must cover and exceed prior body and exceed current body EMA(14), plus optional filters. |
+| Show Hammers and Stars (`hs_`) | true | Enable hammer/shooting-star family with body location, short opposite wick and minimum range filters near pivot S/R. |
+| Show Dragons and Graves (`dg_`) | true | Enable dragonfly/gravestone family using a fixed 5% doji-body test and opposite wick no larger than body, near pivot S/R. |
+| Show Tweezers (`tw_`) | true | Enable opposite-color tweezer bottom/top near pivot S/R; extreme tolerance 5% of current body EMA and prior body must be large. |
+| Show Spinning Top (`st_`) | true | Enable spinning tops: both wicks at least 34% of full range, excluding fixed 5% doji, near pivot S/R. |
+| Show Piercing and Clouds (`pc_`) | true | Enable piercing/dark-cloud family near pivot S/R: open at/beyond previous close, resolve past prior body midpoint without full engulfing. |
+| Show Harami (`bh_`) | true | Enable harami near pivot S/R: small opposite candle with full high-low inside prior large body, not only its body. |
+| Show Long Shadows (`ls_`) | true | Enable long-shadow family near pivot S/R: relevant wick strictly exceeds configured range share, plus minimum range filter. |
 
 ### Alert Frequency — 1 inputs
 
@@ -714,15 +714,15 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Directions Dashboard (`directions`) | true | Show the direction table when its separate table switch is also on. Hiding it does not stop nine-way agreement calculation/events. |
-| Direction table (`infoDataTableOn`) | true | Additional display gate for the whole table; does not disable calculation or all-nine events. |
+| Show Directions Dashboard (`directions`) | true | Show the direction table when its separate table switch is also on. Hiding it does not stop nine-way agreement calculation/events. |
+| Show Direction Table (`infoDataTableOn`) | true | Additional display gate for the whole table; does not disable calculation or all-nine events. |
 | Position (`itablePosition`) | bottom_right | Where the direction dashboard sits on the chart. |
 
 ### MACD Settings — 5 inputs
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn MACD Label On/Off (`macdOn`) | true | Show/hide the MACD dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show MACD Label (`macdOn`) | true | Show/hide the MACD dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`macdOrder`) | 1 | Dashboard row position for MACD. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | MACD Fast Length (`macdFast`) | 12 | MACD fast EMA length. |
 | MACD Slow Length (`macdSlow`) | 26 | MACD slow EMA length. |
@@ -732,7 +732,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn Stochstic RSI Label On/Off (`stochasticOn`) | true | Show/hide the Stochastic RSI dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show Stochastic RSI Label (`stochasticOn`) | true | Show/hide the Stochastic RSI dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`stochasticOrder`) | 2 | Dashboard row position for Stochastic RSI. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | K Value - Stochastic RSI (`smoothK`) | 3 | Smoothing of the Stochastic RSI K line. |
 | D Value - Stochastic RSI (`smoothD`) | 3 | Smoothing of the D line (the average of K). Used only by the 'K vs D' direction rule. |
@@ -744,7 +744,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn Vortex Label On/Off (`vortexOn`) | true | Show/hide the Vortex dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show Vortex Label (`vortexOn`) | true | Show/hide the Vortex dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`vortexOrder`) | 3 | Dashboard row position for Vortex. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | Vortex Length (`vortexLength`) | 14 | Vortex indicator length. |
 
@@ -752,7 +752,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn Momentum Label On/Off (`momOn`) | true | Show/hide the Momentum dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show Momentum Label (`momOn`) | true | Show/hide the Momentum dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`momOrder`) | 4 | Dashboard row position for Momentum. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | Momentum Length (`momLength`) | 10 | How many bars back Momentum compares the close with. |
 
@@ -760,7 +760,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn RSI Label On/Off (`rsiOn`) | true | Show/hide the RSI dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show RSI Label (`rsiOn`) | true | Show/hide the RSI dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`rsiOrder`) | 5 | Dashboard row position for RSI. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | Relative Strength Index Length (`rsiLength`) | 14 | RSI length. |
 
@@ -768,7 +768,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn PSAR Label On/Off (`psarOn`) | true | Show/hide the PSAR dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show PSAR Label (`psarOn`) | true | Show/hide the PSAR dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`psarOrder`) | 6 | Dashboard row position for PSAR. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | PSAR Start (`psarStart`) | 0.02 | PSAR starting acceleration factor. |
 | PSAR Increment (`psarInc`) | 0.02 | How much the acceleration grows each time a new extreme is made. |
@@ -778,7 +778,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn DMI Label On/Off (`dmiOn`) | true | Show/hide the DMI dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show DMI Label (`dmiOn`) | true | Show/hide the DMI dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`dmiOrder`) | 7 | Dashboard row position for DMI. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | DMI Length (`dmiLength`) | 14 | DI length. |
 | DMI Smoothing (`dmiSmooth`) | 14 | ADX smoothing length. |
@@ -788,7 +788,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn Money Flow Index Label On/Off (`mfiOn`) | true | Show/hide the MFI dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show Money Flow Index Label (`mfiOn`) | true | Show/hide the MFI dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`mfiOrder`) | 8 | Dashboard row position for MFI. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | Money Flow Index Length (`mfiLength`) | 14 | Money Flow Index length. |
 
@@ -796,7 +796,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| Turn Fisher Label On/Off (`fisherOn`) | true | Show/hide the Fisher dashboard row only. Its calculation still contributes to all-nine agreement events. |
+| Show Fisher Label (`fisherOn`) | true | Show/hide the Fisher dashboard row only. Its calculation still contributes to all-nine agreement events. |
 | Place On The List (`fisherOrder`) | 9 | Dashboard row position for Fisher. Duplicate positions overwrite cells in fixed update order; use distinct values 1–9. |
 | Fisher Length (`fisherLength`) | 14 | Fisher Transform length. |
 
@@ -804,7 +804,7 @@ The following catalog is generated from the project's live `INPUTS` definitions,
 
 | Input / ID | Current default | Actual purpose |
 |---|---|---|
-| BULB (`recommendation`) | true | Enable BULB labels/state transitions. Independent of structure, zones and dashboard; no profitable-entry claim. |
+| Show BULB (`recommendation`) | true | Enable BULB labels/state transitions. Independent of structure, zones and dashboard; no profitable-entry claim. |
 | Mode (`bulbMode`) | Fixed (confirmed) | Fixed prints on confirmed RSI exits from extremes. Moving tracks alternating extreme states and relocates active labels as price extends. |
 | RSI Length (`rsiLength1`) | 13 | RSI length used by BULB. |
 | Overbought (`rsiOverbought`) | 65 | BULB overbought threshold: Fixed Sell requires prior RSI ≥ threshold then confirmed RSI < threshold. Moving uses entry into the extreme state. |

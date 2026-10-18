@@ -1,0 +1,165 @@
+{
+  "scope": "Controlled comparison; unchanged H1 decision logic, fixed .2 bid spread, zero slippage/commission/swap, history extended to 2015",
+  "cutoff": 1791936000,
+  "engine_sha256_before": "832a4c7f815f8bbf76ad69b314780d403e6eb144b4fbfca263a62778bcaf3fb6",
+  "engine_sha256_after": "832a4c7f815f8bbf76ad69b314780d403e6eb144b4fbfca263a62778bcaf3fb6",
+  "H1_orders": 2581,
+  "M1_orders": 2581,
+  "shared_orders": 2581,
+  "shared_orders_with_execution_difference": 8,
+  "H1_closed_trades": 459,
+  "M1_closed_trades": 459,
+  "differences": [
+    {
+      "key": [
+        -1,
+        1559516400,
+        1317.826,
+        1321.131,
+        [
+          1302.572,
+          1277.249
+        ]
+      ],
+      "different_fields": [
+        "cash",
+        "R"
+      ],
+      "H1_id": 1001,
+      "M1_id": 1001
+    },
+    {
+      "key": [
+        -1,
+        1578016800,
+        1542.16,
+        1547.578,
+        [
+          1526.192,
+          1520.488,
+          1515.698
+        ]
+      ],
+      "different_fields": [
+        "cash",
+        "R"
+      ],
+      "H1_id": 1120,
+      "M1_id": 1120
+    },
+    {
+      "key": [
+        -1,
+        1580457600,
+        1581.127,
+        1588.578,
+        [
+          1572.351,
+          1559.29,
+          1554.331
+        ]
+      ],
+      "different_fields": [
+        "entry",
+        "cash"
+      ],
+      "H1_id": 1153,
+      "M1_id": 1153
+    },
+    {
+      "key": [
+        -1,
+        1659063600,
+        1768.332,
+        1774.672,
+        [
+          1679.573,
+          1647.955,
+          1618.9
+        ]
+      ],
+      "different_fields": [
+        "cash",
+        "R"
+      ],
+      "H1_id": 1737,
+      "M1_id": 1737
+    },
+    {
+      "key": [
+        -1,
+        1758121200,
+        3691.916,
+        3704.094,
+        [
+          3668.083,
+          3641.411,
+          3583.767
+        ]
+      ],
+      "different_fields": [
+        "cash",
+        "R",
+        "win",
+        "tps_hit"
+      ],
+      "H1_id": 2353,
+      "M1_id": 2353
+    },
+    {
+      "key": [
+        -1,
+        1762534800,
+        4068.764,
+        4099.706,
+        [
+          3940.108,
+          3927.331,
+          3886.252
+        ]
+      ],
+      "different_fields": [
+        "entry",
+        "cash"
+      ],
+      "H1_id": 2394,
+      "M1_id": 2394
+    },
+    {
+      "key": [
+        1,
+        1560535200,
+        1335.347,
+        1330.821,
+        [
+          1348.244,
+          1359.718
+        ]
+      ],
+      "different_fields": [
+        "cash",
+        "R"
+      ],
+      "H1_id": 1015,
+      "M1_id": 1015
+    },
+    {
+      "key": [
+        1,
+        1650312000,
+        1953.281,
+        1943.535,
+        [
+          1983.711,
+          2047.843
+        ]
+      ],
+      "different_fields": [
+        "entry",
+        "cash"
+      ],
+      "H1_id": 1650,
+      "M1_id": 1650
+    }
+  ]
+}
