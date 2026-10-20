@@ -18,25 +18,15 @@ export function Ruler({ ctrl }: { ctrl: ChartController }) {
   const feed = useApp((s) => s.feedId)
   const tf = useApp((s) => s.timeframe)
   const replayMode = useReplay((s) => s.mode)
-  const [shortcut, setShortcut] = useState(false)
-  const active = (enabled || shortcut) && replayMode !== 'picking'
+  // Only the toolbar button turns the ruler on: a Shift shortcut also fired on the replay keys (Shift+arrows)
+  const active = enabled && replayMode !== 'picking'
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (typing(e.target)) return
-      if (e.key === 'Shift' && useReplay.getState().mode !== 'picking') setShortcut(true)
-      if (e.key === 'Escape') { useRuler.getState().setEnabled(false); setShortcut(false) }
+      if (!typing(e.target) && e.key === 'Escape') useRuler.getState().setEnabled(false)
     }
-    const release = (e: KeyboardEvent) => { if (e.key === 'Shift') setShortcut(false) }
-    const blur = () => setShortcut(false)
     window.addEventListener('keydown', onKey)
-    window.addEventListener('keyup', release)
-    window.addEventListener('blur', blur)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('keyup', release)
-      window.removeEventListener('blur', blur)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   return active ? <RulerSurface key={`${feed}:${tf}`} ctrl={ctrl} /> : null

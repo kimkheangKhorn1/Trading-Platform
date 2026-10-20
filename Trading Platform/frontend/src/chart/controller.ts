@@ -5,7 +5,10 @@ import {
   PriceScaleMode,
   LineSeries,
   LineStyle as LwLineStyle,
+  createTextWatermark,
   type IChartApi,
+  type ITextWatermarkPluginApi,
+  type MouseEventParams,
   type ISeriesApi,
   type AutoscaleInfo,
   type LineData,
@@ -43,6 +46,10 @@ export class ChartController {
   readonly overlay = new OverlayPrimitive()
   private plotSeries = new Map<string, ISeriesApi<'Line'>>()
   private paneOf = new Map<string, number>()
+  /** Hover card of each plot line that has a tooltip. */
+  private plotTips = new Map<ISeriesApi<'Line'>, { title: string; body: string; pane: number }>()
+  /** Pane titles (PlotSpec.pane_group) by `uid:group`. */
+  private paneTitles = new Map<string, { pane: number; text: string; wm: ITextWatermarkPluginApi<Time> }>()
   /** Indicator barcolor/plotcandle colors by bar time; sources = the outputs they were built from. */
   private candleStyles = new Map<number, CandleStyle>()
   private candleSources: IndicatorOutput[] = []
@@ -126,11 +133,15 @@ export class ChartController {
     this.chart.subscribeCrosshairMove((p) => {
       const idx = p.logical !== undefined && p.logical !== null ? Math.round(p.logical) : null
       this.ev.onCrosshair(idx)
-      if (p.point) this.ev.onHover(this.overlay.hit(p.point.x, p.point.y), p.point.x, p.point.y)
-      else this.ev.onHover(null, 0, 0)
+      if (p.point) {
+        // The point is relative to the hovered pane: drawings live in the price pane only.
+        const pane = p.paneIndex ?? 0
+        const info = (pane === 0 ? this.overlay.hit(p.point.x, p.point.y) : null) ?? this.plotHit(p, pane)
+        this.ev.onHover(info, p.point.x, p.point.y + this.paneTop(pane))
+      } else this.ev.onHover(null, 0, 0)
     })
     this.chart.subscribeClick((p) => {
-      const info = p.point ? this.overlay.hit(p.point.x, p.point.y) : null
+      const info = p.point && (p.paneIndex ?? 0) === 0 ? this.overlay.hit(p.point.x, p.point.y) : null
       // right of the last shown bar (e.g. past the replay cursor) a click means that last bar
       const last = this.shownBars.length - 1
       const time = typeof p.time === 'number' ? (p.time as number)
@@ -190,6 +201,7 @@ export class ChartController {
     this.loading = true
     this.feedId = feedId
     this.tf = tf
+    this.overlay.focusTime = null
     this.forming = null
     this.sub = null
     this.subLoading = null
@@ -246,7 +258,7 @@ export class ChartController {
   }
 
   /** Page older history in (called when scrolling near the left edge, or to reach a date). */
-  loadMore(): Promise<void> {
+  loadMore(limit = PAGE): Promise<void> {
     if (this.loadingMore) return this.loadingMore
     if (!this.hasMore || !this.feedId || this.bars.length === 0) return Promise.resolve()
     const seq = this.loadSeq
@@ -255,7 +267,7 @@ export class ChartController {
     const before = this.bars[0][0]
     this.loadingMore = (async () => {
       try {
-        const res = await api.candles(feedId, tf, { before, limit: PAGE })
+        const res = await api.candles(feedId, tf, { before, limit })
         if (seq !== this.loadSeq || this.disposed) return
         const older = res.bars.filter((b) => b[0] < before)
         this.hasMore = res.has_more && older.length > 0
@@ -369,6 +381,8 @@ export class ChartController {
     const shown = new Set(bars.map((b) => b[0]))
     const candleSources: IndicatorOutput[] = []
     let nextPane = 1
+    const tips = new Map<ISeriesApi<'Line'>, { title: string; body: string; pane: number }>()
+    const titles = new Map<string, { pane: number; text: string }>()
     for (const inst of instances) {
       const meta = scripts.find((s) => s.id === inst.scriptId)
       const out = outputs[inst.uid]
@@ -376,8 +390,8 @@ export class ChartController {
       if (out.bar_colors.length || out.candle_colors?.length) candleSources.push(out)
       const colorsByPlot = new Map<string, Map<number, string>>()
       for (const [pid, list] of Object.entries(out.plot_colors)) colorsByPlot.set(pid, new Map(list))
-      let pane = 0
-      if (meta.plots.some((p) => p.pane === 'separate')) pane = nextPane++
+      // One pane per pane group of this indicator, numbered in plot order, only for groups with something to draw.
+      const groupPane = new Map<string, number>()
       for (const p of meta.plots) {
         const style = inst.plotStyles[p.id]
         if (!style?.visible) continue
@@ -385,7 +399,10 @@ export class ChartController {
         if (!values || values.every((v) => v === null)) continue
         const key = `${inst.uid}:${p.id}`
         wanted.add(key)
-        const targetPane = p.pane === 'separate' ? pane : 0
+        const group = p.pane_group ?? ''
+        if (p.pane === 'separate' && !groupPane.has(group)) groupPane.set(group, nextPane++)
+        const targetPane = p.pane === 'separate' ? groupPane.get(group)! : 0
+        if (targetPane > 0 && group) titles.set(`${inst.uid}:${group}`, { pane: targetPane, text: group })
         let s = this.plotSeries.get(key)
         if (s && this.paneOf.get(key) !== targetPane) {
           this.chart.removeSeries(s)
@@ -399,15 +416,22 @@ export class ChartController {
           // Draw overlay plots (SMA/ATR envelopes) before candle bodies, borders and wicks.
           if (targetPane === 0) s.setSeriesOrder(this.candles.seriesOrder())
         }
+        if (p.tooltip) tips.set(s, { title: p.title, body: p.tooltip, pane: targetPane })
+        // plot.style_circles / style_cross: one dot per value, no connecting line
+        const dots = p.style === 'circles' || p.style === 'cross'
         s.applyOptions({
           // The first series on a price scale supplies its formatter; preserve candle precision.
           ...(targetPane === 0 ? { priceFormat: this.candles.options().priceFormat } : {}),
           color: cssColor(style.color),
           lineWidth: style.linewidth as 1 | 2 | 3 | 4,
+          lineVisible: !dots,
+          pointMarkersVisible: dots,
+          ...(dots ? { pointMarkersRadius: Math.max(2, style.linewidth) } : {}),
           lineStyle: LW_STYLE[style.linestyle] ?? LwLineStyle.Solid,
           title: '',
-          // TradingView shows each plot's latest value on the price scale in the plot's color
-          lastValueVisible: true,
+          // TradingView shows each plot's latest value on the price scale in the plot's color (not for sparse dots,
+          // whose "latest value" is an old event)
+          lastValueVisible: !dots,
         })
         const colors = colorsByPlot.get(p.id)
         const data: (LineData | WhitespaceData)[] = []
@@ -440,9 +464,56 @@ export class ChartController {
         this.paneOf.delete(key)
       }
     }
+    this.plotTips = tips
+    this.syncPaneTitles(titles)
     this.overlay.layers = layers
     this.overlay.update()
     this.setCandleStyles(candleSources)
+  }
+
+  /** Keep one small title in the top-left corner of each grouped indicator pane. */
+  private syncPaneTitles(wanted: Map<string, { pane: number; text: string }>): void {
+    const panes = this.chart.panes()
+    for (const [key, cur] of this.paneTitles) {
+      const w = wanted.get(key)
+      if (w && w.pane === cur.pane && w.text === cur.text) continue
+      try { cur.wm.detach() } catch { /* its pane was already removed */ }
+      this.paneTitles.delete(key)
+    }
+    for (const [key, w] of wanted) {
+      if (this.paneTitles.has(key) || !panes[w.pane]) continue
+      const wm = createTextWatermark(panes[w.pane], { horzAlign: 'left', vertAlign: 'top',
+        lines: [{ text: w.text, color: 'rgba(178, 181, 190, 0.6)', fontSize: 11 }] })
+      this.paneTitles.set(key, { ...w, wm })
+    }
+  }
+
+  /** Plot line under the cursor (within a few pixels at the hovered bar) in the hovered pane. */
+  private plotHit(p: MouseEventParams<Time>, pane: number): HitInfo | null {
+    if (!p.point) return null
+    let best: HitInfo | null = null
+    let bestDist = 6
+    for (const [s, tip] of this.plotTips) {
+      if (tip.pane !== pane) continue
+      const d = p.seriesData.get(s) as LineData | undefined
+      if (!d || typeof d.value !== 'number') continue
+      const y = s.priceToCoordinate(d.value)
+      if (y === null) continue
+      const dist = Math.abs(y - p.point.y)
+      if (dist <= bestDist) {
+        bestDist = dist
+        best = { title: tip.title, body: tip.body }
+      }
+    }
+    return best
+  }
+
+  /** Top of a pane inside the chart element (crosshair points are pane-relative). */
+  private paneTop(pane: number): number {
+    if (pane === 0) return 0
+    const el = this.chart.panes()[pane]?.getHTMLElement()
+    const root = this.chart.chartElement()
+    return el ? el.getBoundingClientRect().top - root.getBoundingClientRect().top : 0
   }
 
   /** Repaint candles only when the coloring outputs changed (setIndicators runs on every data tick). */
@@ -486,10 +557,19 @@ export class ChartController {
       this.ev.onNotice('The requested time is after the replay cursor. Exit replay to view it.')
       return
     }
-    if (this.loading || !this.bars.length || from < this.bars[0][0] + 40 * TF_SECONDS[tf]
-        || to > this.bars[this.bars.length - 1][0]) {
+    const margin = 40 * TF_SECONDS[tf]
+    if (this.loading || !this.bars.length || (cutoff === null && (from < this.bars[0][0] + margin
+        || to > this.bars[this.bars.length - 1][0]))) {
       const loaded = await this.load(feedId, tf, cutoff, from)
       if (!loaded) return
+    }
+    // Replay loads around its cursor, and the window has to stay continuous up to it: an earlier date is reached by
+    // paging older history in (reloading around the date would drop the bars between it and the cursor).
+    while (cutoff !== null && this.hasMore && this.bars.length && from < this.bars[0][0] + margin) {
+      const first = this.bars[0][0]
+      await this.loadMore(Math.min(20000, Math.ceil((first - from + margin) / TF_SECONDS[tf]) + PAGE))
+      if (focus !== this.focusSeq || this.feedId !== feedId || this.tf !== tf || this.disposed) return
+      if (!this.bars.length || this.bars[0][0] === first) break
     }
     if (focus !== this.focusSeq || this.feedId !== feedId || this.tf !== tf || this.disposed) return
     const times = this.times
@@ -508,6 +588,11 @@ export class ChartController {
     const b = Math.max(a, indexAtOrBefore(times, to))
     const pad = Math.max(25, Math.round((b - a) * 0.6))
     this.chart.timeScale().setVisibleLogicalRange({ from: a - pad, to: b + pad })
+    // Mark the candle landed on, and put the crosshair on it: the mouse rests over the chart after the dialog
+    // closes, and its crosshair label (another candle's time) read as the jump landing at the wrong time
+    this.overlay.focusTime = times[a]
+    this.overlay.update()
+    this.chart.setCrosshairPosition(this.shownBars[a][4], times[a] as UTCTimestamp, this.candles)
   }
 
   // ------------------------------------------------------------------- replay

@@ -11,6 +11,8 @@ import type {
   InputValue,
   ScriptMeta,
   TimeframeCode,
+  TuningJob,
+  TuningRequest,
 } from './types'
 
 export class ApiError extends Error {
@@ -48,6 +50,9 @@ const json = (body: unknown): RequestInit => ({
 })
 
 export const api = {
+  startTuning: (req: TuningRequest) => request<{ id: string }>('/api/tuning', json(req)),
+  tuning: (id: string) => request<TuningJob>(`/api/tuning/${encodeURIComponent(id)}`),
+  stopTuning: (id: string) => request<{ stopping: string }>(`/api/tuning/${encodeURIComponent(id)}/stop`, { method: 'POST' }),
   health: () => request<Health>('/api/health'),
   exnessHistory: () => request<ExnessHistoryStatus>('/api/exness/history'),
   feeds: () => request<Feed[]>('/api/feeds'),
@@ -71,6 +76,7 @@ export const api = {
     inputs: Record<string, InputValue>
     start_time: number
     end_time?: number | null
+    replay_start?: number | null
   }) => request<IndicatorOutput>('/api/indicators/run', json(body)),
   submitBacktest: (req: BacktestRequest) => request<{ id: string }>('/api/backtests', json(req)),
   backtest: (id: string) => request<BacktestJob>(`/api/backtests/${id}`),

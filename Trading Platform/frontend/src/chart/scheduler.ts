@@ -9,6 +9,7 @@ export interface RunContext {
   inputs: Record<string, InputValue>
   start: number
   end: number | null // replay cursor; null = up to the latest (live) candle
+  replayStart?: number | null // open time of the replay's start bar (dashboards record trades from there)
 }
 
 /**
@@ -59,7 +60,7 @@ export class IndicatorScheduler {
     try {
       const data = await api.runIndicator({
         feed_id: ctx.feedId, timeframe: ctx.tf, script_id: ctx.scriptId, inputs: ctx.inputs,
-        start_time: ctx.start, end_time: ctx.end,
+        start_time: ctx.start, end_time: ctx.end, replay_start: ctx.replayStart ?? null,
       })
       const latest = this.lastKey.get(uid)
       if (latest !== undefined && (latest === JSON.stringify(ctx) || replayCatchUp(ctx, JSON.parse(latest) as RunContext))) {

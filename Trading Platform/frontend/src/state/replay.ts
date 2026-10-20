@@ -10,6 +10,8 @@ interface ReplayState {
   smooth: boolean
   cursorTime: number | null // open time of the last visible bar while replaying
   cutoffTime: number | null // absolute completed-data boundary, preserved when changing timeframe
+  /** open time of the bar the replay was started from; indicators record their trades from there (null = off) */
+  startTime: number | null
   set: (patch: Partial<ReplayState>) => void
 }
 
@@ -20,5 +22,6 @@ export const useReplay = create<ReplayState>((set) => ({
   smooth: true,
   cursorTime: null,
   cutoffTime: null,
+  startTime: null,
   set: (patch) => set(patch),
 }))

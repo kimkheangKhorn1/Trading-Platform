@@ -111,6 +111,10 @@ class PlotSpec:
     pane: Literal["overlay", "separate"] = "overlay"
     visible: bool = True
     replaced_colors: tuple | None = None  # earlier default colors: a saved style still at one moves to `color` once
+    # hover text shown when the cursor is on the line
+    tooltip: str = ""
+    # separate plots with different pane groups get their own panes; the group name is written in the pane
+    pane_group: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -185,6 +189,9 @@ class ScriptMeta:
     label_layout: bool = True
     # inputs that only change what is drawn (Script.display_filter): calculations, caches and overlap scans ignore them
     display_inputs: tuple[str, ...] = ()
+    # opt-in to the tuner (app.tuning): {"params": [{"id", "min", "max", "step"} | {"id", "options"}, ...] with
+    # "on" = tuned by default, "score": how a trade is scored, "note": text shown in the tuning dialog}
+    tuning: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -202,4 +209,5 @@ class ScriptMeta:
             "behind_chart": self.behind_chart,
             "label_layout": self.label_layout,
             "display_inputs": list(self.display_inputs),
+            "tuning": self.tuning,
         }

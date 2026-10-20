@@ -5,6 +5,7 @@ import { currentFeed, TF_LABELS, useApp } from '../state/app'
 import { useIndicators } from '../state/indicators'
 import type { ChartController } from './controller'
 import { OverlapControl } from './BadgeOverlap'
+import { ObTradeControl } from './ObTrade'
 
 function fmtVolume(v: number): string {
   if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`
@@ -84,13 +85,17 @@ export function Legend({ ctrl, hoverIdx }: { ctrl: ChartController; hoverIdx: nu
                       {meta.short_name} <span className="muted">{args.join(' ')}</span>
                     </span>
                     <span className="legend-actions">
-                      {inst.scriptId === 'smc_ict_scalping_master' ? <>
-                        <OverlapControl inst={inst} update={update} kind="ds" />
-                        <OverlapControl inst={inst} update={update} kind="ob" />
-                      </> : null}
+                      {inst.scriptId === 'smc_ict_scalping_master' ? <OverlapControl inst={inst} update={update} /> : null}
+                      {inst.scriptId === 'smc_ict_scalping_master' ? <ObTradeControl inst={inst} update={update} /> : null}
                       <button className="icon-btn sm" title={inst.visible ? 'Hide' : 'Show'} onClick={() => update(inst.uid, { visible: !inst.visible })}>
                         <Icon name={inst.visible ? 'eye' : 'eyeOff'} size={14} />
                       </button>
+                      {meta.tuning ? (
+                        <button className="icon-btn sm" title="Tune settings" aria-label={`Tune ${meta.short_name}`}
+                          onClick={() => openDialog({ type: 'tuning', uid: inst.uid })}>
+                          <Icon name="flask" size={13} />
+                        </button>
+                      ) : null}
                       <button className="icon-btn sm" title="Settings" aria-label={`Settings for ${meta.short_name}`} onClick={() => openDialog({ type: 'settings', uid: inst.uid })}>
                         <Icon name="gear" size={13} />
                       </button>

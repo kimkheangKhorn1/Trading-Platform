@@ -11,7 +11,7 @@ vi.mock('lightweight-charts', () => ({
       getVisibleLogicalRange: () => ({ from: 0, to: 160 }), applyOptions: vi.fn(),
       options: () => ({ barSpacing: 7 }), timeToCoordinate: () => 100, width: () => 1000, scrollToRealTime: vi.fn() }
     return { addSeries: () => ({ attachPrimitive: vi.fn(), setData: vi.fn(), update: vi.fn(), applyOptions: vi.fn() }),
-      applyOptions: vi.fn(), subscribeCrosshairMove: vi.fn(), subscribeClick: vi.fn(), timeScale: () => scale,
+      applyOptions: vi.fn(), subscribeCrosshairMove: vi.fn(), setCrosshairPosition: vi.fn(), subscribeClick: vi.fn(), timeScale: () => scale,
       remove: vi.fn() }
   },
 }))
@@ -49,6 +49,9 @@ describe('direct historical date navigation', () => {
     expect(c.replayIndex).toBeNull()
     expect(notice).toHaveBeenLastCalledWith(expect.stringContaining('2020-01-02 01:00 UTC'))
     expect(c.chart.timeScale().setVisibleLogicalRange).toHaveBeenLastCalledWith({ from: -24, to: 26 })
+    // the candle landed on is marked and gets the crosshair (its time label), whatever the mouse rests on
+    expect(c.overlay.focusTime).toBe(next)
+    expect(c.chart.setCrosshairPosition).toHaveBeenLastCalledWith(105, next, c.candles)
     // A live tick cannot append today's price to a separated historical window.
     expect(c.applyLive([row(1791909000)])).toBe(false)
     expect(c.bars).toHaveLength(3)
@@ -85,6 +88,29 @@ describe('direct historical date navigation', () => {
     expect(calls).toHaveBeenCalledTimes(2)
     expect(c.replayCutoffTime()).toBe(120)
     expect(notice).toHaveBeenLastCalledWith(expect.stringContaining('after the replay cursor'))
+  })
+
+  it('reaches an earlier date during replay by paging older history, keeping the cursor and the bars up to it', async () => {
+    const cutoff = 360000
+    const window = Array.from({ length: 100 }, (_, i) => row(cutoff - 6000 + i * 60)) // 100 bars up to the cursor
+    const older = Array.from({ length: 200 }, (_, i) => row(cutoff - 18000 + i * 60))
+    const calls = vi.spyOn(api, 'candles').mockResolvedValueOnce({ ...response(window), has_more: true })
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce({ ...response(older), has_more: true })
+    const notice = vi.fn()
+    const c = new ChartController({} as HTMLElement, {
+      onData: vi.fn(), onNotice: notice, onClick: vi.fn(), onHover: vi.fn(), onCrosshair: vi.fn(),
+    })
+    await c.load('f', 'M1', cutoff)
+    const shown = c.shownBars.length
+    const target = cutoff - 15000
+    await c.focusRange(target, target)
+    expect(calls).toHaveBeenCalledTimes(3)
+    expect(calls.mock.calls[2][2]).toMatchObject({ before: window[0][0] })
+    expect(c.bars[0][0]).toBeLessThanOrEqual(target)
+    expect(c.replayCutoffTime()).toBe(cutoff)
+    expect(c.shownBars.length).toBe(shown + 200)
+    expect(notice).toHaveBeenLastCalledWith(null)
   })
 })
 

@@ -98,6 +98,98 @@ in. 5m (original rules in "Most consistent") lost −135.6R in 2022 and −182.1
 - Fewer trades per timeframe = more luck; per-timeframe tuning overfits faster than one setting for all.
 - Next idea discussed: an ML (LightGBM meta-label) filter on top — it must beat these rules on 2022–2023 too.
 
+## 10. How the indicator code is organised (`backend/app/scripts/liquidity_reaper.py`)
+The file header explains it in full; in short:
+- **Settings**: `TF_PRESETS` (tested settings per timeframe: ORIGINAL, ROUND1, ROUND2, ROUND3), `INPUTS` (dialog).
+- **State**: `Pool` (unswept swing high / low), `PendingSweep` (raided pool waiting for confirmation), `SweptZone`.
+- **`setup()`**: applies the preset for the chart timeframe, builds ATR / volume average / pivots / ADX, and asks
+  for 4H data (trend filter) and 1-minute data (delta filter) only when those filters are on.
+- **`on_bar()`** — the signal, in order: indicators → new pools → raids → confirmation (close back inside within the
+  window, signal-colour candle, volume, wick %) → added filters (4H trend, ADX, engulfing, delta) → display (zones,
+  labels) → `_targets()` → dashboard counters.
+- **`_targets()`**: draws entry / SL / TP of the newest signal and closes the drawing at SL or the furthest TP
+  (display only; the backtests trade bid/ask with 1-minute order).
+- **`on_last_bar()`**: the dashboard table. Nothing here changes a signal.
+Comments were added without changing the code (checked: the code is identical apart from comments).
+
+## 11. ML filter — built and tested in Google Colab (2026-10-18)
+**Design.** A meta-label filter: REAPER makes the signal; a model scores it from 23 inputs known at the signal close
+(`backend/app/scripts/reaper_ml.py` — `FeatureState`, `signal_features`, `Model`) and skips the lowest 30 %. The
+indicator has the switch "ML Filter: Skip Low-Rated Raids" (off by default; warns if no model file).
+
+**Data.** `research/reaper_ml/dataset.py` runs the real indicator ("Most consistent" preset, `collect=True`) on Exness
+XAUUSD 2019-01 → 2026-10, 5m–4H: 10,519 signals with their 23 inputs and the trade result. `check_dataset.py`: 91
+checks passed — recording leaves signals unchanged; inputs identical when later candles are removed (no lookahead);
+2024–2026 trades identical to the independent research backtest; every trade ends at its stop or target; R outside
+−1.2..+3.2 only where a price gap moved the entry, stop or target; no NaN, duplicates or out-of-range values.
+
+**Training (Colab, `research/reaper_ml/colab_train.ipynb`).** Test years 2024, 2025, 2026 Jan–Sep (the user's chosen
+stable period), each with a model trained only on earlier years (from 2019). Boosted trees and random forest, trained
+on all timeframes or 15m–4H only; skip the lowest 30 %. Accept only if 15m–4H total R beats no-ML, better in ≥ 2 of 3
+years, and beats 90 % of random 30 % skips. (Training only on 2024–2026 was tried first: too few signals, all failed.)
+
+**Result (Colab, scikit-learn 1.6.1): no model passed.** 15m–4H test years total without ML **+242.1R**; with ML:
+boosted trees / all TFs +223.4R (2 of 3 years better, beats 96 % of random), boosted / 15m–4H +226.8R, random forest /
+all +210.6R, random forest / 15m–4H +195.9R. ML kept 83–87 % of trades but removed winners as often as losers.
+Reading: in 2024–2026 the improved rules already capture what these inputs know; the earlier 2021–2026 prototype only
+helped by cutting losses in the bad years 2021–2023. No model file was exported; the indicator runs without ML.
+Screenshot: `colab-ml-decision.jpg`.
+
+**Re-run on 2024–2026 data only (user's request; `colab_train_2024_2026.ipynb`, `reaper_ml_dataset_2024_2026.csv`,
+3,855 signals).** Train and test inside the period: test 2025 H1 (train 2024), 2025 H2 (train 2024 → 2025-06), 2026
+Jan–Sep (train 2024 → 2025). Same rules. 15m–4H without ML **+172.6R**; with ML: random forest / all TFs +150.6R (2/3
+better, beats 85 % of random), boosted / all +129.4R, random forest / 15m–4H +117.6R, boosted / 15m–4H +107.5R.
+**No model passed.** 2025 H1 (trained on 2024 only, ~1,300 signals) is where every model lost 41–61R. Screenshot:
+`colab-ml-decision-2024-2026.jpg`.
+
+**ML round 2 — data audit + CatBoost + 6-input scorecard, skip or half size (`colab_models_2024_2026.ipynb`).**
+Data audit (2024–2026, 15m–4H in 2024 = 517 signals): label clean (wins ≈ +2.8..+3R, losses ≈ −1R); inputs fixed by
+the preset carry no information (`risk_atr` on 5m/15m, `trend_h4` on 30m–4H, `tf_minutes` per TF); `di_diff`≈`rsi`
+(0.86); only **2 of 23 inputs** separate winners from losers in 2024 beyond chance (`depth_atr`, `bars_since_raid`);
+no input drifts (all PSI < 0.07). 8 versions, same rules. Local run (scikit-learn 1.9, CatBoost 1.2.10), 15m–4H
+without ML +172.6R:
+| Version | With ML | Better | Beats random | Trades | Pass |
+|---|---|---|---|---|---|
+| Scorecard / 15m–4H / half size | +177.2R | 2/3 | 99 % | 100 % (half size on some) | yes |
+| Scorecard / 15m–4H / skip | +176.2R | 2/3 | 98 % | 72 % | yes |
+| CatBoost / all TFs / half size | +168.1R | 2/3 | 96 % | 100 % | no (less R) |
+| Scorecard / all TFs / half size | +166.4R | 2/3 | 94 % | 100 % | no |
+| other four | +126..+161R | | | | no |
+The pass is marginal (+4.6R, +2.7 %), one of 8 tries, and the scorecard picked different inputs in every window — so
+it is closer to noise than to a stable edge. The Colab run was started; its tables were not read back because the
+Chrome extension disconnected.
+
+**ML round 3 — all models on 2018-01-01 → 2026-01-01 (`colab_all_models_2018_2025.ipynb`).** Dataset rebuilt for that
+period (10,786 signals; `REAPER_ML_PERIOD=2018-01-01:2026-01-01`; the 91 checks pass). Boosted trees, random forest,
+CatBoost, 6-input scorecard and a small neural network (32→16), × all TFs / 15m–4H, × skip / half size = 20 versions;
+yearly walk-forward 2020–2025 (each year judged by a model trained on earlier years only); pass = more R, better in
+≥ 4/6 years, beats 90 % of random. 15m–4H without ML over 2020–2025: +39.5R. Local run: passed — scorecard / all TFs /
+skip +79.9R (4/6, 95 %), scorecard / all TFs / half size +66.1R (5/6, 97 %), neural network / all TFs / half size
++60.0R (4/6, 91 %); the rest failed (CatBoost and 15m–4H-trained neural network worst). Colab run (scikit-learn 1.6.1) agreed and also
+passed boosted trees / all TFs / half size (+64.6R, 4/6, 96 %); chosen again: scorecard / all TFs / skip. Screenshot:
+`colab-all-models-2018-2025.jpg`.
+**But:** the winning scorecard's strongest input is `tf_minutes` — it mostly learnt "rate 5m signals low". On the
+untouched 2026 Jan–Sep data it skipped **no** 15m–4H trade (+48.4R with and without ML) and only cut 5m trades
+(5m +26.9R → +18.8R). So its gain is a timeframe filter we already apply (do not trade 5m), not new trade selection
+on 15m–4H. The indicator's JSON evaluator matched scikit-learn exactly (max difference 1e-16).
+
+**ML round 4 — hyper-parameter tuning, 15m–4H only (`make_notebook_tune.py` → `colab_tuned_2018_2025.ipynb`).**
+Nested walk-forward: for each test year 2020–2025, Optuna (TPE, seed 0, 30 trials) tuned each model's knobs, the share
+filtered out (20/30/40/50 %) and skip vs half size, using only the earlier years (inner yearly folds; score = total R on
+the inner check years, ≥ 40 % of trades kept). The test year was then judged once. Fewer trades were allowed (user's
+instruction). Same pass rules plus ≥ 40 % kept every year; 2026 Jan–Sep (`reaper_ml_holdout_2026.csv`, 436 15m–4H
+signals) held back as a final exam for a passing model. 15m–4H without ML over 2020–2025: +39.5R.
+| Model | With ML, Colab (sklearn 1.6.1) | Better years | Beats random | Local (sklearn 1.9.1) |
+|---|---|---|---|---|
+| Neural network | +23.4R | 3/6 | 72 % | +23.4R, 3/6 |
+| CatBoost | +0.1R | 2/6 | 68 % | +0.6R, 2/6 |
+| Boosted trees | −14.5R | 2/6 | 34 % | +39.0R, 3/6 |
+| Scorecard | −23.6R | 2/6 | 41 % | −10.3R, 2/6 |
+**No model passed, so nothing went to the 2026 exam.** Tuning made results worse than the untuned round 3: the tuner
+picks the settings that fit the noise of the earlier years best, and those settings did not carry to the next year.
+The models filtered 20–50 % of trades but removed winners about as often as losers (2025: every model lost 23–50R).
+Conclusion: the 23 inputs do not tell good REAPER trades from bad ones on 15m–4H. Screenshot: `colab-tuned-2018-2025.jpg`.
+
 ## Files
 Code: `backend/app/scripts/liquidity_reaper.py`; research `backend/research/reaper/` (generator, simulator) and
 `backend/research/reaper_v2/` (all rounds). Docs in this folder: `PLAN.md`, `RESULTS.md`, `SUMMARY.md`,

@@ -89,13 +89,13 @@ export function TopBar() {
         onClick={() => {
           useRuler.getState().setEnabled(false)
           setReplay(replayMode === 'off' ? { mode: 'picking', playing: false }
-            : { mode: 'off', playing: false, cursorTime: null, cutoffTime: null })
+            : { mode: 'off', playing: false, cursorTime: null, cutoffTime: null, startTime: null })
         }}
         disabled={replayMode === 'active'}>
         <Icon name="replay" size={17} /> Replay
       </button>
       <button className={`tb-btn ${rulerOn ? 'on' : ''}`} aria-label="Ruler" aria-pressed={rulerOn}
-        title="Measure price and time (or hold Shift and drag)" onClick={() => {
+        title="Measure price and time (Esc closes)" onClick={() => {
           if (replayMode === 'picking') setReplay({ mode: useReplay.getState().cutoffTime === null ? 'off' : 'active' })
           useRuler.getState().setEnabled(!rulerOn)
         }}>

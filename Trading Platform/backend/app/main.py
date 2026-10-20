@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from .backtest.engine import BacktestError
 from .backtest.service import BacktestJobs
+from .tuning import TuningError, TuningJobs
 from .config import BACKEND_DIR, load_settings
 from .engine.inputs import InputError
 from .engine.registry import list_scripts
@@ -62,6 +63,7 @@ async def lifespan(app: FastAPI):
     app.state.indicators = IndicatorService(store, sync)
     app.state.badge_overlaps = BadgeOverlapService(store)
     app.state.backtests = BacktestJobs(store, settings)
+    app.state.tuning = TuningJobs(store, settings)
     app.state.downloads = HistoryDownloadJobs(sync) if sync else None
     app.state.live = (ExnessLiveHub if sync is not None and sync.provider == "exness" else LiveHub)(store, sync, settings.live_poll_seconds)
     app.state.live.start()
@@ -71,6 +73,7 @@ async def lifespan(app: FastAPI):
     yield
     await app.state.live.stop()
     app.state.backtests.shutdown()
+    app.state.tuning.shutdown()
     if sync is not None:
         sync.client.close()
 
@@ -313,13 +316,15 @@ class IndicatorRunRequest(BaseModel):
     inputs: dict = Field(default_factory=dict)
     start_time: int
     end_time: int | None = None
+    replay_start: int | None = None  # open time of the replay's start bar (dashboards record trades from there)
 
 
 @app.post("/api/indicators/run")
 def run_indicator(req: IndicatorRunRequest):
     try:
         return app.state.indicators.run(feed_id=req.feed_id, timeframe=req.timeframe, script_id=req.script_id,
-                                        inputs=req.inputs, start_time=req.start_time, end_time=req.end_time)
+                                        inputs=req.inputs, start_time=req.start_time, end_time=req.end_time,
+                                        replay_start=req.replay_start)
     except (InputError, IndicatorRequestError, ValueError) as exc:
         raise HTTPException(400, str(exc)) from exc
     except MarketDataError as exc:
@@ -336,13 +341,29 @@ def badge_overlaps(request: dict):
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.post('/api/ob-signals')
+def ob_signals(request: dict):
+    """Order block trade signals on the 5m chart: confirmation candles at the order blocks of chosen timeframes."""
+    try:
+        return app.state.badge_overlaps.ob_signals(**request)
+    except (ValueError, TypeError, InputError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.post('/api/overlap-reactions')
 def fast_overlap_reactions(request: dict):
     """Closed-candle confirmations on existing locks, independent of source discovery."""
     try:
-        return app.state.badge_overlaps.run(**{**request,'reactions_only':True})
+        result = app.state.badge_overlaps.run(**{**request,'reactions_only':True})
     except (ValueError,TypeError,InputError) as exc:
         raise HTTPException(400,str(exc)) from exc
+    # TEMPORARY replay-record diagnostics (remove once the dashboard reset is found)
+    start = request.get('replay_start')
+    closed = [t for t in result.get('signals', []) if t['status'] == 'closed' and (start is None or t['time'] > start)]
+    print(f"[record] lock={str(request.get('lock_id'))[:8]} as_of={request.get('as_of')} "
+          f"start={start} signals={request.get('signals')} trades={len(result.get('signals', []))} "
+          f"W={sum(t['result_r'] > 0 for t in closed)} L={sum(t['result_r'] <= 0 for t in closed)}", flush=True)
+    return result
 
 
 @app.post("/api/backtests")
@@ -365,6 +386,30 @@ def get_backtest(job_id: str):
     if job is None:
         raise HTTPException(404, "unknown backtest")
     return job
+
+
+# ------------------------------------------------------------------------- tuning
+@app.post("/api/tuning")
+def start_tuning(request: dict):
+    try:
+        return {"id": app.state.tuning.start(request)}
+    except (TuningError, InputError, ValueError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/tuning/{job_id}")
+def get_tuning(job_id: str):
+    job = app.state.tuning.get(job_id)
+    if job is None:
+        raise HTTPException(404, "unknown tuning run (the server may have restarted)")
+    return job
+
+
+@app.post("/api/tuning/{job_id}/stop")
+def stop_tuning(job_id: str):
+    if not app.state.tuning.stop(job_id):
+        raise HTTPException(404, "unknown tuning run")
+    return {"stopping": job_id}
 
 
 # -------------------------------------------------------------------------- live

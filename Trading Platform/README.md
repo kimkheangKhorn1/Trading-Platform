@@ -30,7 +30,7 @@ coverage/gap reports and validation limits. Archive history needs no API keys or
 | Trade inspector (click a trade → chart jumps there, loads older history if needed, shows entry/SL/TP levels and fills) | Done | Browser |
 | Bar replay (pick a bar, play/step, speed; indicators are recomputed only up to the cursor) | Done | Browser, checked that nothing after the cursor is shown |
 | Conversion of your Pine indicator | In progress (see below) | — |
-| Ruler (price, %, ticks, bars and elapsed time) | Implemented in the top toolbar; drag, click-to-click, or temporary Shift measurement | Frontend tests + browser checks |
+| Ruler (price, %, ticks, bars and elapsed time) | Implemented in the top toolbar; drag or click-to-click | Frontend tests + browser checks |
 | Other drawing tools (trend line, rectangle, …) | Not started | — |
 
 ### SMC & ICT & Indicators + Scalping Master (Pine conversion)
@@ -195,7 +195,7 @@ test the CSV path with real prices. Delete it under **Data → Stored feeds** if
   completed by that time are shown on the new timeframe. Historical replay pages forward as needed.
 - **Ruler**: beside Replay in the top toolbar. Click it, then drag between two chart points, or click
   the start and end. It shows signed price change, percentage, ticks, bar intervals and elapsed time.
-  Hold **Shift** for a temporary measurement; release it to clear. **Esc** closes the ruler and
+  Only the button turns it on (no Shift shortcut, which clashed with the replay keys). **Esc** closes the ruler and
   **Delete/Backspace** clears a measurement. Price values use the feed's precision, and bar counts use
   candle columns while elapsed time includes session gaps. The price/time fields follow the
   [TradingView measurement-tool model](https://www.tradingview.com/support/solutions/43000516996-date-and-price-range-drawing-tools/).

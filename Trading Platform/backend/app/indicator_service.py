@@ -31,7 +31,7 @@ class IndicatorService:
         self._guard = threading.Lock()
 
     def run(self, *, feed_id: str, timeframe: str, script_id: str, inputs: dict | None, start_time: int,
-            end_time: int | None = None) -> dict:
+            end_time: int | None = None, replay_start: int | None = None) -> dict:
         feed = self.store.get_feed(feed_id)
         if feed is None:
             raise IndicatorRequestError(f"unknown feed {feed_id!r}")
@@ -83,7 +83,8 @@ class IndicatorService:
                 runner.process(bars)
             with self._guard:
                 self._cache[key] = (runner, lock)
-            out = apply_display_filter(runner.output(start_time=start_time, end_time=end_time),
+            out = apply_display_filter(runner.output(start_time=start_time, end_time=end_time,
+                                                     replay_start=replay_start if mode == "replay" else None),
                                        script.display_filter())  # this request's display settings
         out["warmup_bars"] = len(pre)
         out["script_id"] = script_id

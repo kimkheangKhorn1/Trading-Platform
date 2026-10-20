@@ -24,28 +24,65 @@ DIRECTIONAL_NAMES = {
 REACTION_WINDOW = {'M1': 10, 'M5': 3}
 
 
+class PatternTape:
+    """Closed chart candles with the indicator's candle-pattern matches, built oldest to newest.
+
+    Matches only depend on earlier candles, so the tape is extended with new closed candles instead of being
+    recomputed, and an earlier observation clock reads a prefix of it (``count``).
+    """
+
+    def __init__(self, params: dict, timeframe: str):
+        self.params = params
+        self.step = 60 if timeframe == 'M1' else 300
+        self.rows: list[tuple] = []
+        self.times: list[int] = []
+        self.formulas: list[list] = []
+        self.mean, self.atr = EMA(14), ATR(params['atrLen'])
+        self.prev_avg = NAN
+        self.whole_history = False  # True when nothing older exists before the first candle held
+
+    def extend(self, bars, as_of: int) -> None:
+        """Append the candles of ``bars`` after the last one held that are complete and closed by ``as_of``."""
+        params, step = self.params, self.step
+        last = self.times[-1] if self.times else None
+        for i in range(len(bars)):
+            t = int(bars.time[i])
+            # Exclude both provisional candles and nominal closes after the observation clock.
+            if not bars.complete[i] or t + step > as_of or (last is not None and t <= last):
+                continue
+            row = (t, float(bars.open[i]), float(bars.high[i]), float(bars.low[i]),
+                   float(bars.close[i]), float(bars.volume[i]))
+            _, o, h, l, c, _ = row
+            avg = self.mean.update(abs(c-o))
+            a = self.atr.update(h,l,c)
+            prev = self.rows[-1] if self.rows else (0,NAN,NAN,NAN,NAN,NAN)
+            found = pattern_formulas(params,row,prev,avg,self.prev_avg,a)
+            self.formulas.append(found if params['atrMax']==0 or h-l<=params['atrMax']*a else [])
+            self.rows.append(row)
+            self.times.append(t)
+            self.prev_avg = avg
+
+    def count(self, as_of: int) -> int:
+        """Number of held candles closed by ``as_of``."""
+        return bisect_left(self.times, as_of - self.step + 1)
+
+
 def overlap_reactions(bars, zones: list[dict], params: dict, timeframe: str, as_of: int) -> list[dict]:
     if timeframe not in ('M1', 'M5') or not zones:
         return []
-    step = 60 if timeframe == 'M1' else 300
-    rows, formulas = [], []
-    mean, atr = EMA(14), ATR(params['atrLen'])
-    prev_avg = NAN
-    for i in range(len(bars)):
-        # Exclude both provisional candles and nominal closes after the observation clock.
-        if not bars.complete[i] or int(bars.time[i]) + step > as_of:
-            continue
-        row = (int(bars.time[i]), float(bars.open[i]), float(bars.high[i]), float(bars.low[i]),
-               float(bars.close[i]), float(bars.volume[i]))
-        _, o, h, l, c, _ = row
-        avg = mean.update(abs(c-o))
-        a = atr.update(h,l,c)
-        prev = rows[-1] if rows else (0,NAN,NAN,NAN,NAN,NAN)
-        found = pattern_formulas(params,row,prev,avg,prev_avg,a)
-        formulas.append(found if params['atrMax']==0 or h-l<=params['atrMax']*a else [])
-        rows.append(row)
-        prev_avg = avg
-    times = [r[0] for r in rows]
+    tape = PatternTape(params, timeframe)
+    tape.extend(bars, as_of)
+    return tape_reactions(tape, zones, timeframe, as_of)
+
+
+def tape_reactions(tape: PatternTape, zones: list[dict], timeframe: str, as_of: int,
+                   limit: int | None = 500) -> list[dict]:
+    """Reactions at ``zones`` from the candles of ``tape`` closed by ``as_of`` (the newest ``limit``; None = all)."""
+    if timeframe not in ('M1', 'M5') or not zones:
+        return []
+    params, step = tape.params, tape.step
+    n = tape.count(as_of)
+    rows, formulas, times = tape.rows[:n], tape.formulas, tape.times[:n]
     out = []
     for zone in zones:
         touch = zone['touched_at'] - 60  # first completed M1 contact, expressed as its open
@@ -95,10 +132,11 @@ def overlap_reactions(bars, zones: list[dict], params: dict, timeframe: str, as_
             # One compact annotation per zone/candle, with every match available in its tooltip.
             selected = min(candidates,key=lambda m:(m['reaction']=='unconfirmed',m['priority']))
             matches = list(dict.fromkeys(m['name'] for m in candidates))
-            out.append(dict(time=t, confirmed_at=t+step, price=l if selected['bullish'] else h,
+            out.append(dict(time=t, confirmed_at=t+step, price=l if selected['bullish'] else h, open=o, close=c,
                 timeframe=timeframe, window_index=(t-window_start)//step+1, side=zone['side'], bottom=zone['bottom'], top=zone['top'],
                 lock_id=zone['lock_id'], locked_at=zone['locked_at'], touched_at=zone['touched_at'],
                 code=selected['code'], name=selected['name'], bullish=selected['bullish'], neutral=selected['neutral'],
                 reaction=selected['reaction'], patterns=matches))
     # Stable ordering across restarts/replay and a bounded annotation payload.
-    return sorted(out,key=lambda r:(r['time'],r['lock_id']))[-500:]
+    out.sort(key=lambda r:(r['time'],r['lock_id']))
+    return out if limit is None else out[-limit:]

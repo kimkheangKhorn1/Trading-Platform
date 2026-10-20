@@ -11,7 +11,7 @@ are deleted (``max_boxes_count`` / ``max_lines_count`` / ``max_labels_count`` se
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Literal
 
 LineStyle = Literal["solid", "dashed", "dotted", "arrow_left", "arrow_right", "arrow_both"]
@@ -36,6 +36,7 @@ class Box:
     text_halign: str = "center"
     text_valign: str = "center"
     tooltip: str = ""
+    tooltip_title: str = ""  # hover card heading (the script name when empty)
     group: str = ""
     created_at: int = 0
 
@@ -54,6 +55,7 @@ class Line:
     style: LineStyle = "solid"
     extend: Extend = "none"
     tooltip: str = ""
+    tooltip_title: str = ""  # hover card heading (the script name when empty)
     group: str = ""
     created_at: int = 0
 
@@ -72,6 +74,7 @@ class Label:
     text_color: str = "#FFFFFFFF"
     size: str = "normal"
     tooltip: str = ""
+    tooltip_title: str = ""  # hover card heading (the script name when empty)
     group: str = ""
     created_at: int = 0
 
@@ -79,6 +82,19 @@ class Label:
 
 
 Drawing = Box | Line | Label
+
+
+def _copy_drawing(self, memo):
+    """Every field is an immutable scalar, so a copy of the attribute dict is a full deep copy. Runner snapshots
+    and last-bar views deep-copy thousands of drawings per step; the generic path rebuilt each field."""
+    new = object.__new__(type(self))
+    new.__dict__.update(self.__dict__)
+    memo[id(self)] = new
+    return new
+
+
+for _cls in (Box, Line, Label):
+    _cls.__deepcopy__ = _copy_drawing
 
 
 class DrawingStore:
@@ -137,4 +153,7 @@ class DrawingStore:
         return out
 
     def to_json(self) -> list[dict]:
-        return [asdict(o) for o in self.all()]
+        # Same as dataclasses.asdict (fields are scalars), without its per-field recursion; attributes a script
+        # attached itself (``_name``) are not fields and stay out, as with asdict.
+        # ``kind`` is a class-level default (init=False), not in the instance dict.
+        return [{**{k: v for k, v in o.__dict__.items() if k[0] != '_'}, 'kind': o.kind} for o in self.all()]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BADGE_OVERLAP_DEFAULTS, OB_OVERLAP_DEFAULTS, badgeOverlapDrawings, overlapReactionDrawings, usableOverlapClock, withoutTouchedLocks } from './badgeOverlap'
+import { BADGE_OVERLAP_DEFAULTS, badgeOverlapDrawings, usableOverlapClock, withoutTouchedLocks } from './badgeOverlap'
 import { overlapSettings } from '../chart/useBadgeOverlaps'
 import type { BadgeOverlapResult, OverlapBand } from './badgeOverlap'
 
@@ -191,32 +191,9 @@ it('never displays LLS as overlap confirmation, including legacy responses', () 
   expect(labels.map(d=>d.text)).toEqual(['↶ H','↶ LUS'])
 })
 
-it('draws order block overlaps as their own layer: names, colors, group and ids never collide with D/S', () => {
-  const ob = badgeOverlapDrawings({...result, kind: 'ob', overlaps: [band('demand', 2, 100), band('supply', 3, 130)]}, 900, 60, 3)
-  const ds = badgeOverlapDrawings({...result, overlaps: [band('demand', 2, 100), band('supply', 3, 130)]}, 900, 60, 3)
-  const labels = ob.filter(d => d.kind === 'label')
-  expect(labels.map(d => d.text)).toEqual(['★ Bull OB · 2 TF', '★ Bear OB · 3 TF'])
-  expect(ob.every(d => d.group === 'ob_overlap' && d.overlap?.kind === 'ob')).toBe(true)
-  const boxes = ob.filter(d => d.kind === 'box')
-  expect(boxes.map(d => d.kind === 'box' ? d.border_color : '')).toEqual(['#4F9DFFFF', '#FFA24CFF'])
-  const ids = new Set(ds.map(d => d.id))
-  expect(ob.some(d => ids.has(d.id))).toBe(false)
-  expect(labels[0].tooltip).toContain('Order blocks from 1m, 5m cover this entire band')
-})
-
-it('labels order block candle reactions with the order block side and their own ids', () => {
-  const [label] = overlapReactionDrawings({as_of: 2000, reactions: [reaction]}, 3, 'UTC', 'ob')
-  const [ds] = overlapReactionDrawings({as_of: 2000, reactions: [reaction]}, 3, 'UTC')
-  expect(label.group).toBe('ob_overlap')
-  expect(label.id).not.toBe(ds.id)
-  expect(label.tooltip).toContain('Bull OB overlap: 104.000–108.000')
-})
-
-it('order block overlaps default to both types, untouched blocks only and off', () => {
+it('overlap settings default to the D/S defaults', () => {
   const inst = {uid: 'u', scriptId: 'smc_ict_scalping_master', inputs: {}, visible: true, plotStyles: {}, shapeStyles: {},
     groupVisible: {}, timeframes: []} as unknown as Parameters<typeof overlapSettings>[0]
-  expect(overlapSettings(inst, 'ob')).toEqual(OB_OVERLAP_DEFAULTS)
-  expect(OB_OVERLAP_DEFAULTS).toMatchObject({enabled: false, obTypes: ['swing', 'internal'], freshOnly: true})
-  expect(overlapSettings({...inst, obOverlap: {...OB_OVERLAP_DEFAULTS, enabled: true}}, 'ob').enabled).toBe(true)
-  expect(overlapSettings(inst, 'ds')).toBe(BADGE_OVERLAP_DEFAULTS)
+  expect(overlapSettings(inst)).toBe(BADGE_OVERLAP_DEFAULTS)
+  expect(overlapSettings({...inst, badgeOverlap: {...BADGE_OVERLAP_DEFAULTS, enabled: true}}).enabled).toBe(true)
 })

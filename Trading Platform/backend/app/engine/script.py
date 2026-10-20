@@ -174,6 +174,12 @@ class Context:
         return self._r.precision
 
     @property
+    def replay_start(self) -> int | None:
+        """Open time of the bar where the chart replay was started, or None when not replaying. Only set for
+        ``on_last_bar`` (display, e.g. a record of the trades made since the replay began)."""
+        return self._r.replay_start
+
+    @property
     def mintick(self) -> float:
         return 10.0 ** (-self._r.precision)
 

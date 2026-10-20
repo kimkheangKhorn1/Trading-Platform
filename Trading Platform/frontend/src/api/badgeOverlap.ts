@@ -3,37 +3,23 @@ import { fmtDateTime } from '../lib/format'
 import type { TimezoneId } from '../lib/format'
 
 export const BADGE_TFS: TimeframeCode[] = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4']
-/** 'ds': fresh Demand/Supply badges. 'ob': displayed order blocks (bullish = demand side, bearish = supply side). */
-export type OverlapKind = 'ds' | 'ob'
-export type ObType = 'swing' | 'internal'
-export const OB_TYPES: ObType[] = ['swing', 'internal']
 export interface BadgeOverlapSettings {
   enabled: boolean
   timeframes: TimeframeCode[]
   minTimeframes: number
   strongestOnly?: boolean
   candleReactions?: boolean
-  /** Order block overlaps only */
-  obTypes?: ObType[]
-  freshOnly?: boolean
+  /** Trade the reversal signals on the 5m chart (default on) */
+  signals?: boolean
 }
 export const BADGE_OVERLAP_DEFAULTS: BadgeOverlapSettings = {
   enabled: false, timeframes: BADGE_TFS, minTimeframes: 2,
 }
-export const OB_OVERLAP_DEFAULTS: BadgeOverlapSettings = {
-  enabled: false, timeframes: BADGE_TFS, minTimeframes: 2, obTypes: OB_TYPES, freshOnly: true,
-}
-/** Colors, names and drawing ids per overlap kind, so both layers can share one chart without colliding. */
-export const OVERLAP_STYLE = {
-  ds: {title: 'D/S overlap', long: 'Demand/Supply overlap', demand: '#22D3A5', supply: '#FF6B81',
-    name: {demand: 'Demand', supply: 'Supply'}, group: 'badge_overlap', zoneId: -10000, reactionId: -30000},
-  ob: {title: 'OB overlap', long: 'Order block overlap', demand: '#4F9DFF', supply: '#FFA24C',
-    name: {demand: 'Bull OB', supply: 'Bear OB'}, group: 'ob_overlap', zoneId: -50000, reactionId: -70000},
-} as const
+/** Colors, names and drawing ids of the overlap layer. */
+export const OVERLAP_STYLE = {title: 'D/S overlap', long: 'Demand/Supply overlap', demand: '#22D3A5', supply: '#FF6B81',
+  name: {demand: 'Demand', supply: 'Supply'}, group: 'badge_overlap', zoneId: -10000, reactionId: -30000} as const
 export interface BadgeZone {
   timeframe: string; side: 'demand' | 'supply'; bottom: number; top: number; price: number; origin: number
-  /** order blocks: structure-break candle that created the block, and swing / internal */
-  born?: number; kind?: ObType
 }
 export interface OverlapReaction {
   time: number; confirmed_at: number; price: number; timeframe: 'M1' | 'M5'
@@ -42,9 +28,20 @@ export interface OverlapReaction {
   code: string; name: string; bullish: boolean; neutral?: boolean; window_index?: number
   reaction: 'rejection' | 'continuation' | 'unconfirmed'; patterns: string[]
 }
+/** A reversal signal at a locked overlap and its trade, followed one at a time like REAPER [JOAT]. */
+export interface OverlapTrade {
+  id: string; lock_id: string; side: 'long' | 'short'
+  /** signal candle open time; entry_time = its close (entry at its close price) */
+  time: number; entry_time: number; entry: number; risk: number; price: number
+  zone_side: 'demand' | 'supply'; bottom: number; top: number; code: string; name: string; patterns: string[]
+  /** skipped: signal while the previous trade was still open; no_trade: its stop would be wider than the maximum */
+  status: 'open' | 'closed' | 'skipped' | 'no_trade'
+  initial_sl?: number; sl?: number; tps?: number[]; tp_hit?: number
+  exit_time?: number | null; exit_price?: number | null; result_r?: number | null; exit_reason?: string | null
+}
 export interface BadgeOverlapResult {
-  kind?: OverlapKind
   reactions?: OverlapReaction[]
+  signals?: OverlapTrade[]
   as_of: number
   lock_mode?: boolean
   active_locks?: number
@@ -60,7 +57,9 @@ export interface BadgeOverlapResult {
 export interface BadgeOverlapRequest {
   feed_id: string; inputs: Record<string, InputValue>; as_of: number; timeframes: TimeframeCode[];
   min_timeframes: number; max_ranges: number; lock_id?: string; chart_timeframe?: TimeframeCode; strongest_only?: boolean; candle_reactions?: boolean
-  kind?: OverlapKind; ob_types?: ObType[]; fresh_only?: boolean
+  signals?: boolean; signal_buffer?: number; signal_max_risk?: number
+  /** replay start bar: the trade record restarts there and never depends on the backend's cache */
+  replay_start?: number | null
 }
 export async function fetchBadgeOverlaps(body: BadgeOverlapRequest): Promise<BadgeOverlapResult> {
   const res = await fetch('/api/badge-overlaps', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
@@ -71,6 +70,7 @@ export async function fetchBadgeOverlaps(body: BadgeOverlapRequest): Promise<Bad
 export interface OverlapReactionResult {
   as_of: number
   reactions: OverlapReaction[]
+  signals?: OverlapTrade[]
   warnings: string[]
 }
 export async function fetchOverlapReactions(body: BadgeOverlapRequest): Promise<OverlapReactionResult> {
@@ -82,7 +82,6 @@ export async function fetchOverlapReactions(body: BadgeOverlapRequest): Promise<
 export const BADGE_TF_LABELS: Record<string, string> = {M1: '1m', M5: '5m', M15: '15m', M30: '30m', H1: '1H', H4: '4H'}
 export type OverlapBand = BadgeOverlapResult['overlaps'][number]
 export interface OverlapHover {
-  kind?: OverlapKind
   band: OverlapBand
   asOf: number
   precision: number
@@ -105,8 +104,7 @@ export function withoutTouchedLocks(result: BadgeOverlapResult, bars: BarRow[]):
 
 export function badgeOverlapDrawings(data: BadgeOverlapResult, time: number, step: number, precision: number,
   strongestOnly = false, timezone: TimezoneId = 'UTC'): DrawingObj[] {
-  const kind = data.kind ?? 'ds'
-  const st = OVERLAP_STYLE[kind]
+  const st = OVERLAP_STYLE
   const peaks = {demand: 0, supply: 0}
   for (const b of data.overlaps) peaks[b.side] = Math.max(peaks[b.side], b.strength)
   const zones = data.overlaps.flatMap((b, i): DrawingObj[] => {
@@ -118,30 +116,29 @@ export function badgeOverlapDrawings(data: BadgeOverlapResult, time: number, ste
     const title = `${strongest ? '★ ' : ''}${b.locked_at !== undefined ? 'Locked ' : ''}${side} · ${b.strength} timeframes · ${f(b.bottom)}–${f(b.top)}`
     // Short like the native price badges, so the chart's row packing never drags it away from its zone.
     const badge = `${strongest ? '★ ' : ''}${side} · ${b.strength} TF`
-    const tip = kind === 'ob' ? `${side} overlap · ${b.strength} timeframes\nShared price range: ${f(b.bottom)} – ${f(b.top)}\nOrder blocks from ${b.timeframes.map(t => BADGE_TF_LABELS[t] ?? t).join(', ')} cover this entire band.\nSnapshot: ${fmtDateTime(data.as_of, timezone)}\nOrder block confluence only; this is not an entry confirmation.`
-      : `${b.side === 'demand' ? 'Demand' : 'Supply'} overlap · Fresh at snapshot\nShared price range: ${f(b.bottom)} – ${f(b.top)}\n${b.strength} different timeframes cover this entire band: ${b.timeframes.map(t => BADGE_TF_LABELS[t] ?? t).join(', ')}.\nWidth: ${f(b.top - b.bottom)} price units.\nFresh means the source indicator has not marked the zone touched at its proximal level.\nSnapshot: ${fmtDateTime(data.as_of, timezone)} (${timezone === 'local' ? 'Local' : timezone})\nDemand/Supply confluence only; this is not an entry confirmation.`
+    const tip = `${b.side === 'demand' ? 'Demand' : 'Supply'} overlap · Fresh at snapshot\nShared price range: ${f(b.bottom)} – ${f(b.top)}\n${b.strength} different timeframes cover this entire band: ${b.timeframes.map(t => BADGE_TF_LABELS[t] ?? t).join(', ')}.\nWidth: ${f(b.top - b.bottom)} price units.\nFresh means the source indicator has not marked the zone touched at its proximal level.\nSnapshot: ${fmtDateTime(data.as_of, timezone)} (${timezone === 'local' ? 'Local' : timezone})\nDemand/Supply confluence only; this is not an entry confirmation.`
     const lockTip = b.locked_at === undefined ? tip : `${title}\nLocked range: ${f(b.bottom)} – ${f(b.top)}\nLocked at: ${fmtDateTime(b.locked_at, timezone)}\nTimeframe count and source zones are frozen at locking.\nTouching this overlap’s own boundary deletes this group. All its original sources are retired from NEW overlaps; other already-locked overlaps remain unchanged until their own boundaries are touched. Distance only hides it temporarily.`
     const common = {group: st.group, created_at: b.locked_at ?? data.as_of, tooltip: lockTip,
-      overlap: {kind, band: b, asOf: data.as_of, precision, strongest}}
+      overlap: {band: b, asOf: data.as_of, precision, strongest}}
     return [
       {...common, kind: 'box', id: st.zoneId - i * 2, left: time, right: time + 8 * step, top: b.top, bottom: b.bottom,
-        border_color: col + 'FF', border_width: strongest ? 3 : 1, border_style: kind === 'ob' && !strongest ? 'dashed' : 'solid',
+        border_color: col + 'FF', border_width: strongest ? 3 : 1, border_style: 'solid',
         bg_color: col + (strongest ? '40' : '18'), extend: 'right',
         text: '', text_color: '#FFFFFFFF', text_size: 'small', text_halign: 'right', text_valign: 'center'},
       {...common, kind: 'label', id: st.zoneId - 1 - i * 2, x: time + 2 * step, y: (b.top + b.bottom) / 2,
         text: badge, yloc: 'price', style: 'label_left', color: col + 'FF', text_color: '#091019FF', size: 'small'},
     ]
   })
-  return [...zones, ...overlapReactionDrawings(data, precision, timezone, kind)]
+  return [...zones, ...overlapReactionDrawings(data, precision, timezone)]
 }
 
 /** Chart candles checked per lock, starting with the first-touch candle (same as the backend). */
 export const REACTION_WINDOW: Record<string, number> = {M1: 10, M5: 3}
 
 /** Reactions retain their historical location after the overlap is consumed. */
-export function overlapReactionDrawings(data: Pick<BadgeOverlapResult,'as_of'|'reactions'>, precision: number, timezone: TimezoneId,
-  kind: OverlapKind = 'ds'): DrawingObj[] {
-  const st = OVERLAP_STYLE[kind]
+export function overlapReactionDrawings(data: Pick<BadgeOverlapResult,'as_of'|'reactions'>, precision: number,
+  timezone: TimezoneId): DrawingObj[] {
+  const st = OVERLAP_STYLE
   // Merge only equivalent reactions. Distinct zone roles, patterns and outcomes keep their own labels.
   const groups = new Map<string, OverlapReaction[]>()
   for (const r of data.reactions ?? []) {

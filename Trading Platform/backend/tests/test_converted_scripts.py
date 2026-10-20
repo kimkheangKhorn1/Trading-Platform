@@ -311,3 +311,48 @@ def test_reaper_engulf_and_delta_filters_match_the_research_inputs(data):
                                                   'engulfFilter': True, 'deltaFilter': True}).output()['drawings']
     labels = sorted((d['x'], 1 if 'BUY' in d['text'] else -1) for d in out if d['kind'] == 'label' and d['text'].startswith('RAID'))
     assert kept and len(kept) < len(sigs) and labels == kept
+
+
+# ---------------------------------------------------------------- REAPER ML filter (app/scripts/reaper_ml.py)
+def test_reaper_ml_recording_does_not_change_signals_and_rows_follow_the_features(data):
+    from app.scripts.liquidity_reaper import LiquidityReaper
+    from app.scripts.reaper_ml import FEATURES
+    m1, bars = data
+
+    class Rec(LiquidityReaper):
+        collect = True
+
+    params = {'pivotLen': 3, 'useVolFilter': False, 'minWickPct': 10.0}
+    plain = run('liquidity_reaper_joat', bars, m1, params).output()
+    r = ScriptRunner(Rec, params, timeframe='M15', alignment='utc', htf_provider=M1Provider(m1))
+    r.process(bars)
+    assert strip_ids(r.output())['drawings'] == strip_ids(plain)['drawings']  # recording changes nothing
+    rows = r.script.signal_rows
+    labels = sorted((d['x'], 1 if 'BUY' in d['text'] else -1) for d in plain['drawings'] if d['kind'] == 'label' and d['text'].startswith('RAID'))
+    assert rows and sorted((int(bars.time[i]), s) for i, s, _ in rows) == labels
+    for i, side, x in rows:
+        assert len(x) == len(FEATURES) and all(np.isfinite(v) or np.isnan(v) for v in x)
+        f = dict(zip(FEATURES, x))
+        assert 1 <= f['bars_since_raid'] <= 3 and f['close_from_level'] > 0 and f['risk_atr'] > 0
+        assert f['hour'] == (int(bars.time[i]) // 3600) % 24
+
+
+def test_reaper_ml_model_evaluators_and_the_missing_model_warning(data, tmp_path, monkeypatch):
+    import app.scripts.reaper_ml as ml
+    feats = list(ml.FEATURES)
+    zero = [0.0] * len(feats)
+    logistic = ml.Model(dict(kind='logistic', features=feats, threshold=0.5, fill=zero, mean=zero, std=[1.0] * len(feats),
+                             coef=[1.0] + [0.0] * (len(feats) - 1), intercept=0.0))
+    assert abs(logistic.prob([2.0] + zero[1:]) - 1 / (1 + np.exp(-2))) < 1e-12
+    tree = dict(feature=[0, 0, 0], threshold=[1.0, 0, 0], left=[1, 0, 0], right=[2, 0, 0], leaf=[False, True, True],
+                missing_left=[True, False, False], value=[0.0, -1.0, 2.0])
+    trees = ml.Model(dict(kind='trees', features=feats, threshold=0.5, baseline=0.5, trees=[tree]))
+    assert abs(trees.prob([0.5] + zero[1:]) - 1 / (1 + np.exp(0.5))) < 1e-12  # left leaf: 0.5 - 1
+    assert abs(trees.prob([float('nan')] + zero[1:]) - 1 / (1 + np.exp(0.5))) < 1e-12  # missing goes left
+    forest = ml.Model(dict(kind='forest', features=feats, threshold=0.5, fill=[3.0] + zero[1:],
+                           trees=[dict(feature=[0, -2, -2], threshold=[1.0, -2, -2], left=[1, -1, -1], right=[2, -1, -1], value=[0.3, 0.2, 0.8])]))
+    assert forest.prob([0.0] + zero[1:]) == 0.2 and forest.prob([float('nan')] + zero[1:]) == 0.8  # NaN -> fill 3.0
+    monkeypatch.setattr(ml, 'MODEL_PATH', tmp_path / 'none.json')
+    m1, bars = data
+    out = run('liquidity_reaper_joat', bars, m1, {'mlFilter': True}).output()
+    assert any('no trained model' in w for w in out['warnings'])

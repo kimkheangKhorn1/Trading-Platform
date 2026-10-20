@@ -21,7 +21,7 @@ import type {
   Time,
 } from 'lightweight-charts'
 import type { DrawingObj, LabelObj, ShapePoint, TradeDto } from '../api/types'
-import { cssColor } from '../lib/colors'
+import { cssColor, THEME } from '../lib/colors'
 import { indexAtOrBefore, timeToLogical } from './timeIndex'
 import { AnnotationLayout, packRow, type AnnotationRect } from './annotationLayout'
 
@@ -108,6 +108,8 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
   precision = 3
   layers: OverlayLayer[] = []
   trades: TradeOverlay | null = null
+  /** open time of the candle a "Go to" landed on: highlighted until the next navigation */
+  focusTime: number | null = null
   // hit regions recorded while painting (media coordinates), one list per pass
   private bgRegions: HitRegion[] = []
   private lineRegions: HitRegion[] = []
@@ -218,6 +220,12 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       const t1 = hi >= this.times.length ? Infinity : this.times[Math.max(0, hi)]
       if (pass === 'background') {
         this.bgRegions = []
+        const fx = this.focusTime === null ? null : this.x(this.focusTime)
+        if (fx !== null) {
+          const w = Math.max(4, this.chart!.timeScale().options().barSpacing)
+          ctx.fillStyle = THEME.accent + '38'
+          ctx.fillRect(fx - w / 2, 0, w, mediaSize.height)
+        }
         for (const layer of this.layers) if (!layer.front) this.drawBoxes(ctx, layer, mediaSize.width, t0, t1)
         if (this.trades) this.drawTradeZones(ctx, t0, t1)
         return
@@ -282,7 +290,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       if (d.text) this.drawBoxText(ctx, d, x0, y0, w, h)
       if (d.tooltip || d.text) {
         this.bgRegions.push({ x0, y0, x1: x0 + w, y1: y0 + h, priority: d.overlap ? 2 : 0,
-          info: { title: d.overlap ? (d.overlap.kind === 'ob' ? 'Order block overlap' : 'Demand/Supply overlap') : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
+          info: { title: d.overlap ? 'Demand/Supply overlap' : d.tooltip_title || layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
       }
     }
   }
@@ -350,7 +358,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
       ctx.setLineDash([])
       if (d.tooltip) {
         this.lineRegions.push({ x0: 0, y0: 0, x1: 0, y1: 0, priority: 1, segment: [xa, ya, xb, yb],
-          info: { title: layer.name, body: d.tooltip } })
+          info: { title: d.tooltip_title || layer.name, body: d.tooltip } })
       }
     }
   }
@@ -520,7 +528,7 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
     } })
     if (d.tooltip || d.text) {
       this.regions.push({ x0: placed.x, y0: placed.y, x1: placed.x + placed.width, y1: placed.y + placed.height, priority: 3,
-        info: { title: d.overlap ? (d.overlap.kind === 'ob' ? 'Order block overlap' : 'Demand/Supply overlap') : layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
+        info: { title: d.overlap ? 'Demand/Supply overlap' : d.tooltip_title || layer.name, body: d.tooltip || d.text, overlap: d.overlap } })
     }
   }
 

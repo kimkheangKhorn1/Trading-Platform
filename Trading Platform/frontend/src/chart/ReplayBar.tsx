@@ -140,7 +140,7 @@ export function ReplayBar({ ctrl }: { ctrl: ChartController }) {
       }}>Select bar</button>
       <button className="btn ghost sm" title="Leave replay and go back to the latest data" onClick={() => {
         ctrl.stopReplay()
-        set({ mode: 'off', playing: false, cursorTime: null, cutoffTime: null })
+        set({ mode: 'off', playing: false, cursorTime: null, cutoffTime: null, startTime: null })
       }}>Exit replay</button>
     </div>
   )

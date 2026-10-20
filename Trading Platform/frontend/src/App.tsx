@@ -6,6 +6,7 @@ import { Icon } from './components/common/Icon'
 import { DataDialog, GotoDialog, SymbolInfoDialog } from './components/DataDialog'
 import { IndicatorsDialog } from './components/IndicatorsDialog'
 import { SettingsDialog } from './components/SettingsDialog'
+import { TuningDialog } from './components/TuningDialog'
 import { StrategyTester } from './components/tester/StrategyTester'
 import { TopBar } from './components/TopBar'
 import { useApp } from './state/app'
@@ -20,6 +21,8 @@ function Dialogs() {
       return <IndicatorsDialog />
     case 'settings':
       return <SettingsDialog uid={dialog.uid} />
+    case 'tuning':
+      return <TuningDialog uid={dialog.uid} />
     case 'data':
       return <DataDialog />
     case 'symbol':

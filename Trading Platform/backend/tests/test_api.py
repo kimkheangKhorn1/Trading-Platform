@@ -125,14 +125,12 @@ def test_easy_mode_is_display_only(client, feed_id):
 
     overlaps = app.state.badge_overlaps
     as_of = candles["bars"][-1][0] + 300
-    run = lambda em, kind: overlaps.run(feed_id=feed_id, inputs={"easy_mode": em}, as_of=as_of,
-                                        timeframes=["M5", "M15", "H1"], kind=kind)
-    for kind in ("ds", "ob"):
-        first = run(True, kind)
-        sources = list(overlaps._sources)
-        assert run(False, kind) == first and list(overlaps._sources) == sources  # no new source runs
+    run = lambda em: overlaps.run(feed_id=feed_id, inputs={"easy_mode": em}, as_of=as_of,
+                                  timeframes=["M5", "M15", "H1"])
+    first = run(True)
+    sources = list(overlaps._sources)
+    assert run(False) == first and list(overlaps._sources) == sources  # no new source runs
     feed = overlaps.store.get_feed(feed_id)
     from app.scripts.smc_master import SmcMaster
-    scopes = {overlaps.scope(k, "x", feed, SmcMaster({"easy_mode": em}).p, ["M5"], 2, ["swing"], True)
-              for k in ("ds",) for em in (True, False)}
+    scopes = {overlaps.locks.scope("x", feed.id, SmcMaster({"easy_mode": em}).p, ["M5"], 2) for em in (True, False)}
     assert len(scopes) == 1  # locks are keyed the same whichever way Easy Mode is set

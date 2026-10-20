@@ -112,6 +112,8 @@ export interface PlotSpec {
   pane: 'overlay' | 'separate'
   visible: boolean
   replaced_colors?: string[] | null // earlier default colors: a saved style still at one moves to `color` once
+  tooltip?: string // hover text of the line
+  pane_group?: string // separate plots of different groups get their own panes, titled with the group
 }
 
 export interface ShapeSpec {
@@ -158,7 +160,121 @@ export interface ScriptMeta {
   label_layout?: boolean
   /** inputs that only change what is drawn (calculations ignore them) */
   display_inputs?: string[]
+  /** present when the script can be tuned (see TuningDialog) */
+  tuning?: TuningSpec | null
 }
+
+// ---------------------------------------------------------------- tuning
+export interface TuningParamSpec {
+  id: string
+  min?: number
+  max?: number
+  step?: number
+  options?: InputValue[]
+  /** tuned by default */
+  on?: boolean
+}
+
+export interface TuningSpec {
+  score: string
+  note?: string
+  params: TuningParamSpec[]
+}
+
+export type TuningObjective = 'rule' | 'split' | 'hold'
+
+export interface TuningMetrics {
+  trades: number
+  wins: number
+  losses: number
+  tp1: number
+  tp2: number
+  tp3: number
+  win_rate: number
+  rule: number
+  rule_h1: number
+  rule_h2: number
+  split: number
+  split_h1: number
+  split_h2: number
+  hold: number
+  hold_h1: number
+  hold_h2: number
+}
+
+export interface TuneResult {
+  n: number
+  params: Record<string, InputValue>
+  metrics: TuningMetrics
+  qualified: boolean
+}
+
+export interface TuningRequest {
+  feed_id: string
+  timeframe: TimeframeCode
+  script_id: string
+  inputs: Record<string, InputValue>
+  start: number
+  end: number
+  min_trades: number
+  tunes: number
+  objective: TuningObjective
+  ranges: { id: string; min?: number; max?: number; step?: number; options?: InputValue[] }[]
+}
+
+export interface TuningJob {
+  id: string
+  status: 'running' | 'done' | 'stopped' | 'error'
+  error: string | null
+  created: number
+  finished: number | null
+  request: TuningRequest
+  objective: TuningObjective
+  objective_text: string
+  objectives: Record<TuningObjective, string>
+  done: number
+  budget: number
+  total_space: string
+  total_space_float: number
+  exhaustive: boolean
+  phase: string
+  bars: number
+  warmup: number
+  dims: { id: string; count: number; first: InputValue; last: InputValue }[]
+  base: Record<string, InputValue>
+  best: TuneResult | null
+  baseline: TuneResult | null
+  top: TuneResult[]
+  recent: TuneResult[]
+  /** [tune number, score, qualified 0/1] for every finished tune */
+  points: [number, number, number][]
+  /** each time a tune became the best: prev = the tune it beat */
+  events: { n: number; prev: number | null; prev_score: number | null; score: number; at: number }[]
+}
+
+// ---------------------------------------------------------------- dashboard panels
+export interface ConfluencePanelData {
+  kind: 'triple_confluence'
+  id: string
+  position: IndicatorTable['position']
+  window: number
+  engines: { key: string; name: string; bull: number | null; bear: number | null; tip: string; trend?: number }[]
+  market: { rsi: number | null; adx: number | null; adx_min: number; adx_filter: boolean; htf: 'bull' | 'bear' | null }
+  trade: null | {
+    long: boolean; entry: number; sl: number; tps: number[]; hits: boolean[]; live_r: number | null
+    open_time: number; bars: number
+  }
+  stats: Omit<TuningMetrics, 'rule_h1' | 'rule_h2' | 'split_h1' | 'split_h2' | 'hold_h1' | 'hold_h2'> & {
+    skipped: number; since: number | null; first: number | null
+    recent: { long: boolean; hits: number; outcome: 'tp3' | 'sl'; r: number; time: number }[]
+  }
+  precision: number
+  entry_mode: string
+  tips: Record<string, string>
+  score: Record<TuningObjective, string>
+}
+
+export type IndicatorPanel = ConfluencePanelData
 
 export interface BoxObj {
   kind: 'box'
@@ -178,6 +294,7 @@ export interface BoxObj {
   text_halign: string
   text_valign: string
   tooltip: string
+  tooltip_title?: string // hover card heading; the indicator name when empty
   group: string
   created_at: number
   overlap?: OverlapHover
@@ -195,6 +312,7 @@ export interface LineObj {
   style: string
   extend: 'none' | 'left' | 'right' | 'both'
   tooltip: string
+  tooltip_title?: string // hover card heading; the indicator name when empty
   group: string
   created_at: number
   overlap?: OverlapHover
@@ -212,6 +330,7 @@ export interface LabelObj {
   text_color: string
   size: string
   tooltip: string
+  tooltip_title?: string // hover card heading; the indicator name when empty
   group: string
   created_at: number
   overlap?: OverlapHover
@@ -279,6 +398,8 @@ export interface IndicatorOutput {
   /** plotcandle colors: [time, body (null = hollow), wick, border] */
   candle_colors: [number, string | null, string, string][]
   tables: IndicatorTable[]
+  /** purpose-built dashboards (by kind) */
+  panels?: IndicatorPanel[]
   warnings: string[]
   drawings: DrawingObj[]
   signals: IntentDto[]

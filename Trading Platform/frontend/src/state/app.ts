@@ -17,6 +17,7 @@ export type Dialog =
   | { type: 'indicators' }
   | { type: 'data' }
   | { type: 'settings'; uid: string }
+  | { type: 'tuning'; uid: string }
   | { type: 'symbol' }
   | { type: 'goto' }
 

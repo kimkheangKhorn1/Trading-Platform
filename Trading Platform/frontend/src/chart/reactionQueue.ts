@@ -1,8 +1,8 @@
 import type { BarRow } from '../api/types'
 import type { BadgeOverlapRequest, OverlapReactionResult } from '../api/badgeOverlap'
 
-export interface ReactionJob { uid: string; body: BadgeOverlapRequest }
-export interface ReactionRequest { key: string; scope: string; jobs: ReactionJob[] }
+export interface ReactionJob<B = BadgeOverlapRequest> { uid: string; body: B }
+export interface ReactionRequest<B = BadgeOverlapRequest> { key: string; scope: string; jobs: ReactionJob<B>[] }
 
 /** Detect the close itself, including a completion flag or corrected OHLC at the same clock. */
 export function confirmedCandleKey(bars:BarRow[], asOf:number|null, step:number):string {
@@ -12,18 +12,18 @@ export function confirmedCandleKey(bars:BarRow[], asOf:number|null, step:number)
 }
 
 /** No timer/debounce and no dependency on the source-scan queue. Coalesce only newer reaction work. */
-export class ReactionQueue {
+export class ReactionQueue<B = BadgeOverlapRequest, R = OverlapReactionResult> {
   private running = false
-  private pending: ReactionRequest | null = null
-  private fetch: (body: BadgeOverlapRequest) => Promise<OverlapReactionResult>
-  private done: (request: ReactionRequest, results: Record<string, OverlapReactionResult>, error: string | null) => void
-  constructor(fetch: (body: BadgeOverlapRequest) => Promise<OverlapReactionResult>,
-    done: (request: ReactionRequest, results: Record<string, OverlapReactionResult>, error: string | null) => void) {
+  private pending: ReactionRequest<B> | null = null
+  private fetch: (body: B) => Promise<R>
+  private done: (request: ReactionRequest<B>, results: Record<string, R>, error: string | null) => void
+  constructor(fetch: (body: B) => Promise<R>,
+    done: (request: ReactionRequest<B>, results: Record<string, R>, error: string | null) => void) {
     this.fetch=fetch
     this.done=done
   }
 
-  request(request: ReactionRequest): void {
+  request(request: ReactionRequest<B>): void {
     this.pending = request
     if (this.running) return
     this.running = true

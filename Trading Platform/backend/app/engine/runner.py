@@ -63,6 +63,9 @@ class ScriptRunner:
         self.ticker = ticker
         # first displayed bar: intrabars are loaded from `lookback` bars before it (all bars when None)
         self.ltf_start = ltf_start
+        # replay: open time of the bar where the user started the replay (None when live); set per output() call,
+        # read only by on_last_bar (ctx.replay_start), so it never changes the calculation itself
+        self.replay_start: int | None = None
 
         self.drawings = DrawingStore(self.meta.max_boxes, self.meta.max_lines, self.meta.max_labels,
                                      self.meta.group_limits)
@@ -340,7 +343,9 @@ class ScriptRunner:
         finally:
             self.script, self.drawings = state
 
-    def output(self, start_time: int | None = None, end_time: int | None = None) -> dict:
+    def output(self, start_time: int | None = None, end_time: int | None = None,
+               replay_start: int | None = None) -> dict:
+        self.replay_start = replay_start
         n = self.n
         times = self.buf_time[:n]
         lo = int(np.searchsorted(times, start_time, side="left")) if start_time is not None else 0
@@ -377,6 +382,8 @@ class ScriptRunner:
             "last_confirmed_time": self.last_committed_time,
             "provisional_bar": self.n > self.n_committed,
             "tables": extras.get("tables", []),
+            # purpose-built dashboards (``kind`` picks the chart component), e.g. the Triple Confluence panel
+            "panels": extras.get("panels", []),
             "warnings": extras.get("warnings", []),
         }
 
@@ -393,6 +400,7 @@ def apply_display_filter(out: dict, hide: dict | None) -> dict:
     out["plot_colors"] = {k: v for k, v in out["plot_colors"].items() if k not in plots}
     if hide.get("tables"):
         out["tables"] = []
+        out["panels"] = []
     if hide.get("candles"):
         out["bar_colors"], out["candle_colors"] = [], []
     return out

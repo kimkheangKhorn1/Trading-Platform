@@ -24,6 +24,8 @@ SIGNAL PIPELINE (decides trades; every step runs once per bar in on_bar, in this
                   pending sweep is dropped. A confirmed sweep is the signal (buySignal / sellSignal).
   5. Filters      (added, not in Pine, all off by default) 4H EMA50/200 trend and ADX >= adxMin. They only drop
                   signals; the sweep is consumed either way.
+  6. ML filter    (added, off by default; app/scripts/reaper_ml.py) a model trained on this indicator's past signals
+                  scores each remaining signal from 23 inputs known at its close and skips those below its threshold.
   TRADING-RELEVANT INPUTS: pivotLen, confirmWindow, maxPools, minWickPct, useVolFilter, volLen, volMultReq,
   trendFilter, adxFilter, adxMin, and the TP/SL inputs below (they set the trade plan, not the signal).
   PRESET: tfPresetMode (added) replaces those inputs with the tested values for the chart timeframe (TF_PRESETS) in
@@ -33,18 +35,41 @@ SIGNAL PIPELINE (decides trades; every step runs once per bar in on_bar, in this
 TRADE PLAN (display of a position; the backtest in backend/research/reaper uses the same numbers)
   _targets(): on a signal, entry = signal close; risk = ATR x sl_atr_mult (or sl_percent of price, or — added
   option — the swept wick extreme + sl_sweep_buffer x ATR); SL = entry -/+ risk; TP1..TP3 = entry +/- risk x rr_tpN.
-  The drawn position closes when price touches the SL or the furthest SHOWN target (TP3 by default). A new signal
-  replaces the drawn position even while one is open (the chart does not skip signals; the backtest takes one
-  trade at a time).
+  The drawn position closes when price touches the SL or the furthest SHOWN target (TP3 = +3R by default). The stop
+  steps up with the targets: once a candle touches TP1 the SL moves to TP1 (+1R locked), at TP2 to TP2 (+2R), so a
+  trade scores -1R (SL before TP1), +1R (TP1), +2R (TP2) or +3R (TP3). The research backtest keeps the fixed SL.
+  One trade at a time, like the backtest: a signal while a position is open keeps its label but opens nothing.
+  REPLAY RECORD: in chart replay the dashboard adds wins / losses / net R of the trades closed since the bar where
+  the replay was started (ctx.replay_start).
 
 DISPLAY ONLY (never changes a signal)
   Liquidity rails (dotted lines at unswept pools), swept zones (box from the pool level to the wick, kept
   zoneLifeBars), RAID labels / triangles, TP/SL lines and fills, colours, and the Reaper dashboard (on_last_bar:
-  pools above / below and their distance in ATR, volume pulse, raid counts, last raid, pending sweep, position).
+  pools above / below and their distance in ATR, volume pulse, raid counts, last raid, pending sweep, position, and
+  in replay the win / loss record).
 
 TIMING / NO LOOKAHEAD
   Everything uses the current and past bars only. Pools appear pivotLen bars after their swing; a signal is known at
-  its bar's close; the 4H trend reads the last COMPLETED 4H candle.
+  its bar's close; the 4H trend reads the last COMPLETED 4H candle; the 1-minute delta reads only the minutes inside
+  the signal candle.
+
+IMPROVED VERSION (how the added parts were chosen — full story in docs/research/reaper-v2-2026-10-18/PROCESS_NOTES.md)
+  Exness XAUUSD, one trade at a time, next-open entry on bid/ask, 1-minute stop/target order. Each added rule was kept
+  only if it improved 2024-01..2025-06 AND 2025-07..12 while keeping the trade count within +-20 %. The research
+  code (backend/research/reaper, backend/research/reaper_v2) uses its own copy of this signal logic and was checked to
+  produce exactly the same signals as this file. Long backtest 2022-01..2026-10 ("Most consistent", 15m-4H): +144R,
+  but 2022 -30R and 2023 -64R; 5m and 1m lose. Original rules on 15m-4H: -292R.
+
+FILE MAP
+  TF_PRESETS ............ tested settings per timeframe (used by the "Settings Per Chart Timeframe" input)
+  INPUTS / META ......... settings shown in the dialog, drawing groups, shapes
+  Pool / PendingSweep ... the liquidity state the signals come from
+  setup() ............... applies a preset, builds the indicators and registers 4H / 1-minute data requests
+  on_bar() .............. the signal pipeline above, then zones, labels, TP/SL display, dashboard counters
+  _delta() .............. 1-minute order-flow delta of the current candle (deltaFilter, ML input)
+  _risk() / _ml_row() ... stop distance of a trade; the ML input row of a signal (see reaper_ml.py)
+  _targets() ............ draws and tracks the position of the latest signal (display, not a broker)
+  on_last_bar() ......... the Reaper dashboard table
 """
 from __future__ import annotations
 
@@ -59,13 +84,20 @@ from ..engine.script import Context, Script
 from ..engine.ta import ATR, SMA, ema
 from .pinelib import NAN, TABLE_POSITIONS, WHITE, Pivot, Table, finite, fmt_pattern, fmt_price
 from .smc_master.technical import DMI
+from .reaper_ml import FeatureState, Model, signal_features
 
 G_LIQ, G_VOL, G_SIG, G_RZ, G_VIS, G_TP, G_TPD, G_DASH = (
     'Liquidity Detection', 'Volume Filter', 'Signals', 'Rails and Zones', 'Visuals', 'TP/SL', 'TP/SL Display',
     'Reaper Dashboard')
 G_TREND = 'Trend Filter'
 
-# Tested settings per chart timeframe (docs/research/reaper-v2-2026-10-18/SUMMARY.md, "combining the rounds").
+# ─── Tested settings per chart timeframe ───────────────────────────────────────────────────────────────────────────
+# (docs/research/reaper-v2-2026-10-18/SUMMARY.md, "combining the rounds"). Each name below is one research round:
+#   ORIGINAL - the Pine defaults (swing 8, window 3, wick 25 %, volume filter on, SL 1.5 ATR, TP3 3R)
+#   ROUND1   - + 4H trend filter (swing 5, wick 10 % to keep the trade count)
+#   ROUND2   - + ADX >= 25 and SL 0.2 ATR beyond the swept wick (swing 3, window 5, volume filter off)
+#   ROUND3   - engulfing body + 1-minute delta with the trade (swing 3, window 5, wick 10 %, volume filter off)
+# _BASE switches every added option off, so a preset never inherits a filter the user left on.
 # Each timeframe uses the logic of whichever research round did best there; two ways of choosing are offered:
 #   'Best in 2026'               - the highest net R on Jan-Oct 2026 per timeframe (highest 2026 total, but chosen on
 #                                  2026 itself, and weaker over 2024-2025);
@@ -111,10 +143,9 @@ INPUTS = [
               tooltip='Sweep signals require volume above its average × multiplier.'),
     InputSpec('volLen', 'int', 'Volume MA Length', 20, minval=1, group=G_VOL),
     InputSpec('volMultReq', 'float', 'Volume Multiplier', 1.1, minval=0.5, step=0.1, group=G_VOL),
-    # Not in the Pine source (off = the original). Tested on Exness XAUUSD: tuned on 2024-01..2025-06, checked on
-    # 2025-07..12, then run on 2026 with Swing Strength 5 and Min Sweep Wick 10 so the trade count stays the same.
-    # Not in the Pine source (all off = the original). Chosen one at a time on Exness XAUUSD 2024-01..2025-06, each
-    # kept only if 2025-07..12 also improved, then run on 2026; see docs/research/reaper-v2-2026-10-18/RESULTS.md.
+    # ─── Added signal filters (not in the Pine source; all off = the original) ───
+    # Chosen one at a time on Exness XAUUSD 2024-01..2025-06, each kept only if 2025-07..12 also improved, then run on
+    # 2026; see docs/research/reaper-v2-2026-10-18/RESULTS.md. They only REMOVE signals, never add or flip one.
     InputSpec('trendFilter', 'bool', 'Only With 4H Trend (EMA50 vs EMA200)', False, group=G_TREND,
               tooltip='Buy raids only while the 4H EMA50 is above the 4H EMA200, sell raids only while it is below '
                       '(last completed 4H candle, no lookahead). Off = original signals.'),
@@ -128,6 +159,13 @@ INPUTS = [
     InputSpec('deltaFilter', 'bool', 'Order Flow: 1-Minute Delta With The Trade', False, group=G_TREND,
               tooltip='Footprint-style delta of the signal candle from its 1-minute candles (volume of up minutes minus '
                       'down minutes) must be positive for a buy, negative for a sell. Needs 1-minute data.'),
+    # ─── ML filter (added): a trained model rates each signal and skips the lowest-rated ones ───
+    InputSpec('mlFilter', 'bool', 'ML Filter: Skip Low-Rated Raids', False, group='ML Filter',
+              tooltip='A model trained on this indicator\'s own past signals (app/scripts/reaper_ml_model.json, see '
+                      'app/scripts/reaper_ml.py) rates every raid and skips those below its threshold. It never adds or '
+                      'reverses a signal. Trained on the "Most consistent 2024-2026" preset with a 3R target: with other '
+                      'settings it is switched off with a warning. Labels show the setup score when on.'),
+    # ─── Display settings (never change a signal) ───
     InputSpec('showSignalLabels', 'bool', 'Show Sweep Labels', True, group=G_SIG,
               tooltip='Labels show direction plus relative volume of the raid, e.g. "RAID BUY · 2.3x".'),
     InputSpec('labelSizeStr', 'string', 'Label Size', 'Small', options=('Tiny', 'Small', 'Normal'), group=G_SIG),
@@ -142,6 +180,7 @@ INPUTS = [
     InputSpec('buyColor', 'color', 'Buy / Bull Liquidity Color', '#38BDF8FF', group=G_VIS),
     InputSpec('sellColor', 'color', 'Sell / Bear Liquidity Color', '#E11D48FF', group=G_VIS),
     InputSpec('labelTextColor', 'color', 'Label Text Color', WHITE, group=G_VIS),
+    # ─── Trade plan (where the SL / TPs of a signal sit; the backtests use the same rules) ───
     InputSpec('show_targets', 'bool', 'Show TP/SL Levels', True, group=G_TP),
     InputSpec('use_atr_sl', 'bool', 'SL = ATR × instead of %', True, group=G_TP),
     InputSpec('sl_beyond_sweep', 'bool', 'SL Beyond the Sweep Wick', False, group=G_TP,
@@ -184,29 +223,35 @@ NA_COLOR = '#00000000'
 
 @dataclass
 class Pool:
-    rail: object
-    lvl: float
-    born_bar: int
+    """A live liquidity pool: an unswept swing high (sell-side stops above it) or swing low (buy-side stops below)."""
+    rail: object  # the dotted line drawn at the level (display only; None when rails are hidden)
+    lvl: float  # the swing high / low price
+    born_bar: int  # bar index of the swing candle itself (pivotLen bars before it was confirmed)
     is_high: bool
 
 
 @dataclass
 class PendingSweep:
-    lvl: float
-    wick_extreme: float
-    break_bar: int
-    raid_range: float
+    """A pool that price has just wicked through, waiting up to confirmWindow bars for a close back inside."""
+    lvl: float  # the raided pool's level
+    wick_extreme: float  # highest high (high pool) / lowest low (low pool) since the raid — the sweep wick
+    break_bar: int  # bar index of the raid candle
+    raid_range: float  # high - low of the raid candle (the min-wick test is a % of it)
     is_high: bool
+    born: int = 0  # bar index of the raided pool's swing candle (ML input: pool age)
 
 
 @dataclass
 class SweptZone:
+    """The box painted over a confirmed sweep (display only), deleted after zoneLifeBars bars."""
     bx: object
     born_bar: int
 
 
 class LiquidityReaper(Script):
     meta = META
+
+    collect = False  # research only: record every signal's ML inputs (research/reaper_ml/dataset.py sets it)
 
     # Per-bar state: highPools / lowPools (live liquidity), pendHigh / pendLow (raided pool waiting for a confirming
     # close), zones (swept-zone boxes), trade_dir / sl_level / extreme_level (the drawn position) and the dashboard
@@ -216,8 +261,11 @@ class LiquidityReaper(Script):
         return 2000
 
     def setup(self, ctx: Context) -> None:
+        """Runs once before the first bar: choose the effective settings, then build every running calculation."""
         p = self.p
-        self.warnings: list[str] = []
+        self.warnings: list[str] = []  # shown next to the indicator name in the chart legend
+        # Preset: replace the trading inputs with the tested ones for this chart timeframe BEFORE anything below is
+        # built from them (pivot lengths, data requests). Untested timeframes keep the user's inputs + a warning.
         if p['tfPresetMode'] != 'Off':
             preset = TF_PRESETS[p['tfPresetMode']].get(ctx.timeframe.code)
             if preset is not None:
@@ -226,10 +274,12 @@ class LiquidityReaper(Script):
                 self.warnings.append(f'Reaper: no tested settings for {ctx.timeframe.label}'
                                      + (' (1m lost money with every setting tested)' if ctx.timeframe.code == 'M1' else '')
                                      + '; your inputs are used.')
-        self.atr = ATR(p['tp_atr_period'])
-        self.vol_sma = SMA(p['volLen'])
-        self.ph = Pivot(p['pivotLen'], p['pivotLen'], True)
-        self.pl = Pivot(p['pivotLen'], p['pivotLen'], False)
+        # Running calculations used by the signal (each updated once per bar in on_bar)
+        self.atr = ATR(p['tp_atr_period'])  # stop distance and the sweep-stop buffer
+        self.vol_sma = SMA(p['volLen'])  # volume average for the volume filter / pulse
+        self.ph = Pivot(p['pivotLen'], p['pivotLen'], True)  # swing highs -> high pools
+        self.pl = Pivot(p['pivotLen'], p['pivotLen'], False)  # swing lows -> low pools
+        # Liquidity state (SIGNAL)
         self.highPools: list[Pool] = []
         self.lowPools: list[Pool] = []
         self.zones: list[SweptZone] = []
@@ -240,6 +290,11 @@ class LiquidityReaper(Script):
         self.sl_level = NAN
         self.extreme_level = NAN
         self.entry_bar = None
+        self.entry_time = 0
+        self.entry_price = NAN
+        self.risk = NAN
+        self.step_tps: list[float] = []  # shown targets before the furthest one: the SL moves to each once touched
+        self.closed: list[tuple[int, int, float]] = []  # every closed trade: (signal candle time, side, R)
         self.objs: dict[str, object] = {}
         self.fills: dict[str, object] = {}
         # dashboard
@@ -247,14 +302,32 @@ class LiquidityReaper(Script):
         self.totalSellRaids = 0
         self.lastRaidBar = None
         self.lastRaidDir = 0
-        self.atr_val = NAN
+        self.atr_val = NAN  # latest ATR / volume multiple, kept for the dashboard
         self.volMult = 1.0
-        self.h4 = None
-        self.dmi = DMI(14, 14)
+        # Added filters (SIGNAL). Data requests are registered only when their filter is on, so the original setting
+        # needs no 4H or 1-minute data.
+        self.h4 = None  # (EMA50, EMA200) of the 4H closes, read for the last completed 4H candle
+        self.dmi = DMI(14, 14)  # ADX(14) for adxFilter (same code as the SMC indicator's dashboard)
         self.adx = NAN
         self.prev_oc = (NAN, NAN)  # previous candle's open / close (engulfing filter)
-        self.ltf = ctx.request_lower_tf(60) if p['deltaFilter'] and ctx.timeframe.seconds > 60 else None
-        if p['trendFilter']:
+        # 1-minute candles inside each chart candle for the order-flow delta (not on the 1m chart itself)
+        # ML filter: FeatureState tracks the model inputs on every bar; the model is loaded once. It is only used with
+        # the settings it was trained on (the preset named in the model file, 3R target). ``collect`` (research only)
+        # records the input row of every signal BEFORE the ML decision — this is how the training data is built.
+        self.fs = FeatureState()
+        self.ml = Model.load() if p['mlFilter'] else None
+        if p['mlFilter'] and self.ml is None:
+            self.warnings.append('Reaper ML filter: no trained model (app/scripts/reaper_ml_model.json); signals unfiltered.')
+        if self.ml is not None and (p['tfPresetMode'] != self.ml.spec.get('preset') or p['rr_tp3'] != 3.0
+                                    or ctx.timeframe.code not in self.ml.spec.get('timeframes', ())):
+            self.warnings.append('Reaper ML filter: the model was trained on the "%s" preset (3R) for %s; it is off with '
+                                 'these settings.' % (self.ml.spec.get('preset'), ', '.join(self.ml.spec.get('timeframes', ()))))
+            self.ml = None
+        need_ml = self.ml is not None or self.collect
+        self.signal_rows: list[tuple] = []  # research: (bar index, side, input row) of every signal
+        self.last_score = {1: NAN, -1: NAN}
+        self.ltf = ctx.request_lower_tf(60) if (p['deltaFilter'] or need_ml) and ctx.timeframe.seconds > 60 else None
+        if p['trendFilter'] or need_ml:
             h4 = lambda b, n: ema(np.asarray(b.close, dtype=float), n)
             self.h4 = (ctx.request_security('H4', lambda b: h4(b, 50)), ctx.request_security('H4', lambda b: h4(b, 200)))
 
@@ -268,18 +341,24 @@ class LiquidityReaper(Script):
 
     # ------------------------------------------------------------------ bar
     def on_bar(self, ctx: Context) -> None:
+        """One candle: update indicators, find pools / raids / confirmations (the signal), apply the added filters,
+        then draw zones and labels, move the TP/SL display and update the dashboard counters."""
         p = self.p
         i = ctx.bar_index
         h, l, o, c, v = ctx.high, ctx.low, ctx.open, ctx.close, ctx.volume
         buyColor, sellColor = p['buyColor'], p['sellColor']
 
+        # ─── Indicators ─── ATR, ADX, volume multiple (this candle's volume / its average)
         atr_val = self.atr.update(h, l, c)
         self.adx = self.dmi.update(h, l, c)[2]
+        self.fs.update(h, l, c, atr_val)  # ML: running indicator values for the model inputs
         volMA = self.vol_sma.update(v)
         volMult = v / volMA if finite(volMA) and volMA > 0 else 1.0
         volOK = not p['useVolFilter'] or volMult >= p['volMultReq']
         self.atr_val, self.volMult = atr_val, volMult
 
+        # A pivot is reported pivotLen bars after the swing candle (it needs pivotLen lower highs / higher lows on its
+        # right), so ph / pl are the swing prices of bar i - pivotLen, or NaN
         ph = self.ph.update(h)
         pl = self.pl.update(l)
         L = p['pivotLen']
@@ -298,7 +377,9 @@ class LiquidityReaper(Script):
                 old = pools.pop(0)
                 ctx.delete(old.rail)
 
-        # ─── Detect raids (wick through a pool) ─── (SIGNAL) the raided pool becomes the pending sweep of its side
+        # ─── Detect raids (wick through a pool) ─── (SIGNAL) the raided pool becomes the pending sweep of its side.
+        # Pools are scanned newest -> oldest, so when one candle takes several pools the OLDEST becomes pending
+        # (Pine behaviour); every raided pool is removed and its rail stops at this candle.
         raid_range = max(h - l, ctx.mintick)
         for k in range(len(self.highPools) - 1, -1, -1):
             pool = self.highPools[k]
@@ -306,7 +387,7 @@ class LiquidityReaper(Script):
                 if pool.rail is not None:
                     pool.rail.extend = 'none'
                     pool.rail.x2 = ctx.time
-                self.pendHigh = PendingSweep(pool.lvl, h, i, raid_range, True)
+                self.pendHigh = PendingSweep(pool.lvl, h, i, raid_range, True, pool.born_bar)
                 del self.highPools[k]
         for k in range(len(self.lowPools) - 1, -1, -1):
             pool = self.lowPools[k]
@@ -314,7 +395,7 @@ class LiquidityReaper(Script):
                 if pool.rail is not None:
                     pool.rail.extend = 'none'
                     pool.rail.x2 = ctx.time
-                self.pendLow = PendingSweep(pool.lvl, l, i, raid_range, False)
+                self.pendLow = PendingSweep(pool.lvl, l, i, raid_range, False, pool.born_bar)
                 del self.lowPools[k]
 
         # Track wick extremes while a raid is pending (SIGNAL: the min-wick test; TRADE: the beyond-sweep stop)
@@ -323,8 +404,11 @@ class LiquidityReaper(Script):
         if self.pendLow is not None:
             self.pendLow.wick_extreme = min(self.pendLow.wick_extreme, l)
 
-        # ─── Confirm sweeps ─── (SIGNAL) close back inside within the window + colour + volume + wick size
+        # ─── Confirm sweeps ─── (SIGNAL) close back inside within the window + colour + volume + wick size.
+        # elapsed = bars since the raid candle; the raid candle itself (elapsed 0) can never confirm. A pending sweep
+        # that is not confirmed within confirmWindow bars is dropped. Sell = high pool swept, buy = low pool swept.
         sellSignal = buySignal = False
+        sellSweep = buySweep = None  # the confirmed PendingSweep of each side (ML inputs)
         sweepLvlSell = sweepWickSell = sweepLvlBuy = sweepWickBuy = NAN
         cw = p['confirmWindow']
         ph_ = self.pendHigh
@@ -335,6 +419,7 @@ class LiquidityReaper(Script):
                 if c < ph_.lvl and c < o and volOK and wickOK:
                     sellSignal = True
                     sweepLvlSell, sweepWickSell = ph_.lvl, ph_.wick_extreme
+                    sellSweep = ph_
                     self.pendHigh = None
             elif elapsed > cw:
                 self.pendHigh = None
@@ -346,29 +431,47 @@ class LiquidityReaper(Script):
                 if c > pl_.lvl and c > o and volOK and wickOK:
                     buySignal = True
                     sweepLvlBuy, sweepWickBuy = pl_.lvl, pl_.wick_extreme
+                    buySweep = pl_
                     self.pendLow = None
             elif elapsed > cw:
                 self.pendLow = None
 
         # ─── Optional filters ─── (SIGNAL, added) the sweep is consumed as usual; the signal is dropped when the
         # last completed 4H candle's EMA50/200 trend is against it, or ADX(14) is below adxMin
+        trend = 0  # 4H trend: +1 up, -1 down, 0 unknown (also an ML input)
         if self.h4 is not None and (buySignal or sellSignal):
             e50, e200 = ctx.security(self.h4[0]), ctx.security(self.h4[1])
             trend = int(np.sign(e50 - e200)) if finite(e50) and finite(e200) else 0
+        if p['trendFilter'] and (buySignal or sellSignal):
             buySignal = buySignal and trend > 0
             sellSignal = sellSignal and trend < 0
         if p['adxFilter'] and not (finite(self.adx) and self.adx >= p['adxMin']):
             buySignal = sellSignal = False
-        po, pc = self.prev_oc
+        po, pc = self.prev_oc  # updated on every candle, whether or not there is a signal
         self.prev_oc = (o, c)
         if p['engulfFilter'] and (buySignal or sellSignal):
             lo_b, hi_b = min(po, pc), max(po, pc)
             buySignal = buySignal and c >= hi_b and o <= lo_b
             sellSignal = sellSignal and c <= lo_b and o >= hi_b
+        delta = self._delta(ctx) if (buySignal or sellSignal) else NAN
         if p['deltaFilter'] and (buySignal or sellSignal):
-            delta = self._delta(ctx)
             buySignal = buySignal and finite(delta) and delta > 0
             sellSignal = sellSignal and finite(delta) and delta < 0
+
+        # ─── ML filter ─── (SIGNAL, added) build the input row of each remaining signal; with collect on, record it
+        # (training data); with a model loaded, skip the signal when its score is below the model's threshold
+        if (self.ml is not None or self.collect) and (buySignal or sellSignal):
+            for side, on, sw in ((1, buySignal, buySweep), (-1, sellSignal, sellSweep)):
+                if not on:
+                    continue
+                x = self._ml_row(ctx, side, sw, volMult, atr_val, trend, delta)
+                if self.collect and ctx.is_confirmed:
+                    self.signal_rows.append((i, side, x))
+                if self.ml is not None:
+                    keep, self.last_score[side] = self.ml.keep(x)
+                    if not keep:
+                        buySignal = buySignal and side != 1
+                        sellSignal = sellSignal and side != -1
 
         # ─── Paint swept zones ─── (DISPLAY)
         life = p['zoneLifeBars']
@@ -397,16 +500,17 @@ class LiquidityReaper(Script):
         size = LABEL_SIZE[p['labelSizeStr']]
         mult = fmt_pattern(volMult, '#.#')
         if buySignal and p['showSignalLabels']:
-            ctx.label(x=ctx.time, y=l, text=f'RAID BUY · {mult}x', style='label_up', color=new_color(buyColor, 8),
+            ctx.label(x=ctx.time, y=l, text=f'RAID BUY · {mult}x' + self._score_text(1), style='label_up', color=new_color(buyColor, 8),
                       text_color=p['labelTextColor'], size=size, group='signals')
         if sellSignal and p['showSignalLabels']:
-            ctx.label(x=ctx.time, y=h, text=f'RAID SELL · {mult}x', style='label_down', color=new_color(sellColor, 8),
+            ctx.label(x=ctx.time, y=h, text=f'RAID SELL · {mult}x' + self._score_text(-1), style='label_down', color=new_color(sellColor, 8),
                       text_color=p['labelTextColor'], size=size, group='signals')
         if p['showTriangles'] and buySignal:
             ctx.shape('raid_buy', color=p['buyColor'])
         if p['showTriangles'] and sellSignal:
             ctx.shape('raid_sell', color=p['sellColor'])
 
+        # ─── Trade plan display ─── (TRADE PLAN) entry / SL / TPs of the newest signal and its SL / TP tracking
         self._targets(ctx, buySignal, sellSignal, atr_val, sweepWickBuy if buySignal else sweepWickSell)
 
         # ─── Dashboard counters ─── (DISPLAY)
@@ -416,6 +520,34 @@ class LiquidityReaper(Script):
         if sellSignal:
             self.totalSellRaids += 1
             self.lastRaidBar, self.lastRaidDir = i, -1
+
+    def _risk(self, entry: float, d: int, atr_val: float, wick: float) -> float:
+        """Stop distance of a new trade: ATR x mult (or % of price), or just beyond the swept wick when enabled."""
+        p = self.p
+        risk = atr_val * p['sl_atr_mult'] if p['use_atr_sl'] else entry * (p['sl_percent'] / 100)
+        if p['sl_beyond_sweep'] and finite(wick) and finite(atr_val):
+            beyond = wick - d * p['sl_sweep_buffer'] * atr_val
+            if (entry - beyond) * d > 0:  # a stop on the wrong side of the entry keeps the ATR / % stop
+                risk = abs(entry - beyond)
+        return risk
+
+    def _ml_row(self, ctx: Context, side: int, sw: PendingSweep, vol_mult: float, atr_val: float, trend: int,
+                delta: float) -> list[float]:
+        """ML input row (reaper_ml.FEATURES) of a signal confirmed on this candle — known at its close."""
+        c = ctx.close
+        # nearest live opposite pool = the next liquidity target (pools raided on this candle are already removed)
+        opp = [pl.lvl for pl in self.highPools if pl.lvl > c] if side == 1 else [pl.lvl for pl in self.lowPools if pl.lvl < c]
+        room = (min(opp) - c if side == 1 else c - max(opp)) if opp else NAN
+        return signal_features(self.fs, side=side, o=ctx.open, h=ctx.high, l=ctx.low, c=c, atr=atr_val, level=sw.lvl,
+                               extreme=sw.wick_extreme, raid_range=sw.raid_range,
+                               bars_since_raid=ctx.bar_index - sw.break_bar, vol_mult=vol_mult,
+                               pool_age=sw.break_bar - sw.born, room=room,
+                               risk=self._risk(c, side, atr_val, sw.wick_extreme), trend_h4=trend, delta=delta,
+                               time=ctx.time, tf_seconds=ctx.timeframe.seconds)
+
+    def _score_text(self, side: int) -> str:
+        """Label suffix with the model's setup score (a ranking score, not a calibrated win probability)."""
+        return f' · ML {self.last_score[side]:.2f}' if self.ml is not None and finite(self.last_score[side]) else ''
 
     def _delta(self, ctx: Context) -> float:
         """(volume of up 1-minute candles - volume of down ones) / total volume, inside the current candle."""
@@ -430,6 +562,20 @@ class LiquidityReaper(Script):
 
     # ------------------------------------------------------------------ TP/SL engine (TRADE PLAN display)
     def _targets(self, ctx: Context, buySignal: bool, sellSignal: bool, atr_val: float, wick: float = NAN) -> None:
+        """Follow the position of the chart, one trade at a time (like the backtest), and draw it.
+
+        1. An open position is extended to this candle and closed when the candle touches its SL or its furthest
+           shown TP (only candles after the entry candle can close it). If one candle touches both, the SL counts
+           (we cannot know which came first). A candle that touches a nearer shown TP moves the SL to that TP for
+           the next candles (TP1 locks +1R, TP2 +2R). The closed trade is added to ``self.closed`` (the replay record).
+        2. Only when flat, a signal opens a new position: entry = this candle's close, risk = ATR x sl_atr_mult (or
+           sl_percent of the price; or the distance to the swept wick + sl_sweep_buffer x ATR when sl_beyond_sweep
+           is on and that stop is on the correct side), SL = entry -/+ risk, TPn = entry +/- risk x rr_tpN.
+           A signal on the candle that closed the previous trade can open the next one (as in the backtest).
+           Signals while a trade is open keep their RAID label but open nothing.
+        This is a chart display: it uses candle highs / lows without spread and enters at the signal close, so a
+        result can differ from the research backtest, which enters at the next open on bid/ask with 1-minute order.
+        """
         p = self.p
         i = ctx.bar_index
         buy, sell = p['buyColor'], p['sellColor']
@@ -438,24 +584,53 @@ class LiquidityReaper(Script):
         objs = self.objs
         prec = ctx.precision
 
-        if (buySignal or sellSignal) and p['show_targets']:
+        # 1. Position update + close on SL/TP hit
+        if self.trade_dir != 0:
+            for k, obj in objs.items():
+                if k.endswith('_label'):
+                    obj.x = ctx.time
+                else:
+                    self._set_x2(ctx, obj, i + 1)
+            for f in self.fills.values():
+                f.right = ctx.time_at(i + 1)
+            d = self.trade_dir
+            sl_hit = (ctx.low <= self.sl_level) if d == 1 else (ctx.high >= self.sl_level)
+            tp_hit = finite(self.extreme_level) and ((ctx.high >= self.extreme_level) if d == 1
+                                                     else (ctx.low <= self.extreme_level))
+            if i > self.entry_bar and (sl_hit or tp_hit):
+                for k, obj in objs.items():
+                    if k.endswith('_line'):
+                        obj.x2 = ctx.time
+                for f in self.fills.values():
+                    f.right = ctx.time
+                # R of the trade: the SL in R (-1R, or the TP it was moved to); a win is the furthest shown TP
+                r = (self.sl_level if sl_hit else self.extreme_level) - self.entry_price
+                self.closed.append((self.entry_time, d, r * d / self.risk))
+                self.trade_dir = 0
+            elif i > self.entry_bar:
+                # the SL steps up to each nearer TP this candle touched (it applies from the next candle)
+                for tp in self.step_tps:
+                    if ((ctx.high >= tp) if d == 1 else (ctx.low <= tp)) and (tp - self.sl_level) * d > 0:
+                        self.sl_level = tp
+
+        # 2. A new position, only when flat (and with a usable stop: ATR is unknown on the first candles)
+        risk = self._risk(ctx.close, 1 if buySignal else -1, atr_val, wick) if (buySignal or sellSignal) else NAN
+        if (buySignal or sellSignal) and self.trade_dir == 0 and finite(risk) and risk > 0:
             for obj in list(objs.values()) + list(self.fills.values()):
                 ctx.delete(obj)
             objs.clear()
             self.fills.clear()
-            self.trade_dir = 1 if buySignal else -1
-            self.entry_bar = i
-            entry = ctx.close
-            risk = atr_val * p['sl_atr_mult'] if p['use_atr_sl'] else entry * (p['sl_percent'] / 100)
-            d = self.trade_dir
-            if p['sl_beyond_sweep'] and finite(wick) and finite(atr_val):
-                beyond = wick - d * p['sl_sweep_buffer'] * atr_val
-                if (entry - beyond) * d > 0:  # a stop on the wrong side of the entry keeps the ATR / % stop
-                    risk = abs(entry - beyond)
+            self.trade_dir = d = 1 if buySignal else -1
+            self.entry_bar, self.entry_time = i, ctx.time
+            self.entry_price = entry = ctx.close
+            self.risk = risk
             self.sl_level = entry - d * risk
             tps = [entry + d * risk * p[k] for k in ('rr_tp1', 'rr_tp2', 'rr_tp3')]
             show = [p['show_tp1_level'], p['show_tp2_level'], p['show_tp3_level']]
             self.extreme_level = tps[2] if show[2] else tps[1] if show[1] else tps[0] if show[0] else NAN
+            self.step_tps = [tp for tp, on in zip(tps, show) if on and tp != self.extreme_level]
+            if not p['show_targets']:
+                return  # the position is still followed (dashboard, replay record), just not drawn
 
             def line(y, **kw):
                 return self._line(ctx, i, y, i + 1, y, 'targets', extend='none', **kw)
@@ -484,35 +659,14 @@ class LiquidityReaper(Script):
                 objs['extreme_line'] = line(far, color=NA_COLOR)
                 self.fills['reward'] = self._fill(ctx, entry, far, buyFill)
 
-        # Position update + close on SL/TP hit
-        if self.trade_dir != 0:
-            for k, obj in objs.items():
-                if k.endswith('_label'):
-                    obj.x = ctx.time
-                else:
-                    self._set_x2(ctx, obj, i + 1)
-            for f in self.fills.values():
-                f.right = ctx.time_at(i + 1)
-            if self.trade_dir == 1:
-                sl_hit = ctx.low <= self.sl_level
-                tp_hit = finite(self.extreme_level) and ctx.high >= self.extreme_level
-            else:
-                sl_hit = ctx.high >= self.sl_level
-                tp_hit = finite(self.extreme_level) and ctx.low <= self.extreme_level
-            if i > self.entry_bar and (sl_hit or tp_hit):
-                for k, obj in objs.items():
-                    if k.endswith('_line'):
-                        obj.x2 = ctx.time
-                for f in self.fills.values():
-                    f.right = ctx.time
-                self.trade_dir = 0
-
     def _fill(self, ctx, y1, y2, color):
         return ctx.box(left=ctx.time, right=ctx.time_at(ctx.bar_index + 1), top=max(y1, y2), bottom=min(y1, y2),
                        border_color=NA_COLOR, border_width=0, bg_color=color, group='targets')
 
     # ------------------------------------------------------------------ dashboard (DISPLAY, last bar only)
     def on_last_bar(self, ctx: Context) -> None:
+        """The Reaper dashboard (last bar only; display): pools above / below and the nearest ones in ATR, volume
+        pulse, raid counts, last raid, pending sweep and the drawn position. It reads the state; it changes nothing."""
         self.table = None
         p = self.p
         if not p['showDash']:
@@ -520,7 +674,9 @@ class LiquidityReaper(Script):
         buy, sell = p['buyColor'], p['sellColor']
         size = DASH_SIZE[p['dashSize']]
         close = ctx.close
-        t = Table('reaper', TABLE_POSITIONS[p['dashPos']], 3, 11, bg_color=new_color('#0B1220FF', 8),
+        # replay: three more rows with the record of the trades closed since the replay start bar
+        replay = ctx.replay_start is not None
+        t = Table('reaper', TABLE_POSITIONS[p['dashPos']], 3, 14 if replay else 11, bg_color=new_color('#0B1220FF', 8),
                   border_width=1, border_color=new_color('#000000FF', 100), frame_width=2,
                   frame_color=new_color(buy, 35))
         rowBg, rowBgAlt = new_color('#0E1830FF', 22), new_color('#0A1326FF', 22)
@@ -577,8 +733,20 @@ class LiquidityReaper(Script):
         posBg = new_color(buy, 40) if d == 1 else new_color(sell, 40) if d == -1 else rowBg
         t.cell(0, 10, 'Position', text_color=lbl, bgcolor=rowBg, text_size=size)
         t.cell(1, 10, pos, text_color=WHITE, bgcolor=posBg, text_size=size)
-        t.cell(2, 10, 'SL ' + fmt_price(self.sl_level, prec) if d != 0 and finite(self.sl_level) else '',
-               text_color=new_color(sell, 25), bgcolor=rowBg, text_size=size)
+        locked = (self.sl_level - self.entry_price) * d / self.risk if d != 0 and finite(self.sl_level) else -1.0
+        t.cell(2, 10, ('SL ' + fmt_price(self.sl_level, prec) + (f' · {locked:+.1f}R locked' if locked > 0 else ''))
+               if d != 0 and finite(self.sl_level) else '',
+               text_color=new_color(buy, 10) if locked > 0 else new_color(sell, 25), bgcolor=rowBg, text_size=size)
+        if replay:
+            # trades whose signal candle came after the replay start bar (the start bar was already on screen)
+            rs = [r for when, _, r in self.closed if when > ctx.replay_start]
+            wins, losses = [r for r in rs if r > 0], [r for r in rs if r <= 0]
+            net = sum(rs)
+            grey = new_color(WHITE, 40)
+            row(11, 'Replay Wins', str(len(wins)), new_color(buy, 10), f'{sum(wins):+.1f}R', new_color(buy, 10))
+            row(12, 'Replay Losses', str(len(losses)), new_color(sell, 10), f'{sum(losses):+.1f}R', new_color(sell, 10))
+            row(13, 'Replay Net R', f'{net:+.1f}R', buy if net > 0 else sell if net < 0 else grey,
+                f'{len(wins) / len(rs):.0%} win · {len(rs)} trades' if rs else 'no closed trade yet', grey)
         self.table = t
 
     def extra_output(self) -> dict:

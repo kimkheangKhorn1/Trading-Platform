@@ -39,6 +39,13 @@ class Zone:
     identity: int=0
     box_left: int|None=None  # where the current box starts: the pivot, or the last role-flip break (Pine)
 
+    def __deepcopy__(self,memo):
+        # Scalars except the box, which must stay the same copied object as in the copied drawing store.
+        new=object.__new__(Zone); memo[id(self)]=new
+        new.__dict__.update(self.__dict__)
+        if self.box is not None: new.box=copy.deepcopy(self.box,memo)
+        return new
+
 class SmcMaster(Script):
     meta=META
 
